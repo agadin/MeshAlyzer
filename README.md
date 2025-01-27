@@ -36,6 +36,7 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
 
 2. Install dependencies:
    ```bash
+   sudo apt-get install python3-lgpio
    pip install -r requirements.txt
    ```
 
