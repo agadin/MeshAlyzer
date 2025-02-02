@@ -1,8 +1,7 @@
-# on a raspberry pi 5, I have a relay connected. I would like to have a ui to control each of the two relays. Build the UI out of customtkitner
-
 import customtkinter as ctk
 import lgpio
 
+# GPIO setup
 RELAY_1_PIN = 17
 RELAY_2_PIN = 27
 
@@ -37,7 +36,6 @@ relay1_button.pack(pady=20)
 relay2_button = ctk.CTkButton(app, text="Relay 2: OFF", command=toggle_relay2)
 relay2_button.pack(pady=20)
 
-# Handle cleanup on close
 def on_close():
     lgpio.gpio_write(chip, RELAY_1_PIN, 0)
     lgpio.gpio_write(chip, RELAY_2_PIN, 0)
@@ -47,5 +45,3 @@ def on_close():
 app.protocol("WM_DELETE_WINDOW", on_close)
 
 app.mainloop()
-
-

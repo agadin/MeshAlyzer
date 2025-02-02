@@ -49,7 +49,24 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
    python main.py
    ```
 
----
+### ADC Setup
+
+1. wiring diagram
+Connect the ADS1256 to the Raspberry Pi:
+VCC → 5V
+GND → GND
+DIN (MOSI) → GPIO 10 (SPI0 MOSI)
+DOUT (MISO) → GPIO 9 (SPI0 MISO)
+SCLK → GPIO 11 (SPI0 SCLK)
+CS (Chip Select) → GPIO 8 (SPI0 CE0)
+DRDY (Data Ready) → GPIO 7
+RESET → GPIO 22
+2. Install the required library:
+```bash
+sudo apt-get install python3-lgpio
+```
+
+
 
 ## Usage
 
