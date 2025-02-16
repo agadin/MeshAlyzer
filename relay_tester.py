@@ -1,7 +1,8 @@
 import customtkinter as ctk
+from PIL import Image
 import lgpio
 
-# --- GPIO Setup ---
+# =========== GPIO Setup ===========
 PIN1 = 17  # Inflation valve group 1
 PIN2 = 27  # Deflation valve group 1
 PIN3 = 23  # Inflation valve group 2
@@ -14,37 +15,32 @@ for pin in (PIN1, PIN2, PIN3, PIN4):
     lgpio.gpio_claim_output(chip, pin)
     lgpio.gpio_write(chip, pin, 0)
 
-
-# --- Functions to set outputs ---
+# =========== Valve Control Functions ===========
 def set_inflation():
-    # Inflation: turn on pins 1 & 3, turn off deflation pins
+    """Inflation: turn on pins 1 & 3, turn off deflation pins."""
     lgpio.gpio_write(chip, PIN1, 1)
     lgpio.gpio_write(chip, PIN3, 1)
     lgpio.gpio_write(chip, PIN2, 0)
     lgpio.gpio_write(chip, PIN4, 0)
 
-
 def set_deflation():
-    # Deflation: turn on pins 2 & 4, turn off inflation pins
+    """Deflation: turn on pins 2 & 4, turn off inflation pins."""
     lgpio.gpio_write(chip, PIN1, 0)
     lgpio.gpio_write(chip, PIN3, 0)
     lgpio.gpio_write(chip, PIN2, 1)
     lgpio.gpio_write(chip, PIN4, 1)
 
-
 def set_neutral():
-    # Neutral: turn all pins OFF
+    """Neutral: turn all pins OFF."""
     lgpio.gpio_write(chip, PIN1, 1)
     lgpio.gpio_write(chip, PIN2, 1)
     lgpio.gpio_write(chip, PIN3, 1)
     lgpio.gpio_write(chip, PIN4, 1)
 
-
-# For Option 1 (independent control) we set each group individually.
 def set_group(mode, group):
     """
-    group: 1 for Group 1 (PIN1 & PIN2); 2 for Group 2 (PIN3 & PIN4)
-    mode: "Deflation", "Neutral", or "Inflation"
+    Controls a single group of valves (1 or 2).
+    mode can be: "Deflation", "Neutral", or "Inflation".
     """
     if group == 1:
         if mode == "Deflation":
@@ -67,90 +63,116 @@ def set_group(mode, group):
             lgpio.gpio_write(chip, PIN3, 1)
             lgpio.gpio_write(chip, PIN4, 1)
 
-
-# --- UI Setup ---
+# =========== UI Setup ===========
 set_neutral()
-ctk.set_appearance_mode("System")
+ctk.set_appearance_mode("System")        # or "Dark" / "Light"
 ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
-app.title("Balloon Valve Control")
-app.geometry("500x400")
+app.title("Lake Lab: Cough/Pressure Simulation")
+app.geometry("600x500")
 
-
-# Bind the "q" key so that when pressed, the application will shut off
+# =========== Bind "q" Key for Quick Exit ===========
 def on_key(event):
     if event.char.lower() == "q":
         on_close()
-
-
 app.bind("<Key>", on_key)
 
-# Create a Tabview with two tabs for the two control options.
-tabview = ctk.CTkTabview(app, width=480, height=360)
+# =========== Header with Logos ===========
+# Load images with Pillow, then wrap in CTkImage.
+try:
+    meshalyzer_image_pil = Image.open("meshalyzer_logo.png")
+    stl_image_pil        = Image.open("stl_logo.png")
+except FileNotFoundError:
+    # If you don't have the actual files or they're named differently,
+    # adjust the paths or handle errors as needed.
+    meshalyzer_image_pil = Image.new("RGB", (200, 200), color="gray")
+    stl_image_pil        = Image.new("RGB", (150, 150), color="gray")
+
+# Create CTkImage objects (optional: adjust `size=(w, h)`).
+meshalyzer_ctk_image = ctk.CTkImage(dark_image=meshalyzer_image_pil, size=(220, 80))
+stl_ctk_image        = ctk.CTkImage(dark_image=stl_image_pil,        size=(120, 80))
+
+header_frame = ctk.CTkFrame(app)
+header_frame.pack(fill="x", pady=10)
+
+meshalyzer_label = ctk.CTkLabel(header_frame, text="", image=meshalyzer_ctk_image)
+meshalyzer_label.pack(side="left", padx=20)
+
+stl_label = ctk.CTkLabel(header_frame, text="", image=stl_ctk_image)
+stl_label.pack(side="right", padx=20)
+
+# =========== Main Tabview ===========
+tabview = ctk.CTkTabview(app, width=580, height=360)
 tabview.pack(padx=10, pady=10, fill="both", expand=True)
 tabview.add("Option 1: Independent Control")
 tabview.add("Option 2: Both Groups Together")
 
-# ---
-# Wrap tabview.set() so that switching tabs resets the segmented buttons.
-# This ensures that when you switch between Option 1 and Option 2,
-# any active selection is first set to Neutral.
-original_set = tabview.set
-def new_set(tab_name):
+# We’ll wrap the tabview.set so switching tabs resets everything to Neutral.
+original_tabview_set = tabview.set
+def new_tabview_set(tab_name):
+    # Reset all segmented buttons to "Neutral" whenever tabs switch
     segmented_button_group1.set("Neutral")
     segmented_button_group2.set("Neutral")
     segmented_button_both.set("Neutral")
-    original_set(tab_name)
-tabview.set = new_set
-# ---
+    set_neutral()
+    original_tabview_set(tab_name)
+tabview.set = new_tabview_set
 
-
-# ======================
-# Option 1 – Independent Control:
-# Two segmented buttons control Group 1 (PIN1 & PIN2) and Group 2 (PIN3 & PIN4)
-# ======================
+# =========== Option 1: Independent Control ===========
 option1_frame = tabview.tab("Option 1: Independent Control")
-ctk.CTkLabel(option1_frame, text="Independent Control of Two Valve Groups", font=("Helvetica", 16)).pack(pady=10)
+
+title_label1 = ctk.CTkLabel(
+    option1_frame,
+    text="Independent Control of Two Valve Groups",
+    font=("Helvetica", 16, "bold")
+)
+title_label1.pack(pady=10)
 
 ctk.CTkLabel(option1_frame, text="Group 1 (Pins 1 & 2):", font=("Helvetica", 14)).pack()
-segmented_button_group1 = ctk.CTkSegmentedButton(option1_frame,
-                                                 values=["Deflation", "Neutral", "Inflation"])
+segmented_button_group1 = ctk.CTkSegmentedButton(
+    option1_frame,
+    values=["Deflation", "Neutral", "Inflation"]
+)
 segmented_button_group1.set("Neutral")
 segmented_button_group1.pack(pady=5)
 
 ctk.CTkLabel(option1_frame, text="Group 2 (Pins 3 & 4):", font=("Helvetica", 14)).pack(pady=(20, 0))
-segmented_button_group2 = ctk.CTkSegmentedButton(option1_frame,
-                                                 values=["Deflation", "Neutral", "Inflation"])
+segmented_button_group2 = ctk.CTkSegmentedButton(
+    option1_frame,
+    values=["Deflation", "Neutral", "Inflation"]
+)
 segmented_button_group2.set("Neutral")
 segmented_button_group2.pack(pady=5)
-
 
 def independent_group1_callback(choice):
     set_group(choice, 1)
     # Reset Option 2's control to Neutral.
     segmented_button_both.set("Neutral")
 
-
 def independent_group2_callback(choice):
     set_group(choice, 2)
     segmented_button_both.set("Neutral")
 
-
 segmented_button_group1.configure(command=independent_group1_callback)
 segmented_button_group2.configure(command=independent_group2_callback)
 
-# ======================
-# Option 2 – Both Groups Together:
-# A single segmented button controls both valve groups.
-# ======================
+# =========== Option 2: Both Groups Together ===========
 option2_frame = tabview.tab("Option 2: Both Groups Together")
-ctk.CTkLabel(option2_frame, text="Control Both Valve Groups Together", font=("Helvetica", 16)).pack(pady=10)
-segmented_button_both = ctk.CTkSegmentedButton(option2_frame,
-                                               values=["Deflation", "Neutral", "Inflation"])
+
+title_label2 = ctk.CTkLabel(
+    option2_frame,
+    text="Control Both Valve Groups Together",
+    font=("Helvetica", 16, "bold")
+)
+title_label2.pack(pady=10)
+
+segmented_button_both = ctk.CTkSegmentedButton(
+    option2_frame,
+    values=["Deflation", "Neutral", "Inflation"]
+)
 segmented_button_both.set("Neutral")
 segmented_button_both.pack(pady=5)
-
 
 def both_groups_callback(choice):
     if choice == "Deflation":
@@ -163,16 +185,14 @@ def both_groups_callback(choice):
     segmented_button_group1.set("Neutral")
     segmented_button_group2.set("Neutral")
 
-
 segmented_button_both.configure(command=both_groups_callback)
 
-
-# --- On Close: Clean up ---
+# =========== On Close Cleanup ===========
 def on_close():
     set_neutral()
     lgpio.gpiochip_close(chip)
     app.destroy()
 
-
 app.protocol("WM_DELETE_WINDOW", on_close)
+
 app.mainloop()
