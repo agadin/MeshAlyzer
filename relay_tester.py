@@ -30,10 +30,10 @@ def set_deflation():
     lgpio.gpio_write(chip, PIN4, 0)
 
 def set_neutral():
-    lgpio.gpio_write(chip, PIN1, 1)
-    lgpio.gpio_write(chip, PIN3, 1)
-    lgpio.gpio_write(chip, PIN2, 1)
-    lgpio.gpio_write(chip, PIN4, 1)
+    lgpio.gpio_write(chip, PIN1, 0)
+    lgpio.gpio_write(chip, PIN3, 0)
+    lgpio.gpio_write(chip, PIN2, 0)
+    lgpio.gpio_write(chip, PIN4, 0)
 
 # For Option 2, we want to control two groups independently:
 def set_group(slider_value, infl_pin, defl_pin):
