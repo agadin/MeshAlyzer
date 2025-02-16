@@ -34,10 +34,10 @@ def set_deflation():
 
 def set_neutral():
     # Neutral: turn all pins OFF
-    lgpio.gpio_write(chip, PIN1, 0)
+    lgpio.gpio_write(chip, PIN1, 1)
     lgpio.gpio_write(chip, PIN2, 1)
-    lgpio.gpio_write(chip, PIN3, 0)
-    lgpio.gpio_write(chip, PIN4, 0)
+    lgpio.gpio_write(chip, PIN3, 1)
+    lgpio.gpio_write(chip, PIN4, 1)
 
 
 # For Option 1 (independent control) we set each group individually.
