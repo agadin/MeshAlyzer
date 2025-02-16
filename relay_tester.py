@@ -54,8 +54,8 @@ def set_group(mode, group):
             lgpio.gpio_write(chip, PIN1, 1)
             lgpio.gpio_write(chip, PIN2, 0)
         else:
-            lgpio.gpio_write(chip, PIN1, 0)
-            lgpio.gpio_write(chip, PIN2, 0)
+            lgpio.gpio_write(chip, PIN1, 1)
+            lgpio.gpio_write(chip, PIN2, 1)
     elif group == 2:
         if mode == "Deflation":
             lgpio.gpio_write(chip, PIN3, 0)
@@ -64,8 +64,8 @@ def set_group(mode, group):
             lgpio.gpio_write(chip, PIN3, 1)
             lgpio.gpio_write(chip, PIN4, 0)
         else:
-            lgpio.gpio_write(chip, PIN3, 0)
-            lgpio.gpio_write(chip, PIN4, 0)
+            lgpio.gpio_write(chip, PIN3, 1)
+            lgpio.gpio_write(chip, PIN4, 1)
 
 
 # --- UI Setup ---
