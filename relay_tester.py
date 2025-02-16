@@ -69,12 +69,22 @@ def set_group(mode, group):
 
 
 # --- UI Setup ---
+set_neutral()
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.title("Balloon Valve Control")
 app.geometry("500x400")
+
+
+# Bind the "q" key so that when pressed, the application will shut off
+def on_key(event):
+    if event.char.lower() == "q":
+        on_close()
+
+
+app.bind("<Key>", on_key)
 
 # Create a Tabview with two tabs for the two control options.
 tabview = ctk.CTkTabview(app, width=480, height=360)
@@ -104,7 +114,7 @@ segmented_button_group2.pack(pady=5)
 
 def independent_group1_callback(choice):
     set_group(choice, 1)
-    # Reset Option 2's button to neutral
+    # Reset Option 2's control to Neutral.
     segmented_button_both.set("Neutral")
 
 
@@ -141,9 +151,6 @@ def both_groups_callback(choice):
 
 
 segmented_button_both.configure(command=both_groups_callback)
-
-# Ensure all outputs start in neutral (all OFF)
-set_neutral()
 
 
 # --- On Close: Clean up ---
