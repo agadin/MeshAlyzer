@@ -59,9 +59,7 @@ app.geometry("500x400")
 # Create a Tabview with three tabs for the three control modes.
 tabview = ctk.CTkTabview(app, width=480, height=360)
 tabview.pack(padx=10, pady=10, fill="both", expand=True)
-tabview.add("Option 1")
-tabview.add("Option 2")
-tabview.add("Option 3")
+tabview.add("Solinoid Control")
 
 def option3_callback(choice):
     # choice is a string: "Deflation", "Neutral", or "Inflation"
