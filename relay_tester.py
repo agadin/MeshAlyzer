@@ -35,19 +35,6 @@ def set_neutral():
     lgpio.gpio_write(chip, PIN2, 1)
     lgpio.gpio_write(chip, PIN4, 1)
 
-# For Option 2, we want to control two groups independently:
-def set_group(slider_value, infl_pin, defl_pin):
-    # slider_value is an integer: 0=deflation, 1=neutral, 2=inflation
-    if slider_value == 0:
-        lgpio.gpio_write(chip, infl_pin, 0)
-        lgpio.gpio_write(chip, defl_pin, 1)
-    elif slider_value == 2:
-        lgpio.gpio_write(chip, infl_pin, 1)
-        lgpio.gpio_write(chip, defl_pin, 0)
-    else:
-        lgpio.gpio_write(chip, infl_pin, 0)
-        lgpio.gpio_write(chip, defl_pin, 0)
-
 # --- UI Setup ---
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
@@ -60,6 +47,7 @@ app.geometry("500x400")
 tabview = ctk.CTkTabview(app, width=480, height=360)
 tabview.pack(padx=10, pady=10, fill="both", expand=True)
 tabview.add("Solinoid Control")
+set_neutral()
 
 def option3_callback(choice):
     # choice is a string: "Deflation", "Neutral", or "Inflation"
