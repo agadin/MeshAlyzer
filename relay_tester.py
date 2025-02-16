@@ -82,7 +82,7 @@ app.bind("<Key>", on_key)
 # Load images with Pillow, then wrap in CTkImage.
 try:
     meshalyzer_image_pil = Image.open("MeshAlyzer.jpeg")
-    stl_image_pil        = Image.open("stl_logo.png")
+    stl_image_pil        = Image.open("lakelab.jpg")
 except FileNotFoundError:
     # If you don't have the actual files or they're named differently,
     # adjust the paths or handle errors as needed.
