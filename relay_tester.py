@@ -92,6 +92,20 @@ tabview.pack(padx=10, pady=10, fill="both", expand=True)
 tabview.add("Option 1: Independent Control")
 tabview.add("Option 2: Both Groups Together")
 
+# ---
+# Wrap tabview.set() so that switching tabs resets the segmented buttons.
+# This ensures that when you switch between Option 1 and Option 2,
+# any active selection is first set to Neutral.
+original_set = tabview.set
+def new_set(tab_name):
+    segmented_button_group1.set("Neutral")
+    segmented_button_group2.set("Neutral")
+    segmented_button_both.set("Neutral")
+    original_set(tab_name)
+tabview.set = new_set
+# ---
+
+
 # ======================
 # Option 1 – Independent Control:
 # Two segmented buttons control Group 1 (PIN1 & PIN2) and Group 2 (PIN3 & PIN4)
