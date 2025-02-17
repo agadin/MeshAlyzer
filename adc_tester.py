@@ -29,13 +29,13 @@ DRATE_100SPS = 0xF0  # 100 Samples per second
 h = lgpio.gpiochip_open(0)
 
 # Claim the chip-select pin as output and set it high (inactive)
-lgpio.gpio_claim_output(h, CS_PIN)
-lgpio.gpio_write(h, CS_PIN, 1)
 
 # Set up the DRDY pin as input
 lgpio.gpio_claim_input(h, DRDY_PIN)
 lgpio.gpio_write(h, DRDY_PIN, 1)
 
+lgpio.gpio_claim_output(h, CS_PIN)
+lgpio.gpio_write(h, CS_PIN, 1)
 
 # Open SPI interface with the flag to disable automatic chip select (SPI_NO_CS = 0x04)
 spi = lgpio.spi_open(h, SPI_CHANNEL, SPI_SPEED, 0x04)
