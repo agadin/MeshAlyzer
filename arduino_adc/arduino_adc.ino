@@ -1,133 +1,141 @@
 #include <SPI.h>
+#include <digitalWriteFast.h>  // Ensure this library is installed!
 
-// ADS1256 Commands
-#define CMD_WAKEUP    0x00
-#define CMD_RDATA     0x01
-#define CMD_RDATAC    0x03
-#define CMD_SDATAC    0x0F
-#define CMD_RREG      0x10
-#define CMD_WREG      0x50
-#define CMD_SELFCAL   0xF0
+// **ADS1256 Pin Definitions (Make sure these match your wiring!)**
+#define ADS_RST_PIN    9   // ADS1256 Reset
+#define ADS_RDY_PIN    2   // ADS1256 Data Ready (must be an interrupt pin)
+#define ADS_CS_PIN     10  // ADS1256 Chip Select
 
-// ADS1256 Registers
-#define REG_STATUS    0x00
-#define REG_MUX       0x01
-#define REG_ADCON     0x02
-#define REG_DRATE     0x03
+// **SPI Configuration**
+#define SPI_SPEED 2500000
 
-// Data rate setting (100 SPS)
-#define DRATE_100SPS  0xF0
+// **ADS1256 Commands**
+#define CMD_RDATA   0x01  // Read Data Once
+#define CMD_SDATAC  0x0F  // Stop Continuous Read
+#define CMD_RREG    0x10  // Read Register
+#define CMD_WREG    0x50  // Write Register
+#define CMD_RESET   0xFE  // Reset Device
 
-// Pin assignments
-const int DRDY_PIN = 7;  // Data Ready pin from ADS1256
-const int CS_PIN   = 8;  // Chip Select pin for ADS1256
+// **ADS1256 Registers**
+#define REG_STATUS  0x00
+#define REG_MUX     0x01
+#define REG_ADCON   0x02
+#define REG_DRATE   0x03
 
-// Function to send a command to the ADS1256
+// **ADC Constants**
+double resolution = 8388608.;  // 2^23-1
+double Gain = 1.;              // Set to match ADC gain settings
+double vRef = 5.0;             // Reference voltage (adjust if using external VREF)
+double bitToVolt;              // Conversion factor calculated in setup
+
+// **Pressure Sensor Mapping (Modify for your specific sensor range)**
+#define PRESSURE_MIN 0.5   // 0.5V at 0 PSI
+#define PRESSURE_MAX 4.5   // 4.5V at max PSI
+#define PRESSURE_RANGE 150 // 150 PSI sensor (adjust as needed)
+
+// **Function to Send SPI Command**
 void sendCommand(byte command) {
-  digitalWrite(CS_PIN, LOW);
+  digitalWriteFast(ADS_CS_PIN, LOW);
   SPI.transfer(command);
-  digitalWrite(CS_PIN, HIGH);
+  digitalWriteFast(ADS_CS_PIN, HIGH);
 }
 
-// Read a single register from the ADS1256
+// **Function to Write to a Register**
+void writeRegister(byte reg, byte value) {
+  digitalWriteFast(ADS_CS_PIN, LOW);
+  SPI.transfer(CMD_WREG | reg);
+  SPI.transfer(0x00);  // Write only one register
+  SPI.transfer(value);
+  digitalWriteFast(ADS_CS_PIN, HIGH);
+}
+
+// **Function to Read a Register**
 byte readRegister(byte reg) {
-  digitalWrite(CS_PIN, LOW);
+  digitalWriteFast(ADS_CS_PIN, LOW);
   SPI.transfer(CMD_RREG | reg);
-  SPI.transfer(0x00);  // Number of registers to read minus one (here, 0 for one register)
+  SPI.transfer(0x00);  // Read only one register
   byte result = SPI.transfer(0x00);
-  digitalWrite(CS_PIN, HIGH);
+  digitalWriteFast(ADS_CS_PIN, HIGH);
   return result;
 }
 
-// Write a value to a single ADS1256 register
-void writeRegister(byte reg, byte value) {
-  digitalWrite(CS_PIN, LOW);
-  SPI.transfer(CMD_WREG | reg);
-  SPI.transfer(0x00);  // Write one register
-  SPI.transfer(value);
-  digitalWrite(CS_PIN, HIGH);
-}
-
-// Wait for the DRDY pin to go low (indicating data is ready)
+// **Function to Wait for Data Ready**
 void waitForDRDY() {
-  while (digitalRead(DRDY_PIN) == HIGH) {
-    delay(1);
-  }
+  while (digitalReadFast(ADS_RDY_PIN) == HIGH);
 }
 
-// Read a 24-bit ADC value from the specified channel (0-7)
-// The positive input is set to AINx and the negative input is AINCOM.
-long readADC(byte channel) {
+// **Function to Read ADC Value**
+long readADC() {
   waitForDRDY();
-
-  // Configure the multiplexer: (channel << 4) sets AINx as positive, 0x08 sets AINCOM as negative
-  writeRegister(REG_MUX, (channel << 4) | 0x08);
-
-  // Wake up the ADC and request a single conversion
-  sendCommand(CMD_WAKEUP);
   sendCommand(CMD_RDATA);
-
-  // A brief delay (in microseconds) may be needed here according to the ADS1256 timing requirements
   delayMicroseconds(10);
 
-  // Read 3 bytes of conversion data
-  digitalWrite(CS_PIN, LOW);
+  digitalWriteFast(ADS_CS_PIN, LOW);
   byte b1 = SPI.transfer(0x00);
   byte b2 = SPI.transfer(0x00);
   byte b3 = SPI.transfer(0x00);
-  digitalWrite(CS_PIN, HIGH);
+  digitalWriteFast(ADS_CS_PIN, HIGH);
 
-  // Combine the three bytes into a 24-bit value
   long result = ((long)b1 << 16) | ((long)b2 << 8) | b3;
-
-  // Convert to signed 24-bit (two's complement)
-  if (result & 0x800000) {
-    result -= 0x1000000;
-  }
+  if (result & 0x800000) result -= 0x1000000;
 
   return result;
 }
 
-// Initialize and configure the ADS1256
-void setupADS1256() {
-  sendCommand(CMD_SDATAC);          // Stop continuous data read mode, if active
-  writeRegister(REG_STATUS, 0x06);    // Enable auto-calibration (see datasheet for details)
-  writeRegister(REG_ADCON, 0x00);     // Gain = 1, clock out disabled
-  writeRegister(REG_DRATE, DRATE_100SPS); // Set data rate to 100 SPS
-  sendCommand(CMD_SELFCAL);           // Start self-calibration
-  delay(100);                         // Wait 100 ms for calibration to complete
+// **Function to Initialize ADS1256**
+void initADS() {
+  sendCommand(CMD_RESET);
+  delay(10);
+
+  sendCommand(CMD_SDATAC);
+  delay(10);
+
+  writeRegister(REG_MUX, (0x00 << 4) | 0x08);  // AIN0 vs AINCOM (single-ended)
+  writeRegister(REG_ADCON, 0x00);  // Gain = 1
+  writeRegister(REG_DRATE, 0xF0);  // Data rate = 100 SPS
+  delay(100);
 }
 
+// **Arduino Setup**
 void setup() {
+  delay(1000);
   Serial.begin(115200);
+  Serial.println("Booting ADS1256...");
 
-  // Configure the ADS1256 control pins
-  pinMode(DRDY_PIN, INPUT);
-  pinMode(CS_PIN, OUTPUT);
-  digitalWrite(CS_PIN, HIGH); // Ensure CS is high (device deselected)
+  // Initialize ADS1256 Pins
+  pinMode(ADS_CS_PIN, OUTPUT);
+  pinMode(ADS_RDY_PIN, INPUT);
+  pinMode(ADS_RST_PIN, OUTPUT);
 
   // Initialize SPI
   SPI.begin();
-  // ADS1256 typically uses SPI mode 1 (CPOL = 0, CPHA = 1) at up to 1 MHz.
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));
+  SPI.beginTransaction(SPISettings(SPI_SPEED, MSBFIRST, SPI_MODE1));
 
-  Serial.println("Initializing ADS1256...");
-  setupADS1256();
+  // Initialize ADS1256
+  initADS();
+  Serial.println("ADS1256 Initialized!");
+
+  // Verify ADS1256 STATUS Register
+  byte status = readRegister(REG_STATUS);
+  Serial.print("ADS1256 STATUS REGISTER: 0x");
+  Serial.println(status, HEX);
+  
+  // Calculate ADC to Voltage Conversion Factor
+  bitToVolt = vRef / resolution;
 }
 
+// **Main Loop: Read and Display Pressure Sensor Values**
 void loop() {
-  // Read ADC value from channel 0
-  long value = readADC(0);
+  long adc_value = readADC();
+  float voltage = (float)adc_value * bitToVolt;
 
-  // Convert the 24-bit ADC value to voltage.
-  // Assuming a 5V reference and full-scale positive value of 0x7FFFFF (i.e. 2^23 - 1)
-  float voltage = (float)value * 5.0 / 8388607.0;
+  // Convert voltage to pressure (linear scaling)
+  float pressure = ((voltage - PRESSURE_MIN) / (PRESSURE_MAX - PRESSURE_MIN)) * PRESSURE_RANGE;
 
-  Serial.print("ADC Channel 0: ");
-  Serial.print(value);
-  Serial.print(" (");
-  Serial.print(voltage, 5);
-  Serial.println(" V)");
+  Serial.print("ADC: "); Serial.print(adc_value);
+  Serial.print(" | Voltage: "); Serial.print(voltage, 5);
+  Serial.print(" V | Pressure: "); Serial.print(pressure, 2);
+  Serial.println(" PSI");
 
-  delay(500);  // Delay 500 ms between readings
+  delay(500);
 }
