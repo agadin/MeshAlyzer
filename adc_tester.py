@@ -5,7 +5,7 @@ import time
 SPI_CHANNEL = 0    # SPI0 (CE0)
 SPI_SPEED = 1000000  # 1 MHz
 DRDY_PIN = 7       # Data Ready (DRDY) pin – originally used by SPI as CE1
-CS_PIN = 8         # Chip Select (CS) pin
+CS_PIN = 16         # Chip Select (CS) pin
 
 # ADS1256 Commands
 CMD_WAKEUP = 0x00
