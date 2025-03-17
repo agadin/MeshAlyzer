@@ -15,10 +15,9 @@ from tkinter import messagebox
 REF = 5.08  # Reference voltage
 
 # =========== GPIO Setup ===========
-# Set GPIO mode (using BCM numbering)
 GPIO.setmode(GPIO.BCM)
 
-# Valve control pins (adjust if needed)
+# Valve control pins
 PIN1 = 5    # Inflation valve group 1
 PIN2 = 27   # Deflation valve group 1
 PIN3 = 23   # Inflation valve group 2
@@ -82,12 +81,12 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Lake Lab: Cough/Pressure Simulation")
-        self.geometry("600x500")
+        self.geometry("600x600")
 
         # Initialize ADC (using ADC1 from ADS1263 in differential mode)
         self.adc = self.adc_init()
 
-        # Set up GUI components
+        # Set up the GUI components
         self.setup_gui()
 
         # Start live ADC data updates
@@ -105,7 +104,6 @@ class App(ctk.CTk):
 
     def setup_gui(self):
         """Set up the GUI layout and widgets."""
-        # Appearance
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
 
@@ -128,14 +126,13 @@ class App(ctk.CTk):
         stl_label = ctk.CTkLabel(header_frame, text="", image=stl_ctk_image)
         stl_label.pack(side="right", padx=20)
 
-        # Main Tabview with three tabs
-        self.tabview = ctk.CTkTabview(self, width=580, height=360)
+        # Main Tabview with two tabs
+        self.tabview = ctk.CTkTabview(self, width=580, height=480)
         self.tabview.pack(padx=10, pady=10, fill="both", expand=True)
         self.tabview.add("Option 1: Independent Control")
         self.tabview.add("Option 2: Both Groups Together")
-        self.tabview.add("ADC Data Display")
 
-        # Option 1: Independent Control
+        # -------- Option 1: Independent Control --------
         option1_frame = self.tabview.tab("Option 1: Independent Control")
         title_label1 = ctk.CTkLabel(option1_frame, text="Independent Control of Two Valve Groups",
                                     font=("Helvetica", 16, "bold"))
@@ -153,7 +150,18 @@ class App(ctk.CTk):
         self.segmented_button_group2.set("Neutral")
         self.segmented_button_group2.pack(pady=5)
 
-        # Option 2: Both Groups Together
+        # ADC Data Display below Option 1 buttons
+        adc_frame1 = ctk.CTkFrame(option1_frame)
+        adc_frame1.pack(pady=10)
+        adc_title1 = ctk.CTkLabel(adc_frame1, text="Live ADC Data (Channels 0-4)", font=("Helvetica", 14, "bold"))
+        adc_title1.pack(pady=(0, 5))
+        self.adc_labels_option1 = {}
+        for ch in range(5):
+            lbl = ctk.CTkLabel(adc_frame1, text=f"Channel {ch}: -- V", font=("Helvetica", 12))
+            lbl.pack(pady=2)
+            self.adc_labels_option1[ch] = lbl
+
+        # -------- Option 2: Both Groups Together --------
         option2_frame = self.tabview.tab("Option 2: Both Groups Together")
         title_label2 = ctk.CTkLabel(option2_frame, text="Control Both Valve Groups Together",
                                     font=("Helvetica", 16, "bold"))
@@ -163,25 +171,24 @@ class App(ctk.CTk):
                                                              command=self.both_groups_callback)
         self.segmented_button_both.set("Neutral")
         self.segmented_button_both.pack(pady=5)
-
-        # ADC Data Display tab
-        adc_frame = self.tabview.tab("ADC Data Display")
-        title_label_adc = ctk.CTkLabel(adc_frame, text="Real-Time ADC Data (Channels 0-4)",
-                                      font=("Helvetica", 16, "bold"))
-        title_label_adc.pack(pady=10)
-        # Create a label for each ADC channel
-        self.adc_labels = {}
+        # ADC Data Display below Option 2 button
+        adc_frame2 = ctk.CTkFrame(option2_frame)
+        adc_frame2.pack(pady=10)
+        adc_title2 = ctk.CTkLabel(adc_frame2, text="Live ADC Data (Channels 0-4)", font=("Helvetica", 14, "bold"))
+        adc_title2.pack(pady=(0, 5))
+        self.adc_labels_option2 = {}
         for ch in range(5):
-            lbl = ctk.CTkLabel(adc_frame, text=f"Channel {ch}: -- V", font=("Helvetica", 14))
+            lbl = ctk.CTkLabel(adc_frame2, text=f"Channel {ch}: -- V", font=("Helvetica", 12))
             lbl.pack(pady=2)
-            self.adc_labels[ch] = lbl
-        # Reference pressure input and logging button
-        ref_frame = ctk.CTkFrame(adc_frame)
-        ref_frame.pack(pady=10)
-        ctk.CTkLabel(ref_frame, text="Reference Pressure (kPa/PSI):", font=("Helvetica", 12)).grid(row=0, column=0, padx=5)
-        self.ref_entry = ctk.CTkEntry(ref_frame, width=100)
+            self.adc_labels_option2[ch] = lbl
+
+        # Reference pressure input and data logging button (common to both tabs)
+        log_frame = ctk.CTkFrame(self)
+        log_frame.pack(pady=10)
+        ctk.CTkLabel(log_frame, text="Reference Pressure (kPa/PSI):", font=("Helvetica", 12)).grid(row=0, column=0, padx=5)
+        self.ref_entry = ctk.CTkEntry(log_frame, width=100)
         self.ref_entry.grid(row=0, column=1, padx=5)
-        self.log_button = ctk.CTkButton(ref_frame, text="Start Data Logging", command=self.start_logging)
+        self.log_button = ctk.CTkButton(log_frame, text="Start Data Logging", command=self.start_logging)
         self.log_button.grid(row=0, column=2, padx=5)
 
     def independent_group_callback(self, choice, group):
@@ -203,21 +210,25 @@ class App(ctk.CTk):
         self.segmented_button_group2.set("Neutral")
 
     def update_adc_display(self):
-        """Periodically update ADC display with live data from channels 0-4."""
+        """Periodically update live ADC display on both Option 1 and Option 2 pages."""
         channels = [0, 1, 2, 3, 4]
         adc_values = self.adc.ADS1263_GetAll(channels)
         for ch in channels:
             raw_value = adc_values[ch]
-            # Convert raw ADC value to voltage
             if raw_value >> 31 == 0:
                 voltage = (raw_value * REF) / 0x7fffffff
             else:
                 voltage = (REF * 2 - raw_value * REF / 0x80000000)
-            self.adc_labels[ch].configure(text=f"Channel {ch}: {voltage:.6f} V")
+            # Update Option 1 display if exists
+            if ch in self.adc_labels_option1:
+                self.adc_labels_option1[ch].configure(text=f"Channel {ch}: {voltage:.6f} V")
+            # Update Option 2 display if exists
+            if ch in self.adc_labels_option2:
+                self.adc_labels_option2[ch].configure(text=f"Channel {ch}: {voltage:.6f} V")
         self.after(100, self.update_adc_display)
 
     def start_logging(self):
-        """Initiate data logging when user clicks the button."""
+        """Initiate data logging when the user clicks the button."""
         ref_pressure = self.ref_entry.get().strip()
         if not ref_pressure:
             messagebox.showerror("Input Error", "Please enter a reference pressure value.")
@@ -236,7 +247,6 @@ class App(ctk.CTk):
         """Collect 100 samples from ADC channels 0-4 and log to CSV."""
         samples_per_level = 100
         filename = "adc_data.csv"
-        # Write CSV header
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['timestamp', 'channel', 'raw ADC value', 'voltage', 'temperature', 'reference_pressure'])
@@ -251,12 +261,11 @@ class App(ctk.CTk):
                     voltage = (raw_value * REF) / 0x7fffffff
                 else:
                     voltage = (REF * 2 - raw_value * REF / 0x80000000)
-                # 'temperature' is a placeholder ("N/A")
                 data_rows.append([timestamp, ch, raw_value, voltage, 'N/A', ref_pressure])
             with open(filename, mode='a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerows(data_rows)
-            time.sleep(0.05)  # Adjust delay as necessary
+            time.sleep(0.05)
         self.log_button.configure(state="normal")
         messagebox.showinfo("Data Logging", f"Data logging complete. {samples_per_level} samples saved to {filename}.")
 
