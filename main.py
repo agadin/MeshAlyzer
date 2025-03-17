@@ -3,7 +3,6 @@
 
 import time
 import ADS1263
-import RPi.GPIO as GPIO
 
 REF = 5.08          # Modify according to actual voltage
                     # external AVDD and AVSS(Default), or internal 2.5V
