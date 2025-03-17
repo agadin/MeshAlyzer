@@ -3,3 +3,4 @@ lgpio
 spidev
 numpy
 scikit-learn
+time
