@@ -3,7 +3,7 @@
 
 import customtkinter as ctk
 from PIL import Image
-import ADS1263
+from python import ADS1263
 import lgpio
 import time
 import csv
