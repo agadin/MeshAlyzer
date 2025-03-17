@@ -3,8 +3,8 @@
 
 import customtkinter as ctk
 from PIL import Image
-import ADS1263         # Ensure ADS1263.py (the driver) is in the same directory.
-import rgpio           # Using rgpio instead of lgpio
+import ADS1263         # Ensure ADS1263.py is in the same directory.
+import RPi.GPIO as GPIO
 import time
 import csv
 from datetime import datetime
@@ -15,39 +15,41 @@ from tkinter import messagebox
 REF = 5.08  # Reference voltage
 
 # =========== GPIO Setup ===========
-# Valve control pins
-PIN1 = 5   # Inflation valve group 1
-PIN2 = 27  # Deflation valve group 1
-PIN3 = 23  # Inflation valve group 2
-PIN4 = 24  # Deflation valve group 2
+# Set GPIO mode (using BCM numbering)
+GPIO.setmode(GPIO.BCM)
 
-chip = rgpio.gpiochip_open(0)
-# Claim each pin as an output and initialize to OFF (0)
+# Valve control pins (adjust if needed)
+PIN1 = 5    # Inflation valve group 1
+PIN2 = 27   # Deflation valve group 1
+PIN3 = 23   # Inflation valve group 2
+PIN4 = 24   # Deflation valve group 2
+
+# Setup pins as outputs and initialize them to LOW (off)
 for pin in (PIN1, PIN2, PIN3, PIN4):
-    rgpio.gpio_claim_output(chip, pin)
-    rgpio.gpio_write(chip, pin, 0)
+    GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, GPIO.LOW)
 
 # =========== Valve Control Functions ===========
 def set_inflation():
     """Activate inflation valves (Pins 1 & 3) and deactivate deflation valves."""
-    rgpio.gpio_write(chip, PIN1, 1)
-    rgpio.gpio_write(chip, PIN3, 1)
-    rgpio.gpio_write(chip, PIN2, 0)
-    rgpio.gpio_write(chip, PIN4, 0)
+    GPIO.output(PIN1, GPIO.HIGH)
+    GPIO.output(PIN3, GPIO.HIGH)
+    GPIO.output(PIN2, GPIO.LOW)
+    GPIO.output(PIN4, GPIO.LOW)
 
 def set_deflation():
     """Activate deflation valves (Pins 2 & 4) and deactivate inflation valves."""
-    rgpio.gpio_write(chip, PIN1, 0)
-    rgpio.gpio_write(chip, PIN3, 0)
-    rgpio.gpio_write(chip, PIN2, 1)
-    rgpio.gpio_write(chip, PIN4, 1)
+    GPIO.output(PIN1, GPIO.LOW)
+    GPIO.output(PIN3, GPIO.LOW)
+    GPIO.output(PIN2, GPIO.HIGH)
+    GPIO.output(PIN4, GPIO.HIGH)
 
 def set_neutral():
     """Set all valves to a neutral (inactive) state."""
-    rgpio.gpio_write(chip, PIN1, 0)
-    rgpio.gpio_write(chip, PIN2, 0)
-    rgpio.gpio_write(chip, PIN3, 0)
-    rgpio.gpio_write(chip, PIN4, 0)
+    GPIO.output(PIN1, GPIO.LOW)
+    GPIO.output(PIN2, GPIO.LOW)
+    GPIO.output(PIN3, GPIO.LOW)
+    GPIO.output(PIN4, GPIO.LOW)
 
 def set_group(mode, group):
     """
@@ -56,24 +58,24 @@ def set_group(mode, group):
     """
     if group == 1:
         if mode == "Deflation":
-            rgpio.gpio_write(chip, PIN1, 0)
-            rgpio.gpio_write(chip, PIN2, 1)
+            GPIO.output(PIN1, GPIO.LOW)
+            GPIO.output(PIN2, GPIO.HIGH)
         elif mode == "Inflation":
-            rgpio.gpio_write(chip, PIN1, 1)
-            rgpio.gpio_write(chip, PIN2, 0)
+            GPIO.output(PIN1, GPIO.HIGH)
+            GPIO.output(PIN2, GPIO.LOW)
         else:
-            rgpio.gpio_write(chip, PIN1, 0)
-            rgpio.gpio_write(chip, PIN2, 0)
+            GPIO.output(PIN1, GPIO.LOW)
+            GPIO.output(PIN2, GPIO.LOW)
     elif group == 2:
         if mode == "Deflation":
-            rgpio.gpio_write(chip, PIN3, 0)
-            rgpio.gpio_write(chip, PIN4, 1)
+            GPIO.output(PIN3, GPIO.LOW)
+            GPIO.output(PIN4, GPIO.HIGH)
         elif mode == "Inflation":
-            rgpio.gpio_write(chip, PIN3, 1)
-            rgpio.gpio_write(chip, PIN4, 0)
+            GPIO.output(PIN3, GPIO.HIGH)
+            GPIO.output(PIN4, GPIO.LOW)
         else:
-            rgpio.gpio_write(chip, PIN3, 0)
-            rgpio.gpio_write(chip, PIN4, 0)
+            GPIO.output(PIN3, GPIO.LOW)
+            GPIO.output(PIN4, GPIO.LOW)
 
 # =========== Main Application Class ===========
 class App(ctk.CTk):
@@ -85,7 +87,7 @@ class App(ctk.CTk):
         # Initialize ADC (using ADC1 from ADS1263 in differential mode)
         self.adc = self.adc_init()
 
-        # Set up the GUI components
+        # Set up GUI components
         self.setup_gui()
 
         # Start live ADC data updates
@@ -269,7 +271,7 @@ class App(ctk.CTk):
             self.adc.ADS1263_Exit()
         except Exception:
             pass
-        rgpio.gpiochip_close(chip)
+        GPIO.cleanup()
         self.destroy()
 
 if __name__ == "__main__":
