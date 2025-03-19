@@ -34,7 +34,6 @@ def read_sensor_data(sensor):
             "temperature": sensor.data.temperature,
             "pressure": sensor.data.pressure,
             "humidity": sensor.data.humidity,
-            "gas_resistance": sensor.data.gas_resistance
         }
     else:
         return None
