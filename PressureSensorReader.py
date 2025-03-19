@@ -18,7 +18,7 @@ class PressureSensorReader:
 
         self.ADC.ADS1263_SetMode(0)  # 0 for single-channel mode
 
-    def get_pressure_sensors(self):
+    def get_pressure_sensors(self, specific_channel=None):
         """Retrieve and return pressure sensor values from the ADC."""
         if not self.ADC:
             raise RuntimeError("ADC not initialized. Call setup() first.")
@@ -26,7 +26,9 @@ class PressureSensorReader:
         ADC_Values = self.ADC.ADS1263_GetAll(self.channels)
         sensor_readings = {}
 
-        for i in self.channels:
+        channels_to_read = [specific_channel] if specific_channel is not None else self.channels
+
+        for i in channels_to_read:
             if ADC_Values[i] >> 31 == 1:
                 sensor_readings[f"ADC1_IN{i}"] = -(self.REF * 2 - ADC_Values[i] * self.REF / 0x80000000)
             else:
