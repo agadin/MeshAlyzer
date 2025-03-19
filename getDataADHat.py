@@ -32,11 +32,10 @@ PIN4 = 24  # Deflation valve group 2
 chip = lgpio.gpiochip_open(0)
 for pin in (PIN1, PIN2, PIN3, PIN4):
     lgpio.gpio_claim_output(chip, pin)
-    lgpio.gpio_write(chip, pin, 0)  # Initialize with 0
+    # Initialize with 1 (neutral/off)
+    lgpio.gpio_write(chip, pin, 1)
 
-# ---------------------------
-# VALVE CONTROL FUNCTIONS (using lgpio)
-# ---------------------------
+# Optionally, ensure relays are off by calling set_neutral() at startup.
 def set_inflation():
     """Activate inflation valves (Pins 1 & 3) and deactivate deflation valves."""
     lgpio.gpio_write(chip, PIN1, 1)
@@ -320,6 +319,8 @@ class App(ctk.CTk):
         self.destroy()
 
 if __name__ == "__main__":
+    # Ensure all relays are neutral/off at start.
+    set_neutral()
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.on_close)
     app.mainloop()
