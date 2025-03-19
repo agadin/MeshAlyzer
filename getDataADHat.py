@@ -36,7 +36,7 @@ REF = 5.08  # Reference voltage for ADC conversion
 # ---------------------------
 GPIO.setmode(GPIO.BCM)
 # Valve control pins
-PIN1 = 5    # Inflation valve group 1
+PIN1 = 20  # Inflation valve group 1
 PIN2 = 27   # Deflation valve group 1
 PIN3 = 12   # Inflation valve group 2
 PIN4 = 24   # Deflation valve group 2
