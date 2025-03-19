@@ -65,10 +65,10 @@ def set_deflation():
 
 def set_neutral():
     """Set all valves to neutral (off)."""
-    GPIO.output(PIN1, GPIO.LOW)
-    GPIO.output(PIN2, GPIO.LOW)
-    GPIO.output(PIN3, GPIO.LOW)
-    GPIO.output(PIN4, GPIO.LOW)
+    GPIO.output(PIN1, GPIO.HIGH)
+    GPIO.output(PIN2, GPIO.HIGH)
+    GPIO.output(PIN3, GPIO.HIGH)
+    GPIO.output(PIN4, GPIO.HIGH)
 
 def set_group(mode, group):
     """
