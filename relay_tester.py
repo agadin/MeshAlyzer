@@ -5,7 +5,7 @@ import lgpio
 # =========== GPIO Setup ===========
 PIN1 = 5  # Inflation valve group 1
 PIN2 = 27  # Deflation valve group 1
-PIN3 = 23  # Inflation valve group 2
+PIN3 = 12  # Inflation valve group 2
 PIN4 = 24  # Deflation valve group 2
 
 chip = lgpio.gpiochip_open(0)
