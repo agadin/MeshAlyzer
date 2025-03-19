@@ -4,7 +4,6 @@
 import customtkinter as ctk
 from PIL import Image
 import ADS1263         # Ensure ADS1263.py is in the same directory.
-import RPi.GPIO as GPIO
 import time
 import csv
 from datetime import datetime
@@ -13,8 +12,81 @@ from tkinter import messagebox
 import busio
 import adafruit_lps2x
 import board
+import lgpio            # Using lgpio instead of RPi.GPIO
 
+# ---------------------------
+# GLOBAL CONSTANTS
+# ---------------------------
+REF = 5.08  # Reference voltage for ADC conversion
 
+# ---------------------------
+# GPIO SETUP (using lgpio)
+# ---------------------------
+# Define valve control pins
+PIN1 = 20  # Inflation valve group 1
+PIN2 = 27  # Deflation valve group 1
+PIN3 = 12  # Inflation valve group 2
+PIN4 = 24  # Deflation valve group 2
+
+# Open the GPIO chip and claim each pin as an output.
+chip = lgpio.gpiochip_open(0)
+for pin in (PIN1, PIN2, PIN3, PIN4):
+    lgpio.gpio_claim_output(chip, pin)
+    lgpio.gpio_write(chip, pin, 0)  # Initialize with 0
+
+# ---------------------------
+# VALVE CONTROL FUNCTIONS (using lgpio)
+# ---------------------------
+def set_inflation():
+    """Activate inflation valves (Pins 1 & 3) and deactivate deflation valves."""
+    lgpio.gpio_write(chip, PIN1, 1)
+    lgpio.gpio_write(chip, PIN3, 1)
+    lgpio.gpio_write(chip, PIN2, 0)
+    lgpio.gpio_write(chip, PIN4, 0)
+
+def set_deflation():
+    """Activate deflation valves (Pins 2 & 4) and deactivate inflation valves."""
+    lgpio.gpio_write(chip, PIN1, 0)
+    lgpio.gpio_write(chip, PIN3, 0)
+    lgpio.gpio_write(chip, PIN2, 1)
+    lgpio.gpio_write(chip, PIN4, 1)
+
+def set_neutral():
+    """Set all valves to neutral (off)."""
+    lgpio.gpio_write(chip, PIN1, 1)
+    lgpio.gpio_write(chip, PIN2, 1)
+    lgpio.gpio_write(chip, PIN3, 1)
+    lgpio.gpio_write(chip, PIN4, 1)
+
+def set_group(mode, group):
+    """
+    Controls a single group of valves (group 1 or 2).
+    mode: "Deflation", "Neutral", or "Inflation".
+    """
+    if group == 1:
+        if mode == "Deflation":
+            lgpio.gpio_write(chip, PIN1, 0)
+            lgpio.gpio_write(chip, PIN2, 1)
+        elif mode == "Inflation":
+            lgpio.gpio_write(chip, PIN1, 1)
+            lgpio.gpio_write(chip, PIN2, 0)
+        else:
+            lgpio.gpio_write(chip, PIN1, 1)
+            lgpio.gpio_write(chip, PIN2, 1)
+    elif group == 2:
+        if mode == "Deflation":
+            lgpio.gpio_write(chip, PIN3, 0)
+            lgpio.gpio_write(chip, PIN4, 1)
+        elif mode == "Inflation":
+            lgpio.gpio_write(chip, PIN3, 1)
+            lgpio.gpio_write(chip, PIN4, 0)
+        else:
+            lgpio.gpio_write(chip, PIN3, 1)
+            lgpio.gpio_write(chip, PIN4, 1)
+
+# ---------------------------
+# SENSOR READ FUNCTION
+# ---------------------------
 def read_sensor_data(sensor):
     """Read data from the BME680 sensor."""
     if sensor.get_sensor_data():
@@ -25,76 +97,6 @@ def read_sensor_data(sensor):
         }
     else:
         return None
-
-# ---------------------------
-# GLOBAL CONSTANTS
-# ---------------------------
-REF = 5.08  # Reference voltage for ADC conversion
-
-# ---------------------------
-# GPIO SETUP (using RPi.GPIO)
-# ---------------------------
-GPIO.setmode(GPIO.BCM)
-# Valve control pins
-PIN1 = 20  # Inflation valve group 1
-PIN2 = 27   # Deflation valve group 1
-PIN3 = 12   # Inflation valve group 2
-PIN4 = 24   # Deflation valve group 2
-
-# Setup pins as outputs and initialize them to LOW
-for pin in (PIN1, PIN2, PIN3, PIN4):
-    GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.LOW)
-
-# ---------------------------
-# VALVE CONTROL FUNCTIONS
-# ---------------------------
-def set_inflation():
-    """Activate inflation valves (Pins 1 & 3) and deactivate deflation valves."""
-    GPIO.output(PIN1, GPIO.HIGH)
-    GPIO.output(PIN3, GPIO.HIGH)
-    GPIO.output(PIN2, GPIO.LOW)
-    GPIO.output(PIN4, GPIO.LOW)
-
-def set_deflation():
-    """Activate deflation valves (Pins 2 & 4) and deactivate inflation valves."""
-    GPIO.output(PIN1, GPIO.LOW)
-    GPIO.output(PIN3, GPIO.LOW)
-    GPIO.output(PIN2, GPIO.HIGH)
-    GPIO.output(PIN4, GPIO.HIGH)
-
-def set_neutral():
-    """Set all valves to neutral (off)."""
-    GPIO.output(PIN1, GPIO.HIGH)
-    GPIO.output(PIN2, GPIO.HIGH)
-    GPIO.output(PIN3, GPIO.HIGH)
-    GPIO.output(PIN4, GPIO.HIGH)
-
-def set_group(mode, group):
-    """
-    Controls a single group of valves (group 1 or 2).
-    mode: "Deflation", "Neutral", or "Inflation".
-    """
-    if group == 1:
-        if mode == "Deflation":
-            GPIO.output(PIN1, GPIO.LOW)
-            GPIO.output(PIN2, GPIO.HIGH)
-        elif mode == "Inflation":
-            GPIO.output(PIN1, GPIO.HIGH)
-            GPIO.output(PIN2, GPIO.LOW)
-        else:
-            GPIO.output(PIN1, GPIO.LOW)
-            GPIO.output(PIN2, GPIO.LOW)
-    elif group == 2:
-        if mode == "Deflation":
-            GPIO.output(PIN3, GPIO.LOW)
-            GPIO.output(PIN4, GPIO.HIGH)
-        elif mode == "Inflation":
-            GPIO.output(PIN3, GPIO.HIGH)
-            GPIO.output(PIN4, GPIO.LOW)
-        else:
-            GPIO.output(PIN3, GPIO.LOW)
-            GPIO.output(PIN4, GPIO.LOW)
 
 # ---------------------------
 # MAIN APPLICATION CLASS
@@ -108,7 +110,7 @@ class App(ctk.CTk):
         # Initialize the ADS1263 ADC (using ADC1 in differential mode)
         self.adc = self.adc_init()
 
-        # Initialize the BME680 sensor
+        # Initialize the LPS22 sensor (replacing BME680 for this example)
         i2c = busio.I2C(board.SCL, board.SDA)
         self.lps = adafruit_lps2x.LPS22(i2c)
 
@@ -206,20 +208,14 @@ class App(ctk.CTk):
             self.adc_labels_option2[ch] = lbl
 
         # --- Logging Section (common to both tabs) ---
-        # This section now includes two input fields: one for the "Reference Pressure"
-        # (e.g., the expected pressure from the sensor's calibration) and one for the
-        # "Actual Pressure" provided by your calibrated air regulator.
         log_frame = ctk.CTkFrame(self)
         log_frame.pack(pady=10)
-        # Reference pressure entry
         ctk.CTkLabel(log_frame, text="Reference Pressure (kPa/PSI):", font=("Helvetica", 12)).grid(row=0, column=0, padx=5)
         self.ref_entry = ctk.CTkEntry(log_frame, width=100)
         self.ref_entry.grid(row=0, column=1, padx=5)
-        # Actual known pressure entry
         ctk.CTkLabel(log_frame, text="Actual Pressure (kPa/PSI):", font=("Helvetica", 12)).grid(row=1, column=0, padx=5)
         self.actual_entry = ctk.CTkEntry(log_frame, width=100)
         self.actual_entry.grid(row=1, column=1, padx=5)
-        # Logging button
         self.log_button = ctk.CTkButton(log_frame, text="Start Data Logging", command=self.start_logging)
         self.log_button.grid(row=0, column=2, rowspan=2, padx=5)
 
@@ -274,17 +270,15 @@ class App(ctk.CTk):
         t.start()
 
     def collect_and_log_data(self, ref_pressure, actual_pressure):
-        """Collect 100 samples from ADC and BME680 sensors and log them to a CSV file."""
+        """Collect 100 samples from ADC and sensor and log them to a CSV file."""
         samples_per_level = 100
         filename = "sensor_data.csv"
-        # CSV header includes timestamp, reference_pressure, actual_pressure,
-        # ADC readings (channels 0-4), and BME680 sensor readings.
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([
                 'timestamp', 'reference_pressure', 'actual_pressure',
                 'ADC_channel_0', 'ADC_channel_1', 'ADC_channel_2', 'ADC_channel_3', 'ADC_channel_4',
-                'BME680_pressure', 'BME680_temperature', 'BME680_humidity'
+                'LPS22_pressure'
             ])
         for i in range(samples_per_level):
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
@@ -298,22 +292,14 @@ class App(ctk.CTk):
                 else:
                     voltage = (REF * 2 - raw_value * REF / 0x80000000)
                 adc_readings.append(voltage)
-            # Read BME680 sensor data
-            bme_data = read_sensor_data(self.bme_sensor)
-            if bme_data is None:
-                bme_pressure = ""
-                bme_temperature = ""
-                bme_humidity = ""
-            else:
-                bme_pressure = bme_data['pressure']
-                bme_temperature = bme_data['temperature']
-                bme_humidity = bme_data['humidity']
+            # Read LPS22 sensor data (using pressure as an example)
+            lps_pressure = self.lps.pressure if hasattr(self.lps, 'pressure') else ""
             with open(filename, mode='a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow([
                     timestamp, ref_pressure, actual_pressure,
                     adc_readings[0], adc_readings[1], adc_readings[2], adc_readings[3], adc_readings[4],
-                    bme_pressure, bme_temperature, bme_humidity
+                    lps_pressure
                 ])
             time.sleep(0.05)  # Adjust sampling rate as needed
         self.log_button.configure(state="normal")
@@ -330,7 +316,7 @@ class App(ctk.CTk):
             self.adc.ADS1263_Exit()
         except Exception:
             pass
-        GPIO.cleanup()
+        lgpio.gpiochip_close(chip)
         self.destroy()
 
 if __name__ == "__main__":
