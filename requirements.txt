@@ -2,7 +2,6 @@ customtkinter
 lgpio
 spidev
 numpy
-scikit-learn
 customtkinter
 tkfontawesome
 opencv-python
