@@ -13,14 +13,13 @@ class MotorController:
         """
         self.ser = serial.Serial(port, baudrate, timeout=timeout)
         # Allow time for the Arduino to reset.
-        time.sleep(2)
         print(f"MotorController initialized on port {port}")
 
     def send_command(self, command):
         """
         Sends a command string to the Arduino and reads any response.
 
-        :param command: Command string to send (e.g., "forward,10").
+        :param command: Command string to send.
         :return: Response from the Arduino.
         """
         self.ser.reset_input_buffer()
@@ -32,20 +31,6 @@ class MotorController:
         print(f"Sent command: {command} | Response: {response}")
         return response
 
-    def run_forward(self, seconds):
-        """Run the motors forward for the given number of seconds."""
-        command = f"forward,{seconds}"
-        self.send_command(command)
-
-    def run_backward(self, seconds):
-        """Run the motors backward for the given number of seconds."""
-        command = f"backward,{seconds}"
-        self.send_command(command)
-
-    def stop(self):
-        """Immediately stop the motors."""
-        self.send_command("stop")
-
     def close(self):
         """Close the serial connection."""
         if self.ser.is_open:
@@ -54,38 +39,44 @@ class MotorController:
 
 
 def main():
-    # Use the default port /dev/ttyACM0 for the Raspberry Pi
+    # Use the default port /dev/ttyACM0 for the Raspberry Pi.
     port = "/dev/ttyACM0"
     controller = MotorController(port=port, baudrate=9600)
 
-    print("Enter commands:")
-    print("  forward,<seconds>   -> Run motors forward for <seconds>")
-    print("  backward,<seconds>  -> Run motors backward for <seconds>")
-    print("  stop                -> Stop motors immediately")
-    print("  exit                -> Quit the program")
+    print("Enter commands in one of the following formats:")
+    print("  1. direction,side,duration")
+    print("     - Example: forward,right,10  (runs right motors forward for 10 seconds)")
+    print("     - Valid sides: left, right, both")
+    print("  2. direction,duration (defaults to both sides)")
+    print("     - Example: backward,5 (runs both motors backward for 5 seconds)")
+    print("  Other commands:")
+    print("     stop   -> Stop motors immediately")
+    print("     exit   -> Quit the program")
 
     try:
         while True:
             user_input = input("Command: ").strip().lower()
             if user_input == "exit":
                 break
-            elif user_input.startswith("forward"):
-                # Expect format "forward,10"
-                try:
-                    _, sec = user_input.split(',')
-                    controller.run_forward(float(sec))
-                except ValueError:
-                    print("Invalid command format. Use: forward,<seconds>")
-            elif user_input.startswith("backward"):
-                try:
-                    _, sec = user_input.split(',')
-                    controller.run_backward(float(sec))
-                except ValueError:
-                    print("Invalid command format. Use: backward,<seconds>")
             elif user_input == "stop":
-                controller.stop()
+                controller.send_command("stop")
             else:
-                print("Unknown command. Please use forward,<seconds>, backward,<seconds>, stop, or exit.")
+                tokens = user_input.split(',')
+                if len(tokens) == 2 or len(tokens) == 3:
+                    # For a two-token command, assume both sides.
+                    if len(tokens) == 2:
+                        # Prepend "both" as side
+                        command = f"{tokens[0]},both,{tokens[1]}"
+                    else:
+                        command = user_input
+                    controller.send_command(command)
+                else:
+                    print("Invalid command format.")
+                    print("Please use either:")
+                    print("  direction,side,duration (e.g., forward,right,10)")
+                    print("or")
+                    print("  direction,duration (e.g., backward,5)")
+                    print("Valid sides: left, right, both; Valid directions: forward, backward.")
     except KeyboardInterrupt:
         print("\nExiting program...")
     finally:

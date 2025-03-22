@@ -1,58 +1,72 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-import RPi.GPIO as GPIO
 import time
+import lgpio
 
 
 class ValveController:
     """
-    A class to control a valve using GPIO pins.
+    A class to control a valve using lgpio.
 
     This class allows you to initialize the valve with specified supply and vent pins.
     It provides three methods:
-      - neutral(): Turns off all outputs.
-      - vent(): Sets the vent pins HIGH (activating vent mode) and supply pins LOW.
-      - supply(): Sets the supply pins HIGH (activating supply mode) and vent pins LOW.
+      - neutral(): Sets all outputs to HIGH (neutral state).
+      - vent(): Activates vent (deflation) mode: sets supply pins LOW and vent pins HIGH.
+      - supply(): Activates supply (inflation) mode: sets vent pins LOW and supply pins HIGH.
     Additionally, the get_state() method returns the current state of the valve.
+
+    Note: In this valve configuration, a HIGH output (1) is the neutral/off state,
+    while driving a pin LOW (0) activates that channel.
     """
 
     def __init__(self, supply_pins, vent_pins):
         """
         Initialize the valve controller with the given supply and vent pins.
 
-        :param supply_pins: List of GPIO pin numbers for the supply function.
-        :param vent_pins: List of GPIO pin numbers for the vent function.
+        :param supply_pins: List of GPIO pin numbers for the supply (inflation) function.
+        :param vent_pins: List of GPIO pin numbers for the vent (deflation) function.
         """
         self.supply_pins = supply_pins
         self.vent_pins = vent_pins
-        self._state = "neutral"  # Initial state
+        self._state = "neutral"  # initial state
+        self.chip = lgpio.gpiochip_open(0)  # open the first GPIO chip
 
-        # Setup the GPIO pins as outputs and initialize them to LOW
+        # Claim each pin as an output and initialize them to HIGH (neutral state)
         for pin in self.supply_pins + self.vent_pins:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.output(pin, GPIO.LOW)
+            lgpio.gpio_claim_output(self.chip, pin)
+            lgpio.gpio_write(self.chip, pin, 1)  # HIGH = neutral/off
 
     def neutral(self):
-        """Set all valve pins to LOW (neutral state) and update state."""
+        """Set all valve pins to HIGH (neutral state) and update state."""
         for pin in self.supply_pins + self.vent_pins:
-            GPIO.output(pin, GPIO.LOW)
+            lgpio.gpio_write(self.chip, pin, 1)
         self._state = "neutral"
 
     def vent(self):
-        """Activate the valve in vent mode: vent pins HIGH, supply pins LOW, and update state."""
+        """
+        Activate the valve in vent (deflation) mode:
+          - Set supply pins LOW (0)
+          - Set vent pins HIGH (1)
+        Update the state accordingly.
+        """
         for pin in self.supply_pins:
-            GPIO.output(pin, GPIO.LOW)
+            lgpio.gpio_write(self.chip, pin, 0)
         for pin in self.vent_pins:
-            GPIO.output(pin, GPIO.HIGH)
+            lgpio.gpio_write(self.chip, pin, 1)
         self._state = "vent"
 
     def supply(self):
-        """Activate the valve in supply mode: supply pins HIGH, vent pins LOW, and update state."""
+        """
+        Activate the valve in supply (inflation) mode:
+          - Set vent pins LOW (0)
+          - Set supply pins HIGH (1)
+        Update the state accordingly.
+        """
         for pin in self.vent_pins:
-            GPIO.output(pin, GPIO.LOW)
+            lgpio.gpio_write(self.chip, pin, 0)
         for pin in self.supply_pins:
-            GPIO.output(pin, GPIO.HIGH)
+            lgpio.gpio_write(self.chip, pin, 1)
         self._state = "supply"
 
     def get_state(self):
@@ -63,16 +77,18 @@ class ValveController:
         """
         return self._state
 
+    def cleanup(self):
+        """Clean up resources by closing the lgpio chip."""
+        lgpio.gpiochip_close(self.chip)
+
 
 # Test the ValveController class when running the script directly.
 if __name__ == "__main__":
-    # Set up GPIO mode (using BCM numbering)
-    GPIO.setmode(GPIO.BCM)
-
     try:
-        # Define test pins (modify these based on your actual wiring)
-        test_supply_pins = [5]  # Example: GPIO pin 5 for supply
-        test_vent_pins = [27]  # Example: GPIO pin 27 for vent
+        # Define test pins (adjust these based on your actual wiring)
+        # Example: Two groups – supply pins for inflation and vent pins for deflation.
+        test_supply_pins = [20]  # e.g., PIN1 and PIN3 for inflation
+        test_vent_pins = [27]  # e.g., PIN2 and PIN4 for deflation
 
         valve = ValveController(supply_pins=test_supply_pins, vent_pins=test_vent_pins)
 
@@ -81,12 +97,12 @@ if __name__ == "__main__":
         print("Current State:", valve.get_state())
         time.sleep(2)
 
-        print("Activating vent mode for 2 seconds.")
+        print("Activating vent mode (deflation) for 2 seconds.")
         valve.vent()
         print("Current State:", valve.get_state())
         time.sleep(2)
 
-        print("Activating supply mode for 2 seconds.")
+        print("Activating supply mode (inflation) for 2 seconds.")
         valve.supply()
         print("Current State:", valve.get_state())
         time.sleep(2)
@@ -99,5 +115,5 @@ if __name__ == "__main__":
         print("Valve controller test complete.")
 
     finally:
-        GPIO.cleanup()
-        print("GPIO cleanup complete.")
+        valve.cleanup()
+        print("lgpio chip closed, cleanup complete.")
