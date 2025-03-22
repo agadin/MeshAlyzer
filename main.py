@@ -182,16 +182,15 @@ class App(ctk.CTk):
         # Top Navigation Bar Section
         # --------------------------
         def create_white_icon(image_path, size=(20, 20)):
-            # Convert SVG to PNG
-            png_path = image_path
-            cairosvg.svg2png(url=image_path, write_to=png_path)
+            # Convert SVG to PNG in memory
+            png_data = cairosvg.svg2png(url=image_path)
 
-            # Open the PNG image and ensure it has an alpha channel
-            pil_image = Image.open(png_path).convert("RGBA")
+            # Open the PNG image from the in-memory data
+            pil_image = Image.open(io.BytesIO(png_data)).convert("RGBA")
             # Convert the image to grayscale
             gray_image = pil_image.convert("L")
             # Colorize the grayscale image: set black stays black, white becomes white.
-            white_image = ImageOps.colorize(gray_image, black="black", white="white")
+            white_image = ImageOps.colorize(gray_image, black="white", white="black")
             # Resize the image to the specified size
             white_image = white_image.resize(size, Image.ANTIALIAS)
             return ctk.CTkImage(light_image=white_image, size=size)
