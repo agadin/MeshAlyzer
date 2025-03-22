@@ -493,8 +493,9 @@ class App(ctk.CTk):
         """Display the protocol builder page with a sidebar and main content area."""
         self.clear_content_frame()
 
-
-
+    def toggle_mode(self):
+        mode = "Light" if ctk.get_appearance_mode() == "Dark" else "Dark"
+        ctk.set_appearance_mode(mode)
 
     def show_inspector(self):
         # create a side bar that has a drop down menu for the user to select the trial they want to inspect. The trials will be read by reading the folders in ./data directory. If there are no trials in the directory the user will be prompted by a pop up window to got to the home page to run a protocol or can manually select one which will open up a file path dialog box for them to select the trial they want to inspect. Automatically create the figures for the trial and display them in the main frame
