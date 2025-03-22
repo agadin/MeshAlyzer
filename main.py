@@ -394,6 +394,26 @@ class App(ctk.CTk):
         self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
         self.sidebar_frame.pack(side="left", fill="y", padx=15)
 
+        # Protocol selector
+        self.protocol_label = ctk.CTkLabel(self.sidebar_frame, text="Select a Protocol:")
+        self.protocol_label.pack(pady=15, padx=15)
+
+        self.protocol_folder = './protocols'
+        self.protocol_files = [f for f in os.listdir(self.protocol_folder) if
+                               os.path.isfile(os.path.join(self.protocol_folder, f))]
+        self.protocol_var = ctk.StringVar(value=self.protocol_files[0])
+
+        self.protocol_dropdown = ctk.CTkComboBox(self.sidebar_frame, values=self.protocol_files,
+                                                 variable=self.protocol_var)
+        self.protocol_dropdown.pack(pady=15)
+
+        self.run_button = ctk.CTkButton(self.sidebar_frame, text="Run Protocol", command=self.run_protocol)
+        self.run_button.pack(pady=15)
+
+        # Sidebar
+        self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
+        self.sidebar_frame.pack(side="left", fill="y", padx=15)
+
         # Light/dark mode automatic toggle
         current_hour = datetime.datetime.now().hour
         default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
