@@ -5,3 +5,4 @@ numpy
 scikit-learn
 customtkinter
 tkfontawesome
+opencv-python
