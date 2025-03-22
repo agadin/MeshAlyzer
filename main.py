@@ -183,42 +183,7 @@ class App(ctk.CTk):
         # --------------------------
         # Top Navigation Bar Section
         # --------------------------
-        def create_white_icon(svg_path, size=(20, 20)):
-            # Parse the SVG file
-            tree = ET.parse(svg_path)
-            root = tree.getroot()
 
-            # Define the SVG namespace (adjust if your SVG uses a different one)
-            ns = {'svg': 'http://www.w3.org/2000/svg'}
-
-            # Recursively update all fill attributes to white
-            for elem in root.iter():
-                # Check if the element has a fill attribute and change it to white
-                if 'fill' in elem.attrib:
-                    elem.attrib['fill'] = "#ffffff"
-                # Optionally, if your SVG uses inline styles, you can modify them too:
-                if 'style' in elem.attrib:
-                    styles = elem.attrib['style'].split(';')
-                    new_styles = []
-                    for style in styles:
-                        if style.strip().startswith("fill:"):
-                            new_styles.append("fill:#ffffff")
-                        else:
-                            new_styles.append(style)
-                    elem.attrib['style'] = ';'.join(new_styles)
-
-            # Convert the modified SVG tree back to a string
-            svg_data = ET.tostring(root, encoding="unicode")
-
-            # Convert the SVG (with white fills) to PNG using cairosvg
-            png_data = cairosvg.svg2png(bytestring=svg_data)
-
-            # Open the PNG with PIL, convert to RGBA, and resize to the target size
-            image = Image.open(io.BytesIO(png_data)).convert("RGBA")
-            image = image.resize(size, Image.ANTIALIAS)
-
-            # Return the CTkImage for use in your CTk interface
-            return ctk.CTkImage(light_image=image, size=size)
 
         self.nav_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
@@ -235,12 +200,17 @@ class App(ctk.CTk):
         # Create a white icon from the SVG file
         icon_size = (20, 20)
 
-        white_icon = create_white_icon(icon_path, icon_size)
+        image_path = "./img/lakelab.png"
+        pil_image = Image.open(image_path)
+
+        # Create a CTkImage object
+        logo_image = ctk.CTkImage(light_image=pil_image, size=(50, 50))
+
 
         # Use the white icon in a CTkButton
         self.logo_button = ctk.CTkButton(
             self.nav_left_frame,
-            image=white_icon,
+            image=logo_image,
             text="",
             fg_color="transparent",
             hover_color="#ffffff30",
@@ -248,17 +218,17 @@ class App(ctk.CTk):
         )
         self.logo_button.pack()
 
-        # --- Generate White Icons for Navigation Buttons ---
-        # Instead of using tkfontawesome, load PNG icons from your local files.
-        # Define a helper function to create a CTkImage from an image file and resize it.
+        # Load the PNG images
+        home_icon_image = Image.open("./img/fa-home.png")
+        protocol_icon_image = Image.open("./img/fa-tools.png")
+        calibrate_icon_image = Image.open("./img/fa-tachometer-alt.png")
+        settings_icon_image = Image.open("./img/fa-cog.png")
 
-
-
-        # Create icons by file path (make sure you have these icon files in your ./img/ folder)
-        home_icon = create_white_icon("./img/fa-home.svg", size=(20, 20))
-        protocol_icon = create_white_icon("./img/fa-tools.svg", size=(20, 20))
-        calibrate_icon = create_white_icon("./img/fa-tachometer-alt.svg", size=(20, 20))
-        settings_icon = create_white_icon("./img/fa-cog.svg", size=(20, 20))
+        # Create CTkImage objects
+        home_icon = ctk.CTkImage(light_image=home_icon_image, size=(20, 20))
+        protocol_icon = ctk.CTkImage(light_image=protocol_icon_image, size=(20, 20))
+        calibrate_icon = ctk.CTkImage(light_image=calibrate_icon_image, size=(20, 20))
+        settings_icon = ctk.CTkImage(light_image=settings_icon_image, size=(20, 20))
 
         # --- Navigation Buttons on Right Side ---
         self.settings_button = ctk.CTkButton(
