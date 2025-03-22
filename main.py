@@ -26,6 +26,8 @@ import threading
 import sys
 import tkfontawesome as fa  # Make sure you've installed tkfontawesome
 import os
+import filecmp
+
 
 #lps22
 import board
@@ -574,6 +576,11 @@ class App(ctk.CTk):
         self.canvas_widget = self.canvas.get_tk_widget()
         self.canvas_widget.pack(expand=True, fill="both")
 
+    def variable_saver(self, variable_name, user_input):
+        with open('variables.txt', 'a') as file:
+            current_time = time.strftime('%Y-%m-%d %H:%M:%S')
+            file.write(f"{current_time}, {variable_name}, {user_input}\n")
+
     def get_from_dict(self, dict_key, variable_name):
         # Retrieve the dictionary from the class attribute
         data_dict = self.data_dict.get(dict_key, {})
@@ -583,6 +590,16 @@ class App(ctk.CTk):
             return data_dict[variable_name]
         else:
             return None
+
+    def save_to_dict(self, dict_key, variable_name, value):
+        # Retrieve the dictionary from the class attribute
+        data_dict = self.data_dict.get(dict_key, {})
+
+        # Update the dictionary
+        data_dict[variable_name] = value
+
+        # Save the updated dictionary back to the class attribute
+        self.data_dict[dict_key] = data_dict
 
     def string_to_value_checker(self, string_input, type_s="int"):
         try:
@@ -659,6 +676,7 @@ class App(ctk.CTk):
             return float(data[-1][0]) - float(data[0][0])
         else:
             raise ValueError(f"Unknown metric: {metric}")
+
     def process_protocol(self, protocol_path):
         protocol_filename = os.path.basename(protocol_path)
         with open(protocol_path, 'r') as file:
@@ -672,12 +690,12 @@ class App(ctk.CTk):
 
         # clear previous data
         self.data_dict = {}
+        self.init = True  # Initialize the protocol processing
         for command in commands:
             command = command.strip()
             if not command:
                 continue
             step_number += 1
-            motor.current_protocol_step(step_number)
             self.protocol_command= command
             self.protocol_step= step_number
             stop_flag= self.stop_flag
@@ -699,154 +717,53 @@ class App(ctk.CTk):
                 # Example usage of the parsed inputs
                 print(f"Time/Pressure: {time_or_pressure}, Value: {value}, Valve: {valve}")
                 self.inflate(time_or_pressure, value, valve)
-            elif command.startswith("Move_to_angle"):
-                # current command: Move_to_angle:90,metric,variable_name
-                parts = command.split(":")[1].split(",")
-                angle_input = parts[0].strip()
-                angle = self.string_to_value_checker(angle_input)
-                move_to_angle(angle)
                 if len(parts) > 1:
                     for i in range(1, len(parts), 2):
                         metric = str(parts[i].strip())
                         variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
-                        metric_value = calculate_metric(metric, step_number)
-                        variable_saver(variable_name, metric_value)
-                        save_to_redis_dict('set_vars', variable_name, metric_value)
+                        metric_value = self.calculate_metric(metric, self.protocol_step)
+                        self.variable_saver(variable_name, metric_value)
+                        self.save_to_dict('set_vars', variable_name, metric_value)
+            elif command.startswith("Deflate"):
+                parts = command.split(":")[1].split(",")
 
-            elif command.startswith("Move_to_force"):
-                params = command.split(":")[1].split(",")
+                # Extract and parse the inputs
+                time_or_pressure = parts[0].strip()
+                value = float(parts[1].strip())
+                valve = parts[2].strip() if len(parts) > 2 else "Both"
 
-                # Required parameters
-                direction = params[0].strip()
-                max_force = self.string_to_value_checker(params[1].strip(), "float")
+                # Process the inputs
+                value = self.string_to_value_checker(value, type_s='float')
 
-                # Initialize optional parameters
-                min_angle, max_angle = 0, 180
-                metrics = []  # List to hold multiple metric, variable_name pairs
+                # Example usage of the parsed inputs
+                print(f"Time/Pressure: {time_or_pressure}, Value: {value}, Valve: {valve}")
+                self.deflate(time_or_pressure, value, valve)
+                if len(parts) > 1:
+                    for i in range(1, len(parts), 2):
+                        metric = str(parts[i].strip())
+                        variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
+                        metric_value = self.calculate_metric(metric, self.protocol_step)
+                        self.variable_saver(variable_name, metric_value)
+                        self.save_to_dict('set_vars', variable_name, metric_value)
 
-                # Parse remaining parameters
-                index = 2
-                while index < len(params):
-                    param = params[index].strip()
-                    if param.replace('.', '', 1).isdigit():  # Check if it's a number (min_angle or max_angle)
-                        if min_angle == 0:  # First number -> min_angle
-                            min_angle = string_to_value_checker(param)
-                        else:  # Second number -> max_angle
-                            max_angle = string_to_value_checker(param)
-                    else:  # Assume it's part of metric-variable_name pairs
-                        if index + 1 < len(params):  # Ensure there's a variable_name following
-                            metric = param
-                            variable_name = params[index + 1].strip()
-                            metrics.append((metric, variable_name))
-                            index += 1  # Skip the next parameter since it's part of the pair
-                        else:
-                            raise ValueError("Metric without corresponding variable_name")
-                    index += 1
 
-                # Execute the command
-                print(f"Moving to force: {max_force} in direction: {direction}")
-                move_to_force(direction, max_force, min_angle, max_angle)
-
-                if metrics:
-                    for metric, variable_name in metrics:
-                        metric_value = calculate_metric(metric, step_number)
-                        variable_saver(variable_name, metric_value)
-                        save_to_redis_dict('set_vars', variable_name, metric_value)
-
-            elif command.startswith("Load_calibration"):
-                # command format: Load_calibration: path/to/calibration.txt
-                file_path = command.split(":")[1].strip()
-                # check file_path if it does not have calibration.txt then add it
-                if not file_path.endswith("calibration.txt"):
-                    file_path = file_path + "calibration.txt"
-                if not os.path.exists(file_path):
-                    raise FileNotFoundError(f"Calibration file not found: {file_path}")
-                motor.load_calibration(file_path)
-            elif command.startswith("Save_as"):
-                save_as_string = command.split(":")[1].strip()
-                # check if save_as_string is in redis_client.get(save_as_string) if it is not then make folder_name equal to it
-                if redis_client.get(save_as_string) is None:
-                    folder_name = save_as_string
-                elif redis_client.get(save_as_string) and len(
-                        redis_client.get(save_as_string).replace(' ', '')) == 4 and redis_client.get(
-                    save_as_string).replace(' ', '').isdigit():
-                    animal_id = redis_client.get(save_as_string).replace(' ', '')
-                    save_to_redis_dict('set_vars', 'animal_id', animal_id)
-                elif redis_client.get(save_as_string) is not None:
-                    folder_name = redis_client.get(save_as_string)
-            elif command.startswith("calibrate"):
-                data_saved = True
-                motor.calibrate()
-            elif command.startswith("wait"):
-                wait_time = string_to_value_checker(command.split(":")[1])
-                wait(wait_time)
             elif command.startswith("Wait_for_user_input"):
-                wait_for_user_input(command)
+                self.wait_for_user_input(command)
             elif command.startswith("no_save"):
                 data_saved = True
             elif command.startswith("End"):
-                end_loop()
+                self.end_all_commands()
                 break
             print(f" Data saved: {data_saved}")
 
-        # end_all_commands()
+        self.end_all_commands()
         if not data_saved:
             # Set the name to the current date and time
-            data_saved = create_folder_with_files(folder_name)
+            data_saved = self.create_folder_with_files(folder_name)
 
     # Add save as file name ability
 
-    def calibrate():
-        motor.calibrate()
-
-    def end_all_commands():
-        global motor
-        motor.cleanup()
-        redis_client.set("current_step", "")
-        redis_client.set("stop_flag", "0")
-
-    def inflate(self, time_or_pressure, value, valve):
-
-
-    def move_to_force(direction, max_force, min_angle=0, max_angle=180):
-        global motor
-        motor.move_until_force(int(direction), max_force, min_angle, max_angle)
-        time.sleep(1)  # Simulate the action
-
-    def move_until_force_or_angle(force, angle):
-        print(f"Moving until force: {force} or angle: {angle}")
-        time.sleep(1)  # Simulate the action
-
-    def wait(wait_time):
-
-        print(f"Waiting for {wait_time} seconds")
-        current_csv_time = motor.read_first_value_in_last_row()
-        timestep = 0.03
-        end_time = time.time() + wait_time
-        temp_data = []
-        # open data.csv and read direction from last row if it exists and file was edited in the past 30 seconds
-        idle_force = motor.return_idle_force()
-        while time.time() < end_time:
-            start_time = time.time()
-            raw_force = motor.ForceSensor.read_force()
-            current_force = raw_force - idle_force
-            current_csv_time = current_csv_time + timestep
-            temp_data.append([current_csv_time, motor.current_angle, current_force, raw_force, motor.current_state,
-                              motor.current_direction, motor.return_current_protocol_step()])
-            elapsed_time = time.time() - start_time
-            sleep_time = max(timestep - elapsed_time, 0)
-            time.sleep(sleep_time)
-            motor.update_shared_memory(-1)
-
-        with open(csv_name, 'a', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile)
-            csvwriter.writerows(temp_data)
-
-    def end_loop(self):
-        self.protocol_step = None
-        print("Ending Protocol")
-
-    def wait_for_user_input(command):
+    def wait_for_user_input(self,command):
         parts = command.split(":")[1].split(",")
         popup_name = parts[0].strip()
         variable_name = parts[1].strip()
@@ -864,9 +781,9 @@ class App(ctk.CTk):
                 else:
                     raise ValueError("Invalid response type")
 
-                save_to_redis_dict('set_vars', variable_name, user_input)
+                self.save_to_dict('set_vars', variable_name, user_input)
                 redis_client.set("user_input", "")  # Clear the user input after processing
-                variable_saver(variable_name, user_input)
+                self.variable_saver(variable_name, user_input)
                 popup.destroy()
             except ValueError:
                 error_label.config(text=f"Invalid input type. Expected {response_type}.")
@@ -888,115 +805,312 @@ class App(ctk.CTk):
 
         popup.mainloop()
 
+
+    def end_all_commands(self):
+        self.protocol_step = None
+
+    def inflate(self, time_or_pressure, value, valve):
+        # Placeholder for the actual inflation logic
+        print(f"Inflating {valve} for {time_or_pressure} with value {value}")
+    def deflate(self, time_or_pressure, value, valve):
+        # Placeholder for the actual inflation logic
+        print(f"Inflating {valve} for {time_or_pressure} with value {value}")
+
+    def wait(self, wait_time):
+        print(f"Waiting for {wait_time} seconds")
+        time.sleep(wait_time)
+
+    def wait_for_user_input(self, command):
+        parts = command.split(":")[1].split(",")
+        popup_name = parts[0].strip()
+        variable_name = parts[1].strip()
+        response_type = parts[2].strip()
+
+        def on_submit():
+            user_input = entry.get()
+            try:
+                if response_type == "int":
+                    user_input = int(user_input)
+                elif response_type == "float":
+                    user_input = float(user_input)
+                elif response_type == "string":
+                    user_input = str(user_input)
+                else:
+                    raise ValueError("Invalid response type")
+
+                self.save_to_dict('set_vars', variable_name, user_input)
+                self.variable_saver(variable_name, user_input)
+                popup.destroy()
+            except ValueError:
+                error_label.config(text=f"Invalid input type. Expected {response_type}.")
+
+        popup = ctk.CTk()
+        popup.title(popup_name)
+
+        label = ctk.CTkLabel(popup, text=f"Enter {response_type} value:")
+        label.pack(pady=10)
+
+        entry = ctk.CTkEntry(popup)
+        entry.pack(pady=5)
+
+        submit_button = ctk.CTkButton(popup, text="Submit", command=on_submit)
+        submit_button.pack(pady=5)
+
+        error_label = ctk.CTkLabel(popup, text="", fg_color="red")
+        error_label.pack(pady=5)
+
+        popup.mainloop()
+
+    def write_sensor_data_to_csv(self):
+        # Define the CSV file name
+        csv_file = 'data.csv'
+
+        # Open the CSV file in write mode
+        with open(csv_file, 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            # Write the headers
+            headers = [
+                'time', 'LPS_pressure', 'LPS_temperature', 'pressure0', 'pressure0_convert',
+                'pressure1', 'pressure1_convert', 'pressure2', 'pressure2_convert',
+                'pressure3', 'pressure3_convert', 'valve1_state', 'valve2_state',
+                'self_target_pressure', 'self_target_time', 'clamp_state', 'self_protocol_step'
+            ]
+            writer.writerow(headers)
+
+            # Write the sensor data
+            for data in self.sensor_data:
+                row = [
+                    data['time'], data['LPS_pressure'], data['LPS_temperature'], data['pressure0'],
+                    data['pressure0_convert'],
+                    data['pressure1'], data['pressure1_convert'], data['pressure2'], data['pressure2_convert'],
+                    data['pressure3'], data['pressure3_convert'], data['valve1_state'], data['valve2_state'],
+                    data['self_target_pressure'], data['self_target_time'], data['clamp_state'],
+                    data['self_protocol_step']
+                ]
+                writer.writerow(row)
+
     def read_sensors(self):
-        if (self.protocol_step is not None and self.protocol_step > 0):
-            # Record the time difference between the protocol start time and the current time
-            if self.init is not None:
-                self.protocol_start_time = time.time()
-                time_diff = 0
-                self.init = None
+        while True:
+            if (self.protocol_step is not None and self.protocol_step > 0):
+                # Record the time difference between the protocol start time and the current time
+                if self.init is not None:
+                    self.protocol_start_time = time.time()
+                    time_diff = 0
+                    self.init = None
+                else:
+                    current_time = time.time()
+                    time_diff = current_time - self.protocol_start_time
+
+                # Read sensor values
+                LPS_pressure = self.lps.pressure
+                LPS_temperature = self.lps.temperature
+
+                # Convert pressure and temperature values using the converter function
+                pressure0, pressure1, pressure2, pressure3 = self.pressure_system.get_pressure_sensors()
+
+                pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert= self.pressure_sensor_converter(pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
+
+                #get valve state
+                valve1_state= self.valve1.get_state()
+                valve2_state= self.valve2.get_state()
+
+
+                # Add new values to the list
+                self.sensor_data.append({
+                    'time': time_diff,
+                    'LPS_pressure': LPS_pressure,
+                    'LPS_temperature': LPS_temperature,
+                    'pressure0': pressure0,
+                    'pressure0_convert': pressure0_convert,
+                    'pressure1': pressure1,
+                    'pressure1_convert': pressure1_convert,
+                    'pressure2': pressure2,
+                    'pressure2_convert': pressure2_convert,
+                    'pressure3': pressure3,
+                    'pressure3_convert': pressure3_convert,
+                    'valve1_state': valve1_state,
+                    'valve2_state': valve2_state,
+                    'self_target_pressure': self.target_pressure,
+                    'self_target_time': self.target_time,
+                    'clamp_state': self.clamp_state,
+                    'self_protocol_step': self.protocol_step
+                })
+
+                # Update displays with the new sensor data
+                self.update_displays(
+                    step_count=self.protocol_step,
+                    current_angle=self.angle_display,
+                    current_force=self.force_display,
+                    minutes=int(time_diff // 60),
+                    seconds=int(time_diff % 60),
+                    milliseconds=int((time_diff * 1000) % 1000)
+                )
             else:
+                # Record the time difference between the protocol start time and the current time
                 current_time = time.time()
-                time_diff = current_time - self.protocol_start_time
+                time_diff = current_time
 
-            # Read sensor values
-            LPS_pressure = self.lps.pressure
-            LPS_temperature = self.lps.temperature
+                # Read sensor values
+                LPS_pressure = self.lps.pressure
+                LPS_temperature = self.lps.temperature
 
-            # Convert pressure and temperature values using the converter function
-            pressure0, pressure1, pressure2, pressure3 = self.pressure_system.get_pressure_sensors()
+                # Convert pressure and temperature values using the converter function
+                pressure0, pressure1, pressure2, pressure3 = self.pressure_system.get_pressure_sensors()
 
-            pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert= self.pressure_sensor_converter(pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
+                pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert = self.pressure_sensor_converter(
+                    pressure0, pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
 
-            #get valve state
-            valve1_state= self.valve1.get_state()
-            valve2_state= self.valve2.get_state()
+                # get valve state
+                valve1_state = self.valve1.get_state()
+                valve2_state = self.valve2.get_state()
 
+                # Add new values to the list
+                self.sensor_data.append({
+                    'time': -1,
+                    'LPS_pressure': LPS_pressure,
+                    'LPS_temperature': LPS_temperature,
+                    'pressure0': pressure0,
+                    'pressure0_convert': pressure0_convert,
+                    'pressure1': pressure1,
+                    'pressure1_convert': pressure1_convert,
+                    'pressure2': pressure2,
+                    'pressure2_convert': pressure2_convert,
+                    'pressure3': pressure3,
+                    'pressure3_convert': pressure3_convert,
+                    'valve1_state': valve1_state,
+                    'valve2_state': valve2_state,
+                    'self_target_pressure': self.target_pressure,
+                    'self_target_time': self.target_time,
+                    'clamp_state': self.clamp_state,
+                    'self_protocol_step': self.protocol_step
+                })
 
-            # Add new values to the list
-            self.sensor_data.append({
-                'time': time_diff,
-                'LPS_pressure': LPS_pressure,
-                'LPS_temperature': LPS_temperature,
-                'pressure0': pressure0,
-                'pressure0_convert': pressure0_convert,
-                'pressure1': pressure1,
-                'pressure1_convert': pressure1_convert,
-                'pressure2': pressure2,
-                'pressure2_convert': pressure2_convert,
-                'pressure3': pressure3,
-                'pressure3_convert': pressure3_convert,
-                'valve1_state': valve1_state,
-                'valve2_state': valve2_state,
-                'self_target_pressure': self.target_pressure,
-                'self_target_time': self.target_time,
-                'clamp_state': self.clamp_state,
-                'self_protocol_step': self.protocol_step
-            })
-
-            # Update displays with the new sensor data
-            self.update_displays(
-                step_count=self.protocol_step,
-                current_angle=self.angle_display,
-                current_force=self.force_display,
-                minutes=int(time_diff // 60),
-                seconds=int(time_diff % 60),
-                milliseconds=int((time_diff * 1000) % 1000)
-            )
-        else:
-            # Record the time difference between the protocol start time and the current time
-            current_time = time.time()
-            time_diff = current_time
-
-            # Read sensor values
-            LPS_pressure = self.lps.pressure
-            LPS_temperature = self.lps.temperature
-
-            # Convert pressure and temperature values using the converter function
-            pressure0, pressure1, pressure2, pressure3 = self.pressure_system.get_pressure_sensors()
-
-            pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert = self.pressure_sensor_converter(
-                pressure0, pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
-
-            # get valve state
-            valve1_state = self.valve1.get_state()
-            valve2_state = self.valve2.get_state()
-
-            # Add new values to the list
-            self.sensor_data.append({
-                'time': -1,
-                'LPS_pressure': LPS_pressure,
-                'LPS_temperature': LPS_temperature,
-                'pressure0': pressure0,
-                'pressure0_convert': pressure0_convert,
-                'pressure1': pressure1,
-                'pressure1_convert': pressure1_convert,
-                'pressure2': pressure2,
-                'pressure2_convert': pressure2_convert,
-                'pressure3': pressure3,
-                'pressure3_convert': pressure3_convert,
-                'valve1_state': valve1_state,
-                'valve2_state': valve2_state,
-                'self_target_pressure': self.target_pressure,
-                'self_target_time': self.target_time,
-                'clamp_state': self.clamp_state,
-                'self_protocol_step': self.protocol_step
-            })
-
-            # Update displays with the new sensor data
-            self.update_displays(
-                step_count=self.protocol_step,
-                current_angle=self.pressure0_convert,
-                current_force=self.pressure3_convert,
-                minutes=0,
-                seconds=0,
-                milliseconds=0
-            )
+                # Update displays with the new sensor data
+                self.update_displays(
+                    step_count=self.protocol_step,
+                    current_angle=self.pressure0_convert,
+                    current_force=self.pressure3_convert,
+                    minutes=0,
+                    seconds=0,
+                    milliseconds=0
+                )
+            time.sleep(0.05)
 
     def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
         """Convert the pressure sensor value to a desired unit."""
         # cole add logic here
         return pressure0 , pressure1, pressure2, pressure3
+
+    def create_folder_with_files(self, provided_name=None, special=False):
+        self.write_sensor_data_to_csv()
+        animal_id = self.get_from_dict('set_vars', 'animal_id')
+        if animal_id is None:
+                animal_id = "0000"
+
+        timestamp = datetime.now().strftime("%Y%m%d")
+        trial_number = 1
+
+        if provided_name is not None:
+            exact_folder_name = original_folder_name = f"{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}"
+            folder_name = original_folder_name
+            if os.path.exists(f"./data/{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}"):
+                while os.path.exists(folder_name):
+                    trial_number += 1
+                    folder_name = f"./data/{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}"
+            else:
+                folder_name = f"./data/{timestamp}_{animal_id}_{trial_number:02d}"
+        else:
+            exact_folder_name = original_folder_name = f"{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}"
+            folder_name = original_folder_name
+            if os.path.exists(f"./data/{timestamp}_{animal_id}_{trial_number:02d}"):
+                while os.path.exists(f"./data/{timestamp}_{animal_id}_{trial_number:02d}"):
+                    trial_number += 1
+                    folder_name = f"./data/{timestamp}_{animal_id}_{trial_number:02d}"
+            else:
+                folder_name = f"./data/{timestamp}_{animal_id}_{trial_number:02d}"
+        # create the folder
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+        else:
+            print(f"Error: Folder '{folder_name}' already exists.")
+            redis_client.set("Error_code", "10")
+        # Copy and rename `calibrate.txt`
+        # copy everything into folder
+        print(f"Copying files to {folder_name}")
+        if os.path.exists('calibration.csv'):
+            if provided_name is not None:
+                shutil.copy('calibration.csv', os.path.join(folder_name, 'calibration.csv'))
+
+        else:
+            print("Error: `calibration.txt` not found.")
+
+        # copy current protocol into folder check redis current_protocol_out for base name and add ./protocols/
+        current_protocol_out = redis_client.get("current_protocol_out")
+        if current_protocol_out is not None:
+            protocol_path = os.path.join('protocols', current_protocol_out)
+            if os.path.exists(protocol_path):
+                shutil.copy(protocol_path, os.path.join(folder_name, current_protocol_out))
+            else:
+                print(f"Error: Protocol file not found: {protocol_path}")
+
+        with open('data.csv', 'r') as file:
+            reader = csv.reader(file)
+            header = next(reader)
+            data = [row for row in reader]
+            self.total_time = data[-1][0]
+            self.total_steps = data[-1][6]
+
+        # Copy and rename `data.csv`
+        data_csv_path = 'data.csv'
+        renamed_csv_path = os.path.join(folder_name, f"{exact_folder_name}.csv")
+        if os.path.exists(data_csv_path):
+            shutil.copy(data_csv_path, os.path.join(folder_name, f"{exact_folder_name}.csv"))
+            self.verify_and_wipe_data_csv(data_csv_path, renamed_csv_path)
+        else:
+            print("Error: `data.csv` not found.")
+
+        # check redis for selected_arm
+        selected_arm = redis_client.get("selected_arm")
+        if selected_arm is None:
+            selected_arm = "Unknown"
+
+        # Create and save `information.txt` with the current date
+        info_path = os.path.join(folder_name, 'information.txt')
+        with open(info_path, 'w') as info_file:
+            current_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+            info_file.write(f"Created on: {current_date}\n")
+            info_file.write(f"Total time: {self.total_time}\n")
+            info_file.write(f"Total steps: {self.total_steps}\n")
+            info_file.write(f"Animal ID: {animal_id}\n")
+            info_file.write(f"Selected arm: {selected_arm}\n")
+
+        # variables.txt
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        set_vars = redis_client.hgetall('set_vars')
+        with open('variables.txt', 'a') as file:
+            for key, value in set_vars.items():
+                file.write(f"{current_date}, {key}, {value}\n")
+        if os.path.exists('variables.txt'):
+            shutil.copy('variables.txt', os.path.join(folder_name, 'variables.txt'))
+        else:
+            print("Error: `variables.txt` not found.")
+        self.verify_and_wipe_data_csv('variables.txt', os.path.join(folder_name, 'variables.txt'))
+
+        redis_client.set("data_saved", "1")
+
+        return True
+
+    def verify_and_wipe_data_csv(self, original_path, copied_path):
+        # Verify that the contents of the original and copied files match
+        if filecmp.cmp(original_path, copied_path, shallow=False):
+            print("Verification successful: The copied file matches the original.")
+            # Wipe out the original data.csv
+            with open(original_path, 'w') as file:
+                file.truncate(0)
+            print("Original data.csv has been wiped out.")
+        else:
+            print("Verification failed: The copied file does not match the original.")
 
     def on_closing(self):
         self.running = False
