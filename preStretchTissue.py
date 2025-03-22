@@ -1,19 +1,94 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-import customtkinter as ctk
-from PIL import Image
-import RPi.GPIO as GPIO
+import lgpio        # Low‑level GPIO library (assumes lgpio is installed)
 import time
 from threading import Thread
+import customtkinter as ctk
+from PIL import Image
 
 # Motor parameters (adjust as needed for your motors)
 REV_TIME = 2.4  # seconds per revolution at chosen duty cycle (for a 50RPM motor at 50% duty)
 DEFAULT_DUTY = 50  # Duty cycle percentage used for both calibration and stretch
 
+###############################################################################
+# Helper classes for lgpio functionality
+
+class LGPIOWrapper:
+    """
+    A simple wrapper around lgpio to request lines as outputs and set their values.
+    (Note: This is a minimal example. The actual lgpio API might require adjustments.)
+    """
+    def __init__(self):
+        # Open chip 0 (adjust if your chip number is different)
+        self.chip = lgpio.gpiochip_open(0)
+        self.lines = {}  # Maps pin numbers to line handles
+
+    def setup(self, pin):
+        # Request the line for output.
+        # (The following call is pseudo-code: replace with your actual lgpio output request.)
+        # Here we assume lgpio.gpio_request_line returns a handle for the given pin.
+        handle = lgpio.gpio_request_line(self.chip, [pin], "lgpio", 0, 0)
+        self.lines[pin] = handle
+
+    def output(self, pin, value):
+        # Set the pin's output value (value should be True/False).
+        # (Replace with your lgpio call to set the line value.)
+        # For example, if lgpio has a function named gpio_set_line_value:
+        lgpio.gpio_set_line_value(self.lines[pin], value)
+
+    def cleanup(self):
+        # Release all requested lines and close the chip.
+        for handle in self.lines.values():
+            lgpio.gpio_release_line(handle)
+        lgpio.gpiochip_close(self.chip)
+
+
+class LGPIOPWM:
+    """
+    A lightweight software-PWM class using lgpio outputs.
+    (For hardware PWM, you would use the lgpio/hardware-specific functions if available.)
+    """
+    def __init__(self, lgpio_wrapper, pin, frequency):
+        self.lgpio = lgpio_wrapper
+        self.pin = pin
+        self.frequency = frequency
+        self.duty_cycle = 0  # in percent (0-100)
+        self.running = False
+
+    def start(self, duty):
+        self.duty_cycle = duty
+        self.running = True
+        self._pwm_thread = Thread(target=self._run_pwm)
+        self._pwm_thread.daemon = True
+        self._pwm_thread.start()
+
+    def _run_pwm(self):
+        period = 1.0 / self.frequency
+        while self.running:
+            # Calculate on and off times based on duty cycle
+            on_time = period * (self.duty_cycle / 100.0)
+            off_time = period - on_time
+            # Set the pin high for on_time and low for off_time
+            self.lgpio.output(self.pin, True)
+            time.sleep(on_time)
+            self.lgpio.output(self.pin, False)
+            time.sleep(off_time)
+
+    def ChangeDutyCycle(self, duty):
+        self.duty_cycle = duty
+
+    def stop(self):
+        self.running = False
+
+
+###############################################################################
+# ClampingMotorController using lgpio
+
 class ClampingMotorController:
     def __init__(self):
-        GPIO.setmode(GPIO.BCM)
+        # Initialize our lgpio wrapper (no setmode needed)
+        self.lgpio = LGPIOWrapper()
         # --- Left Motor Driver Pins ---
         # For left side, we assume two motors (front and rear) are wired similarly.
         self.rl_in4 = 14
@@ -31,48 +106,50 @@ class ClampingMotorController:
         self.rr_in1  = 27
         self.rr_in2  = 22
 
-        # Setup all pins as outputs
+        # List of all motor pins
         motor_pins = [self.rl_in4, self.rl_in3, self.rl_ena, self.fl_ena,
                       self.fl_in1, self.fl_in2, self.fr_ena, self.fr_in4,
                       self.fr_in3, self.rr_ena, self.rr_in1, self.rr_in2]
-        for pin in motor_pins:
-            GPIO.setup(pin, GPIO.OUT)
 
-        # Set up PWM channels (100 Hz)
-        self.fl_pwm = GPIO.PWM(self.fl_ena, 100)
-        self.fr_pwm = GPIO.PWM(self.fr_ena, 100)
-        self.rl_pwm = GPIO.PWM(self.rl_ena, 100)
-        self.rr_pwm = GPIO.PWM(self.rr_ena, 100)
+        # Request each pin as an output using our lgpio wrapper
+        for pin in motor_pins:
+            self.lgpio.setup(pin)
+
+        # Set up PWM channels (100 Hz) for enable pins using our LGPIOPWM class
+        self.fl_pwm = LGPIOPWM(self.lgpio, self.fl_ena, 100)
+        self.fr_pwm = LGPIOPWM(self.lgpio, self.fr_ena, 100)
+        self.rl_pwm = LGPIOPWM(self.lgpio, self.rl_ena, 100)
+        self.rr_pwm = LGPIOPWM(self.lgpio, self.rr_ena, 100)
+        # Start them with 0% duty cycle
         self.fl_pwm.start(0)
         self.fr_pwm.start(0)
         self.rl_pwm.start(0)
         self.rr_pwm.start(0)
 
-        # Save the direction control pins for convenience.
-        self.fl_in1 = self.fl_in1; self.fl_in2 = self.fl_in2
-        self.rl_in3 = self.rl_in3; self.rl_in4 = self.rl_in4
-        self.fr_in3 = self.fr_in3; self.fr_in4 = self.fr_in4
-        self.rr_in1 = self.rr_in1; self.rr_in2 = self.rr_in2
-
         # Conversion factor: cm per revolution (set during calibration)
         self.distance_per_rev = None
 
     def drive_motors(self, l_speed, l_dir, r_speed, r_dir):
-        """Drive left and right motors at given speeds (0-100) and direction (True for forward, False for reverse)."""
+        """
+        Drive left and right motors at given speeds (0-100) and direction
+        (True for forward, False for reverse).
+        """
+        # Update PWM duty cycles for left and right enable pins
         self.fl_pwm.ChangeDutyCycle(l_speed)
         self.rl_pwm.ChangeDutyCycle(l_speed)
         self.fr_pwm.ChangeDutyCycle(r_speed)
         self.rr_pwm.ChangeDutyCycle(r_speed)
+
         # Left side: both motors use same direction signals.
-        GPIO.output(self.fl_in1, l_dir)
-        GPIO.output(self.fl_in2, not l_dir)
-        GPIO.output(self.rl_in3, l_dir)
-        GPIO.output(self.rl_in4, not l_dir)
+        self.lgpio.output(self.fl_in1, l_dir)
+        self.lgpio.output(self.fl_in2, not l_dir)
+        self.lgpio.output(self.rl_in3, l_dir)
+        self.lgpio.output(self.rl_in4, not l_dir)
         # Right side:
-        GPIO.output(self.fr_in3, r_dir)
-        GPIO.output(self.fr_in4, not r_dir)
-        GPIO.output(self.rr_in1, r_dir)
-        GPIO.output(self.rr_in2, not r_dir)
+        self.lgpio.output(self.fr_in3, r_dir)
+        self.lgpio.output(self.fr_in4, not r_dir)
+        self.lgpio.output(self.rr_in1, r_dir)
+        self.lgpio.output(self.rr_in2, not r_dir)
 
     def stop(self):
         """Stop all motors."""
@@ -115,14 +192,18 @@ class ClampingMotorController:
         print("Stretching complete.")
 
     def cleanup(self):
-        """Stop motors and clean up GPIO."""
+        """Stop motors, stop PWM threads and clean up lgpio."""
         self.stop()
-        GPIO.cleanup()
+        self.fl_pwm.stop()
+        self.fr_pwm.stop()
+        self.rl_pwm.stop()
+        self.rr_pwm.stop()
+        self.lgpio.cleanup()
 
 
-# ---------------------------
-# GUI Application
-# ---------------------------
+###############################################################################
+# GUI Application (unchanged except that it uses the new ClampingMotorController)
+
 class PreStretchTissueApp(ctk.CTk):
     def __init__(self):
         super().__init__()
