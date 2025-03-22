@@ -172,7 +172,7 @@ def module_init():
     # Create our GPIO wrapper using the chip handle
     _gpio_wrapper = LGPIOWrapper(_chip)
     # Open SPI channel 0; note we now pass only 4 arguments.
-    _spi_handle = lgpio.spi_open(_chip, 0, 500000, 0)
+    _spi_handle = lgpio.spi_open(_chip, 1, 500000, 0)
     if isinstance(_spi_handle, int) and _spi_handle < 0:
         raise RuntimeError("spi_open failed: can not open SPI device")
     return 0
