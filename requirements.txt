@@ -8,3 +8,4 @@ opencv-python
 matplotlib
 Pillow
 opencv-python-headless
+cairosvg

@@ -2,7 +2,8 @@ import shutil
 import customtkinter as ctk
 import multiprocessing.shared_memory as sm
 from tkinter import Canvas, Frame, Scrollbar, filedialog
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
+
 from tkinter import Canvas, StringVar
 import cv2
 import queue
@@ -23,10 +24,10 @@ import subprocess
 import queue
 import threading
 import sys
-import tkfontawesome as fa  # Make sure you've installed tkfontawesome
 import os
 import filecmp
-
+import threading
+import cairosvg
 
 #lps22
 import board
@@ -161,6 +162,7 @@ class App(ctk.CTk):
         self.target_pressure = None
         self.protocol_command = None
         self.target_time = None
+
         # --------------------------
         # input/output init
         # --------------------------
@@ -188,8 +190,7 @@ class App(ctk.CTk):
         self.nav_right_frame.pack(side="right", padx=20)
 
         # --- Logo on Left Side ---
-        # Here, if you have an SVG logo and CTkImage doesn't support SVG directly,
-        # consider converting it to PNG or using an alternative method.
+        # Load and display your logo (ensure the image file is the correct size)
         logo_image = ctk.CTkImage(light_image=Image.open("./img/lakelogo.png"), size=(50, 50))
         self.logo_button = ctk.CTkButton(
             self.nav_left_frame,
@@ -202,23 +203,35 @@ class App(ctk.CTk):
         self.logo_button.pack()
 
         # --- Generate White Icons for Navigation Buttons ---
-        # Define a helper function to create a CTkImage from a Font Awesome icon
-        def create_white_icon(icon_name, size=20):
-            # Generate the icon as a PIL image with the specified size and white fill color.
-            pil_icon = fa.Icon(icon_name, fill_color="white", size=size).to_PIL()
-            return ctk.CTkImage(light_image=pil_icon, size=(size, size))
+        # Instead of using tkfontawesome, load PNG icons from your local files.
+        # Define a helper function to create a CTkImage from an image file and resize it.
 
-        # Create icons by name (see tkfontawesome docs for available icon names)
-        home_icon = create_white_icon("fa-home")
-        protocol_icon = create_white_icon("fa-tools")
-        calibrate_icon = create_white_icon("fa-tachometer-alt")
-        settings_icon = create_white_icon("fa-cog")
+        def create_white_icon(image_path, size=(20, 20)):
+            # Convert SVG to PNG
+            png_path = image_path.replace('.svg', '.png')
+            cairosvg.svg2png(url=image_path, write_to=png_path)
+
+            # Open the PNG image and ensure it has an alpha channel
+            pil_image = Image.open(png_path).convert("RGBA")
+            # Convert the image to grayscale
+            gray_image = pil_image.convert("L")
+            # Colorize the grayscale image: set black stays black, white becomes white.
+            white_image = ImageOps.colorize(gray_image, black="black", white="white")
+            # Resize the image to the specified size
+            white_image = white_image.resize(size, Image.ANTIALIAS)
+            return ctk.CTkImage(light_image=white_image, size=size)
+
+        # Create icons by file path (make sure you have these icon files in your ./img/ folder)
+        home_icon = create_white_icon("./img/fa-home.svg", size=(20, 20))
+        protocol_icon = create_white_icon("./img/fa-tools.svg", size=(20, 20))
+        calibrate_icon = create_white_icon("./img/fa-tachometer-alt.svg", size=(20, 20))
+        settings_icon = create_white_icon("./img/fa-cog.svg", size=(20, 20))
 
         # --- Navigation Buttons on Right Side ---
-        # Packing the buttons with side="right" so they are aligned flush to the right with 20px spacing.
         self.settings_button = ctk.CTkButton(
             self.nav_right_frame,
             text="Settings",
+            text_color="white",
             image=settings_icon,
             compound="left",
             fg_color="transparent",
@@ -230,6 +243,7 @@ class App(ctk.CTk):
         self.inspector_button = ctk.CTkButton(
             self.nav_right_frame,
             text="Calibrate",
+            text_color="white",
             image=calibrate_icon,
             compound="left",
             fg_color="transparent",
@@ -242,6 +256,7 @@ class App(ctk.CTk):
             self.nav_right_frame,
             text="Protocol Builder",
             image=protocol_icon,
+            text_color="white",
             compound="left",
             fg_color="transparent",
             hover_color="#ffffff30",
@@ -253,6 +268,7 @@ class App(ctk.CTk):
             self.nav_right_frame,
             text="Home",
             image=home_icon,
+            text_color="white",
             compound="left",
             fg_color="transparent",
             hover_color="#ffffff30",
@@ -270,6 +286,13 @@ class App(ctk.CTk):
         self.protocol_builder_frame = None
         self.inspector_frame = None
         self.settings_frame = None
+
+        #set up readvalues
+        self.sensor_data = []
+
+        # Start the sensor reading in a separate daemon thread
+        self.sensor_thread = threading.Thread(target=self.read_sensors, daemon=True)
+        self.sensor_thread.start()
 
         self.show_home()
 
@@ -896,7 +919,7 @@ class App(ctk.CTk):
                 if self.init is not None:
                     self.protocol_start_time = time.time()
                     time_diff = 0
-
+                    self.sensor_data = []  # Reset sensor data for the new protocol
                     self.init = None
                 else:
                     current_time = time.time()
