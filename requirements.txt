@@ -4,5 +4,4 @@ spidev
 numpy
 scikit-learn
 customtkinter
-ADS1263
 tkfontawesome
