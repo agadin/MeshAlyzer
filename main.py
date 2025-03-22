@@ -132,6 +132,8 @@ class ProtocolViewer(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         self.running = True  # Initialize the running attribute
+        ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
+        ctk.set_default_color_theme("blue")
 
         icon_path = os.path.abspath('./img/ratfav.ico')
         png_icon_path = os.path.abspath('./img/ratfav.png')
