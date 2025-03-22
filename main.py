@@ -28,6 +28,8 @@ import os
 import filecmp
 import threading
 import cairosvg
+import xml.etree.ElementTree as ET
+
 
 #lps22
 import board
@@ -181,19 +183,42 @@ class App(ctk.CTk):
         # --------------------------
         # Top Navigation Bar Section
         # --------------------------
-        def create_white_icon(image_path, size=(20, 20)):
-            # Convert SVG to PNG in memory
-            png_data = cairosvg.svg2png(url=image_path)
+        def create_white_icon_direct(svg_path, size=(20, 20)):
+            # Parse the SVG file
+            tree = ET.parse(svg_path)
+            root = tree.getroot()
 
-            # Open the PNG image from the in-memory data
-            pil_image = Image.open(io.BytesIO(png_data)).convert("RGBA")
-            # Convert the image to grayscale
-            gray_image = pil_image.convert("L")
-            # Colorize the grayscale image: set black stays black, white becomes white.
-            white_image = ImageOps.colorize(gray_image, black="white", white="black")
-            # Resize the image to the specified size
-            white_image = white_image.resize(size, Image.ANTIALIAS)
-            return ctk.CTkImage(light_image=white_image, size=size)
+            # Define the SVG namespace (adjust if your SVG uses a different one)
+            ns = {'svg': 'http://www.w3.org/2000/svg'}
+
+            # Recursively update all fill attributes to white
+            for elem in root.iter():
+                # Check if the element has a fill attribute and change it to white
+                if 'fill' in elem.attrib:
+                    elem.attrib['fill'] = "#ffffff"
+                # Optionally, if your SVG uses inline styles, you can modify them too:
+                if 'style' in elem.attrib:
+                    styles = elem.attrib['style'].split(';')
+                    new_styles = []
+                    for style in styles:
+                        if style.strip().startswith("fill:"):
+                            new_styles.append("fill:#ffffff")
+                        else:
+                            new_styles.append(style)
+                    elem.attrib['style'] = ';'.join(new_styles)
+
+            # Convert the modified SVG tree back to a string
+            svg_data = ET.tostring(root, encoding="unicode")
+
+            # Convert the SVG (with white fills) to PNG using cairosvg
+            png_data = cairosvg.svg2png(bytestring=svg_data)
+
+            # Open the PNG with PIL, convert to RGBA, and resize to the target size
+            image = Image.open(io.BytesIO(png_data)).convert("RGBA")
+            image = image.resize(size, Image.ANTIALIAS)
+
+            # Return the CTkImage for use in your CTk interface
+            return ctk.CTkImage(light_image=image, size=size)
 
         self.nav_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
