@@ -896,6 +896,7 @@ class App(ctk.CTk):
                 if self.init is not None:
                     self.protocol_start_time = time.time()
                     time_diff = 0
+
                     self.init = None
                 else:
                     current_time = time.time()
