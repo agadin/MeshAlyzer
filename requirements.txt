@@ -6,3 +6,4 @@ scikit-learn
 time
 customtkinter
 ADS1263
+tkfontawesome

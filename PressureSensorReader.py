@@ -24,17 +24,17 @@ class PressureSensorReader:
             raise RuntimeError("ADC not initialized. Call setup() first.")
 
         ADC_Values = self.ADC.ADS1263_GetAll(self.channels)
-        sensor_readings = {}
+        sensor_readings = []
 
         channels_to_read = [specific_channel] if specific_channel is not None else self.channels
 
         for i in channels_to_read:
             if ADC_Values[i] >> 31 == 1:
-                sensor_readings[f"ADC1_IN{i}"] = -(self.REF * 2 - ADC_Values[i] * self.REF / 0x80000000)
+                sensor_readings.append(-(self.REF * 2 - ADC_Values[i] * self.REF / 0x80000000))
             else:
-                sensor_readings[f"ADC1_IN{i}"] = ADC_Values[i] * self.REF / 0x7FFFFFFF
+                sensor_readings.append(ADC_Values[i] * self.REF / 0x7FFFFFFF)
 
-        return sensor_readings
+        return tuple(sensor_readings)
 
     def cleanup(self):
         """Safely exit the ADC module."""
