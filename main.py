@@ -1,9 +1,9 @@
 import shutil
 import customtkinter as ctk
-import redis
 import multiprocessing.shared_memory as sm
 from tkinter import Canvas, Frame, Scrollbar, filedialog
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
+
 from tkinter import Canvas, StringVar
 import cv2
 import queue
@@ -24,9 +24,11 @@ import subprocess
 import queue
 import threading
 import sys
-import tkfontawesome as fa  # Make sure you've installed tkfontawesome
 import os
 import filecmp
+import threading
+import cairosvg
+import xml.etree.ElementTree as ET
 
 
 #lps22
@@ -131,7 +133,10 @@ class ProtocolViewer(ctk.CTkFrame):
 
 class App(ctk.CTk):
     def __init__(self):
+        super().__init__()  # Initialize the parent class
         self.running = True  # Initialize the running attribute
+        ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
+        ctk.set_default_color_theme("blue")
 
         icon_path = os.path.abspath('./img/ratfav.ico')
         png_icon_path = os.path.abspath('./img/ratfav.png')
@@ -154,7 +159,7 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
-        self.show_boot_animation() #maybe thread this?
+        threading.Thread(target=self.show_boot_animation, daemon=True).start()
 
         # Protocol Handling dictionary inti
         self.data_dict = {}
@@ -162,6 +167,7 @@ class App(ctk.CTk):
         self.target_pressure = None
         self.protocol_command = None
         self.target_time = None
+
         # --------------------------
         # input/output init
         # --------------------------
@@ -177,6 +183,8 @@ class App(ctk.CTk):
         # --------------------------
         # Top Navigation Bar Section
         # --------------------------
+
+
         self.nav_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
 
@@ -189,37 +197,44 @@ class App(ctk.CTk):
         self.nav_right_frame.pack(side="right", padx=20)
 
         # --- Logo on Left Side ---
-        # Here, if you have an SVG logo and CTkImage doesn't support SVG directly,
-        # consider converting it to PNG or using an alternative method.
-        logo_image = ctk.CTkImage(light_image=Image.open("./img/lakelogo.png"), size=(50, 50))
+        # Create a white icon from the SVG file
+        icon_size = (20, 20)
+
+        image_path = "./img/lakelogo.png"
+        pil_image = Image.open(image_path)
+
+        # Create a CTkImage object
+        logo_image = ctk.CTkImage(light_image=pil_image, size=(50, 50))
+
+
+        # Use the white icon in a CTkButton
         self.logo_button = ctk.CTkButton(
             self.nav_left_frame,
             image=logo_image,
             text="",
             fg_color="transparent",
-            hover_color="#ffffff30",  # semi-transparent white on hover
+            hover_color="#ffffff30",
             command=self.show_home
         )
         self.logo_button.pack()
 
-        # --- Generate White Icons for Navigation Buttons ---
-        # Define a helper function to create a CTkImage from a Font Awesome icon
-        def create_white_icon(icon_name, size=20):
-            # Generate the icon as a PIL image with the specified size and white fill color.
-            pil_icon = fa.Icon(icon_name, fill_color="white", size=size).to_PIL()
-            return ctk.CTkImage(light_image=pil_icon, size=(size, size))
+        # Load the PNG images
+        home_icon_image = Image.open("./img/fa-home.png")
+        protocol_icon_image = Image.open("./img/fa-tools.png")
+        calibrate_icon_image = Image.open("./img/fa-tachometer-alt.png")
+        settings_icon_image = Image.open("./img/fa-cog.png")
 
-        # Create icons by name (see tkfontawesome docs for available icon names)
-        home_icon = create_white_icon("fa-home")
-        protocol_icon = create_white_icon("fa-tools")
-        calibrate_icon = create_white_icon("fa-tachometer-alt")
-        settings_icon = create_white_icon("fa-cog")
+        # Create CTkImage objects
+        home_icon = ctk.CTkImage(light_image=home_icon_image, size=(20, 20))
+        protocol_icon = ctk.CTkImage(light_image=protocol_icon_image, size=(20, 20))
+        calibrate_icon = ctk.CTkImage(light_image=calibrate_icon_image, size=(20, 20))
+        settings_icon = ctk.CTkImage(light_image=settings_icon_image, size=(20, 20))
 
         # --- Navigation Buttons on Right Side ---
-        # Packing the buttons with side="right" so they are aligned flush to the right with 20px spacing.
         self.settings_button = ctk.CTkButton(
             self.nav_right_frame,
             text="Settings",
+            text_color="white",
             image=settings_icon,
             compound="left",
             fg_color="transparent",
@@ -231,6 +246,7 @@ class App(ctk.CTk):
         self.inspector_button = ctk.CTkButton(
             self.nav_right_frame,
             text="Calibrate",
+            text_color="white",
             image=calibrate_icon,
             compound="left",
             fg_color="transparent",
@@ -243,6 +259,7 @@ class App(ctk.CTk):
             self.nav_right_frame,
             text="Protocol Builder",
             image=protocol_icon,
+            text_color="white",
             compound="left",
             fg_color="transparent",
             hover_color="#ffffff30",
@@ -254,6 +271,7 @@ class App(ctk.CTk):
             self.nav_right_frame,
             text="Home",
             image=home_icon,
+            text_color="white",
             compound="left",
             fg_color="transparent",
             hover_color="#ffffff30",
@@ -271,6 +289,13 @@ class App(ctk.CTk):
         self.protocol_builder_frame = None
         self.inspector_frame = None
         self.settings_frame = None
+
+        #set up readvalues
+        self.sensor_data = []
+
+        # Start the sensor reading in a separate daemon thread
+        self.sensor_thread = threading.Thread(target=self.read_sensors, daemon=True)
+        self.sensor_thread.start()
 
         self.show_home()
 
@@ -432,11 +457,6 @@ class App(ctk.CTk):
         self.clear_button.pack(pady=10)
 
         # Start background threads
-        self.running = True
-        self.update_thread = Thread(target=self.update_shared_memory)
-        # self.calibration_thread = Thread(target=self.update_displays)
-        self.update_thread.start()
-        # self.calibration_thread.start()
 
         self.update_graph_view("Angle v Force")  # Initialize with default view
 
@@ -468,8 +488,9 @@ class App(ctk.CTk):
         """Display the protocol builder page with a sidebar and main content area."""
         self.clear_content_frame()
 
-
-
+    def toggle_mode(self):
+        mode = "Light" if ctk.get_appearance_mode() == "Dark" else "Dark"
+        ctk.set_appearance_mode(mode)
 
     def show_inspector(self):
         # create a side bar that has a drop down menu for the user to select the trial they want to inspect. The trials will be read by reading the folders in ./data directory. If there are no trials in the directory the user will be prompted by a pop up window to got to the home page to run a protocol or can manually select one which will open up a file path dialog box for them to select the trial they want to inspect. Automatically create the figures for the trial and display them in the main frame
@@ -897,6 +918,7 @@ class App(ctk.CTk):
                 if self.init is not None:
                     self.protocol_start_time = time.time()
                     time_diff = 0
+                    self.sensor_data = []  # Reset sensor data for the new protocol
                     self.init = None
                 else:
                     current_time = time.time()

@@ -2,8 +2,10 @@ customtkinter
 lgpio
 spidev
 numpy
-scikit-learn
-time
 customtkinter
-ADS1263
 tkfontawesome
+opencv-python
+matplotlib
+Pillow
+opencv-python-headless
+cairosvg
