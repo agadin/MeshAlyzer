@@ -1,6 +1,5 @@
 import shutil
 import customtkinter as ctk
-import redis
 import multiprocessing.shared_memory as sm
 from tkinter import Canvas, Frame, Scrollbar, filedialog
 from PIL import Image, ImageTk
