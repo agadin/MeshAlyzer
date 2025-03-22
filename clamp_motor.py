@@ -13,7 +13,6 @@ class MotorController:
         """
         self.ser = serial.Serial(port, baudrate, timeout=timeout)
         # Allow time for the Arduino to reset.
-        time.sleep(2)
         print(f"MotorController initialized on port {port}")
 
     def send_command(self, command):
