@@ -3,10 +3,11 @@ import time
 
 
 class MotorController:
-    def __init__(self, port, baudrate=9600, timeout=1):
+    def __init__(self, port="/dev/ttyACM0", baudrate=9600, timeout=1):
         """
         Initialize the serial connection to the Arduino.
-        :param port: The serial port (e.g., "COM3" on Windows or "/dev/ttyACM0" on Linux/Mac).
+
+        :param port: The serial port (default: "/dev/ttyACM0" for Raspberry Pi).
         :param baudrate: Baud rate for the serial connection.
         :param timeout: Read timeout in seconds.
         """
@@ -18,6 +19,7 @@ class MotorController:
     def send_command(self, command):
         """
         Sends a command string to the Arduino and reads any response.
+
         :param command: Command string to send (e.g., "forward,10").
         :return: Response from the Arduino.
         """
@@ -52,8 +54,8 @@ class MotorController:
 
 
 def main():
-    # Replace 'COM3' with your Arduino's serial port (e.g., '/dev/ttyACM0' on Linux/Mac)
-    port = input("Enter Arduino port (e.g., COM3 or /dev/ttyACM0): ").strip()
+    # Use the default port /dev/ttyACM0 for the Raspberry Pi
+    port = "/dev/ttyACM0"
     controller = MotorController(port=port, baudrate=9600)
 
     print("Enter commands:")
