@@ -87,8 +87,8 @@ if __name__ == "__main__":
     try:
         # Define test pins (adjust these based on your actual wiring)
         # Example: Two groups – supply pins for inflation and vent pins for deflation.
-        test_supply_pins = [20, 12]  # e.g., PIN1 and PIN3 for inflation
-        test_vent_pins = [27, 24]  # e.g., PIN2 and PIN4 for deflation
+        test_supply_pins = [20]  # e.g., PIN1 and PIN3 for inflation
+        test_vent_pins = [27]  # e.g., PIN2 and PIN4 for deflation
 
         valve = ValveController(supply_pins=test_supply_pins, vent_pins=test_vent_pins)
 
