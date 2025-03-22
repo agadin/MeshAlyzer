@@ -200,7 +200,7 @@ class App(ctk.CTk):
         # Create a white icon from the SVG file
         icon_size = (20, 20)
 
-        image_path = "./img/lakelab.png"
+        image_path = "./img/lakelogo.png"
         pil_image = Image.open(image_path)
 
         # Create a CTkImage object
