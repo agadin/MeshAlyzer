@@ -12,6 +12,7 @@ LOW = 0
 # ---------------------------------------------------------------------------
 # ADS1263 configuration dictionaries
 
+
 # gain
 ADS1263_GAIN = {
     'ADS1263_GAIN_1' : 0,   # GAIN   1
@@ -170,13 +171,16 @@ def module_init():
     _chip = lgpio.gpiochip_open(0)
     # Create our GPIO wrapper using the chip handle
     _gpio_wrapper = LGPIOWrapper(_chip)
-    # Open SPI channel 0; set speed (e.g., 500kHz), mode 0, flags 0
-    _spi_handle = lgpio.spi_open(_chip, 0, 500000, 0, 0)
+    # Open SPI channel 0; note we now pass only 4 arguments.
+    _spi_handle = lgpio.spi_open(_chip, 0, 500000, 0)
     return 0
 
 def module_exit():
     global _chip, _spi_handle, _gpio_wrapper
-    lgpio.spi_close(_spi_handle)
+    try:
+        lgpio.spi_close(_spi_handle)
+    except Exception as e:
+        print("Error closing SPI:", e)
     _gpio_wrapper.cleanup()
     lgpio.gpiochip_close(_chip)
 
