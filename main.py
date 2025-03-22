@@ -390,6 +390,10 @@ class App(ctk.CTk):
     def show_home(self):
         self.clear_content_frame()
 
+        # Sidebar
+        self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
+        self.sidebar_frame.pack(side="left", fill="y", padx=15)
+
         # Protocol selector
         self.protocol_label = ctk.CTkLabel(self.sidebar_frame, text="Select a Protocol:")
         self.protocol_label.pack(pady=15, padx=15)
