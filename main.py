@@ -181,6 +181,21 @@ class App(ctk.CTk):
         # --------------------------
         # Top Navigation Bar Section
         # --------------------------
+        def create_white_icon(image_path, size=(20, 20)):
+            # Convert SVG to PNG
+            png_path = image_path
+            cairosvg.svg2png(url=image_path, write_to=png_path)
+
+            # Open the PNG image and ensure it has an alpha channel
+            pil_image = Image.open(png_path).convert("RGBA")
+            # Convert the image to grayscale
+            gray_image = pil_image.convert("L")
+            # Colorize the grayscale image: set black stays black, white becomes white.
+            white_image = ImageOps.colorize(gray_image, black="black", white="white")
+            # Resize the image to the specified size
+            white_image = white_image.resize(size, Image.ANTIALIAS)
+            return ctk.CTkImage(light_image=white_image, size=size)
+
         self.nav_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
 
@@ -193,14 +208,18 @@ class App(ctk.CTk):
         self.nav_right_frame.pack(side="right", padx=20)
 
         # --- Logo on Left Side ---
-        # Load and display your logo (ensure the image file is the correct size)
-        logo_image = ctk.CTkImage(light_image=Image.open("./img/lakelogo.png"), size=(50, 50))
+        # Create a white icon from the SVG file
+        icon_size = (20, 20)
+
+        white_icon = create_white_icon(icon_path, icon_size)
+
+        # Use the white icon in a CTkButton
         self.logo_button = ctk.CTkButton(
             self.nav_left_frame,
-            image=logo_image,
+            image=white_icon,
             text="",
             fg_color="transparent",
-            hover_color="#ffffff30",  # semi-transparent white on hover
+            hover_color="#ffffff30",
             command=self.show_home
         )
         self.logo_button.pack()
@@ -209,20 +228,7 @@ class App(ctk.CTk):
         # Instead of using tkfontawesome, load PNG icons from your local files.
         # Define a helper function to create a CTkImage from an image file and resize it.
 
-        def create_white_icon(image_path, size=(20, 20)):
-            # Convert SVG to PNG
-            png_path = image_path.replace('.svg', '.png')
-            cairosvg.svg2png(url=image_path, write_to=png_path)
 
-            # Open the PNG image and ensure it has an alpha channel
-            pil_image = Image.open(png_path).convert("RGBA")
-            # Convert the image to grayscale
-            gray_image = pil_image.convert("L")
-            # Colorize the grayscale image: set black stays black, white becomes white.
-            white_image = ImageOps.colorize(gray_image, black="black", white="white")
-            # Resize the image to the specified size
-            white_image = white_image.resize(size, Image.ANTIALIAS)
-            return ctk.CTkImage(light_image=white_image, size=size)
 
         # Create icons by file path (make sure you have these icon files in your ./img/ folder)
         home_icon = create_white_icon("./img/fa-home.svg", size=(20, 20))
