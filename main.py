@@ -131,6 +131,7 @@ class ProtocolViewer(ctk.CTkFrame):
 
 class App(ctk.CTk):
     def __init__(self):
+        super().__init__()  # Initialize the parent class
         self.running = True  # Initialize the running attribute
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
         ctk.set_default_color_theme("blue")
@@ -156,7 +157,7 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
-        self.show_boot_animation() #maybe thread this?
+        threading.Thread(target=self.show_boot_animation, daemon=True).start()
 
         # Protocol Handling dictionary inti
         self.data_dict = {}
