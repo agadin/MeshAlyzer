@@ -183,7 +183,7 @@ class App(ctk.CTk):
         # --------------------------
         # Top Navigation Bar Section
         # --------------------------
-        def create_white_icon_direct(svg_path, size=(20, 20)):
+        def create_white_icon(svg_path, size=(20, 20)):
             # Parse the SVG file
             tree = ET.parse(svg_path)
             root = tree.getroot()
