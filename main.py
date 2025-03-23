@@ -169,6 +169,7 @@ class App(ctk.CTk):
         self.protocol_command = None
         self.target_time = None
         self.protocol_running = False  # Flag to indicate if the protocol is running
+        self.total_steps = 0
 
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
@@ -319,6 +320,7 @@ class App(ctk.CTk):
             default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
             ctk.set_appearance_mode(default_mode)
 
+        # Initialize the home display
         self.show_home()
 
     def show_boot_animation(self):
@@ -348,7 +350,7 @@ class App(ctk.CTk):
 
         # Function to play video
         def play_video():
-            video_path = "./img/MeshAlyzer.mp4"
+            video_path = "./img/MeshAlyzer_.mp4"
             video = cv2.VideoCapture(video_path)
 
             setup_steps = [
@@ -421,6 +423,10 @@ class App(ctk.CTk):
         # Sidebar
         self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
         self.sidebar_frame.pack(side="left", fill="y", padx=15)
+
+        # Calibrate button
+        self.calibrate_button = ctk.CTkButton(self.sidebar_frame, text="Calibrate", command=self.show_inspector)
+        self.calibrate_button.pack(pady=15, padx=15)
 
         # Protocol selector
         self.protocol_label = ctk.CTkLabel(self.sidebar_frame, text="Select a Protocol:")
@@ -618,7 +624,7 @@ class App(ctk.CTk):
                     current_step = 0
                 self.protocol_step_counter.configure(text=f"Step: {current_step} / {self.total_steps}")
             try:
-                calibration_level = int(redis_client.get("calibration_Level") or 0)
+                calibration_level = 0 #Cole change later
                 if calibration_level == 0:
                     self.calibrate_button.configure(fg_color="red")
                 elif calibration_level == 1:
