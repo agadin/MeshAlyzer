@@ -326,8 +326,8 @@ class App(ctk.CTk):
         self.overrideredirect(True)
 
         # Set the desired window size (720p video dimensions)
-        window_width = 1280
-        window_height = 720
+        window_width = 854
+        window_height = 480
 
         # Calculate the center of the screen
         screen_width = self.winfo_screenwidth()
