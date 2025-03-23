@@ -1077,7 +1077,6 @@ class App(ctk.CTk):
                     'seconds': int(time_diff % 60),
                     'milliseconds': int((time_diff * 1000) % 1000)
                 })
-            print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
 
     def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
