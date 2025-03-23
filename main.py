@@ -599,7 +599,6 @@ class App(ctk.CTk):
         print("Step count: ", step_count)
         print("Current angle: ", current_angle)
         if self.home_displayed:
-            if step_count is not None:
                 self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 if step_count < 0:
                     if self.step_time is not None:
@@ -615,28 +614,20 @@ class App(ctk.CTk):
                 if current_step_number is None:
                     current_step_number = 0
                 self.protocol_step_counter.configure(text=f"Step: {current_step_number} / {self.total_steps}")
+
+        try:
+            calibration_level = 0 #Cole change later
+            if calibration_level == 0:
+                self.calibrate_button.configure(fg_color="red")
+            elif calibration_level == 1:
+                self.calibrate_button.configure(fg_color="yellow")
+            elif calibration_level == 2:
+                self.calibrate_button.configure(fg_color="green")
             else:
-                self.step_display.configure(text="N/A")
-                self.angle_display.configure(text="N/A")
-                self.force_display.configure(text="N/A")
-                self.time_display.configure(text=f"{int(0):02}:{int(0):02}:{int(0):02}.{0:03}")
-                current_step = redis_client.get("current_step")
-                if current_step is None:
-                    current_step = 0
-                self.protocol_step_counter.configure(text=f"Step: {current_step} / {self.total_steps}")
-            try:
-                calibration_level = 0 #Cole change later
-                if calibration_level == 0:
-                    self.calibrate_button.configure(fg_color="red")
-                elif calibration_level == 1:
-                    self.calibrate_button.configure(fg_color="yellow")
-                elif calibration_level == 2:
-                    self.calibrate_button.configure(fg_color="green")
-                else:
-                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
-            except Exception as e:
-                print(f"Error updating Calibrate button: {e}")
-                self.calibrate_button.configure(fg_color="gray")
+                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+        except Exception as e:
+            print(f"Error updating Calibrate button: {e}")
+            self.calibrate_button.configure(fg_color="gray")
 
     def clear_graphs(self):
         # Reset the data lists
@@ -1081,9 +1072,9 @@ class App(ctk.CTk):
                     'step_count': self.protocol_step,
                     'current_angle': self.pressure0_convert,
                     'current_force': self.pressure3_convert,
-                    'minutes': int(time_diff // 60),
-                    'seconds': int(time_diff % 60),
-                    'milliseconds': int((time_diff * 1000) % 1000)
+                    'minutes': 0,
+                    'seconds': 0,
+                    'milliseconds': 0
                 })
             # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
