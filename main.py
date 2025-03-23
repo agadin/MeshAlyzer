@@ -410,6 +410,7 @@ class App(ctk.CTk):
             self.pressure1 = pressure1
             self.pressure2 = pressure2
             self.pressure3 = pressure3
+            print(  pressure0, pressure1, pressure2, pressure3)
 
     def show_home(self):
         self.clear_content_frame()
