@@ -219,7 +219,7 @@ class App(ctk.CTk):
             image=logo_image,
             text="",
             fg_color="transparent",
-            hover_color="black" , # or another valid 6-digit hex or named color
+            hover_color="gray" , # or another valid 6-digit hex or named color
             command=self.show_home
         )
         self.logo_button.pack()
@@ -244,7 +244,7 @@ class App(ctk.CTk):
             image=settings_icon,
             compound="left",
             fg_color="transparent",
-            hover_color="black",
+            hover_color="gray",
             command=self.show_settings
         )
         self.settings_button.pack(side="right", padx=20)
@@ -256,7 +256,7 @@ class App(ctk.CTk):
             image=calibrate_icon,
             compound="left",
             fg_color="transparent",
-            hover_color="black",
+            hover_color="gray",
             command=self.show_inspector
         )
         self.inspector_button.pack(side="right", padx=20)
@@ -268,7 +268,7 @@ class App(ctk.CTk):
             text_color="white",
             compound="left",
             fg_color="transparent",
-            hover_color="#ffffff30",
+            hover_color="gray",
             command=self.show_protocol_builder
         )
         self.protocol_builder_button.pack(side="right", padx=20)
@@ -280,7 +280,7 @@ class App(ctk.CTk):
             text_color="white",
             compound="left",
             fg_color="transparent",
-            hover_color="black",
+            hover_color="gray",
             command=self.show_home
         )
         self.home_button.pack(side="right", padx=20)
