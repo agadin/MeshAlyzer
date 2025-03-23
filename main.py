@@ -169,6 +169,7 @@ class App(ctk.CTk):
         self.protocol_command = None
         self.target_time = None
         self.protocol_running = False  # Flag to indicate if the protocol is running
+        self.total_steps = 0
 
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
@@ -319,6 +320,7 @@ class App(ctk.CTk):
             default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
             ctk.set_appearance_mode(default_mode)
 
+        # Initialize the home display
         self.show_home()
 
     def show_boot_animation(self):
@@ -348,7 +350,7 @@ class App(ctk.CTk):
 
         # Function to play video
         def play_video():
-            video_path = "./img/MeshAlyzer.mp4"
+            video_path = "./img/MeshAlyzer_.mp4"
             video = cv2.VideoCapture(video_path)
 
             setup_steps = [
