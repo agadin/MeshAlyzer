@@ -1,76 +1,141 @@
-# config.py:
-# /*****************************************************************************
-# * | File        :   config.py
-# * | Author      :   Waveshare team (modified for lgpio)
-# * | Function    :   Hardware underlying interface using lgpio
-# * | Info        :
-# ******************************************************************************/
+#!/usr/bin/env python3
+"""
+/*****************************************************************************
+ * | File        :   config.py
+ * | Author      :   Waveshare team (modified)
+ * | Function    :   Hardware underlying interface using lgpio instead of RPi.GPIO
+ * | Info        :
+ *----------------
+ * | This version:   V1.0 (modified for lgpio)
+ * | Date        :   2020-12-12 (original), updated for lgpio
+ ******************************************************************************
+ *
+ * Permission is hereby granted...
+ *****************************************************************************/
+"""
 
+import os
+import sys
 import time
-import lgpio
+import spidev
+import lgpio  # Using lgpio instead of RPi.GPIO
 
-# Define HIGH and LOW constants
-HIGH = 1
-LOW = 0
 
-class LgpioInterface:
-    # Pin definitions
+class RaspberryPi:
+    # Pin definition (BCM numbering)
     RST_PIN = 18
     CS_PIN = 22
     DRDY_PIN = 17
 
     def __init__(self):
-        # Open the default GPIO chip (chip 0)
-        self.chip = lgpio.gpiochip_open(0)
-        # Set up pins as outputs/inputs
-        self.setup_output(self.RST_PIN)
-        self.setup_output(self.CS_PIN)
-        self.setup_input(self.DRDY_PIN)
-        # Open SPI channel using lgpio's SPI functions:
-        # Parameters: chip handle, SPI channel (0), speed, SPI mode (0b01)
-        self.spi_handle = lgpio.spi_open(self.chip, 0, 2000000, 0b01)
-
-    def setup_output(self, pin):
-        # Claim the pin for output with an initial LOW state
-        lgpio.gpio_claim_output(self.chip, pin, LOW)
-
-    def setup_input(self, pin):
-        # Claim the pin for input
-        lgpio.gpio_claim_input(self.chip, pin)
+        self.SPI = spidev.SpiDev(0, 0)
+        self.chip_handle = None
 
     def digital_write(self, pin, value):
-        lgpio.gpio_write(self.chip, pin, value)
+        lgpio.gpio_write(self.chip_handle, pin, value)
 
     def digital_read(self, pin):
-        return lgpio.gpio_read(self.chip, pin)
+        return lgpio.gpio_read(self.chip_handle, pin)
 
     def delay_ms(self, delaytime):
         time.sleep(delaytime / 1000.0)
 
     def spi_writebyte(self, data):
-        # Convert list of integers to bytes and write via SPI
-        lgpio.spi_write(self.spi_handle, bytes(data))
+        self.SPI.writebytes(data)
 
-    def spi_readbytes(self, length):
-        # Read 'length' bytes via SPI and return as a list of integers
-        result = lgpio.spi_read(self.spi_handle, length)
-        return list(result)
+    def spi_readbytes(self, n):
+        return self.SPI.readbytes(n)
 
     def module_init(self):
-        # Initialization is handled in __init__
+        # Initialize SPI
+        self.SPI.max_speed_hz = 2000000
+        # You may experiment with mode 0 or mode 1; try mode 0 if mode 1 still fails.
+        self.SPI.mode = 0b01
+
+        # Initialize lgpio: open GPIO chip 0
+        try:
+            self.chip_handle = lgpio.gpiochip_open(0)
+        except Exception as e:
+            print("Error opening GPIO chip:", e)
+            return -1
+
+        # Claim outputs for RST and CS with initial values: RST LOW, CS HIGH
+        try:
+            # Note: pass pin numbers as a list
+            lgpio.gpio_claim_output(self.chip_handle, [self.RST_PIN], 0)
+            lgpio.gpio_claim_output(self.chip_handle, [self.CS_PIN], 1)
+        except Exception as e:
+            print("Error claiming output lines:", e)
+            return -1
+
+        # Claim input for DRDY (as a list)
+        try:
+            lgpio.gpio_claim_input(self.chip_handle, [self.DRDY_PIN])
+        except Exception as e:
+            print("Error claiming input line:", e)
+            return -1
+
         return 0
 
     def module_exit(self):
-        lgpio.spi_close(self.spi_handle)
-        lgpio.gpiochip_close(self.chip)
+        # Set pins to a safe state and close resources
+        try:
+            lgpio.gpio_write(self.chip_handle, self.RST_PIN, 0)
+            lgpio.gpio_write(self.chip_handle, self.CS_PIN, 0)
+            lgpio.gpiochip_close(self.chip_handle)
+        except Exception as e:
+            print("Error during cleanup:", e)
+        self.SPI.close()
 
 
-# Expose functions and constants at module level.
-implementation = LgpioInterface()
+class JetsonNano:
+    # Pin definition (BCM numbering)
+    RST_PIN = 18
+    CS_PIN = 22
+    DRDY_PIN = 17
+
+    def __init__(self):
+        self.SPI = spidev.SpiDev(0, 0)
+        import Jetson.GPIO as GPIO
+        self.GPIO = GPIO
+
+    def digital_write(self, pin, value):
+        self.GPIO.output(pin, value)
+
+    def digital_read(self, pin):
+        return self.GPIO.input(pin)
+
+    def delay_ms(self, delaytime):
+        time.sleep(delaytime / 1000.0)
+
+    def spi_writebyte(self, data):
+        self.SPI.writebytes(data)
+
+    def spi_readbytes(self, n):
+        return self.SPI.readbytes(n)
+
+    def module_init(self):
+        self.GPIO.setmode(self.GPIO.BCM)
+        self.GPIO.setwarnings(False)
+        self.GPIO.setup(self.RST_PIN, self.GPIO.OUT)
+        self.GPIO.setup(self.CS_PIN, self.GPIO.OUT)
+        self.GPIO.setup(self.DRDY_PIN, self.GPIO.IN)
+        self.SPI.max_speed_hz = 2000000
+        self.SPI.mode = 0b01
+        return 0
+
+    def module_exit(self):
+        self.SPI.close()
+        self.GPIO.output(self.RST_PIN, 0)
+        self.GPIO.cleanup()
+
+
+hostname = os.popen("uname -n").read().strip()
+
+if hostname == "raspberrypi":
+    implementation = RaspberryPi()
+else:
+    implementation = JetsonNano()
+
 for func in [x for x in dir(implementation) if not x.startswith('_')]:
-    globals()[func] = getattr(implementation, func)
-
-# Also expose HIGH, LOW, and pin definitions.
-RST_PIN = LgpioInterface.RST_PIN
-CS_PIN = LgpioInterface.CS_PIN
-DRDY_PIN = LgpioInterface.DRDY_PIN
+    setattr(sys.modules[__name__], func, getattr(implementation, func))
