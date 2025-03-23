@@ -227,57 +227,59 @@ class CalibratePage(ctk.CTkFrame):
         For each calibration step from 0 psi to 145 psi (increment 7.25 psi):
           - Activate both valves continuously for 10 seconds.
           - After 10 seconds, set valves to neutral.
-          - Prompt the user to type in the measured pressure.
-          - Record the target and measured pressures.
-          - Save all calibration data to a CSV file under the base folder 'calibration_data'.
+          - Prompt the user to enter the measured pressure.
+          - Save a separate CSV file (one per target pressure) containing the target and measured pressure.
+          - All files are saved under a base folder 'calibration_data'.
         """
         current_pressure = 0
         increment = 7.25
-        calibration_results = []
-        print("Starting full sensor calibration...")
-        while current_pressure <= 145:
-            print(f"Calibrating at target {current_pressure} psi...")
-            self.app.valve1.supply()
-            self.app.valve2.supply()
-            time.sleep(10)
-            self.app.valve1.neutral()
-            self.app.valve2.neutral()
-            print("Valves set to neutral after 10 seconds.")
-            # Prompt the user for the measured pressure
-            measured_pressure = self.prompt_measured_pressure(current_pressure)
-            print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
-            calibration_results.append({
-                "target_pressure": current_pressure,
-                "measured_pressure": measured_pressure
-            })
-            current_pressure += increment
-
-        # Save the calibration results under the base folder 'calibration_data'
         base_folder = "calibration_data"
         if not os.path.exists(base_folder):
             os.makedirs(base_folder)
             print(f"Created base folder: {base_folder}")
-        calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
-        if not os.path.exists(calibration_folder):
-            os.makedirs(calibration_folder)
-            print(f"Created calibration folder: {calibration_folder}")
-        csv_filename = os.path.join(
-            calibration_folder,
-            f"raw_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_0_psi_calibration.csv"
-        )
-        print(f"Saving calibration data to CSV file: {csv_filename}")
-        import csv
-        with open(csv_filename, "w", newline="") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=[
-                "target_pressure", "measured_pressure"
-            ])
-            writer.writeheader()
-            for row in calibration_results:
-                writer.writerow(row)
-        print("Calibration data successfully saved.")
+
+        while current_pressure <= 145:
+            print(f"Calibrating at target {current_pressure} psi...")
+            # Activate both valves
+            self.app.valve1.supply()
+            self.app.valve2.supply()
+            time.sleep(10)
+            # Turn valves off
+            self.app.valve1.neutral()
+            self.app.valve2.neutral()
+            print("Valves set to neutral after 10 seconds.")
+
+            # Prompt user for measured pressure
+            measured_pressure = self.prompt_measured_pressure(current_pressure)
+            print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
+
+            # Create calibration folder under the base folder with current date
+            calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
+            if not os.path.exists(calibration_folder):
+                os.makedirs(calibration_folder)
+                print(f"Created calibration folder: {calibration_folder}")
+
+            # Create a unique CSV file name for this target pressure
+            csv_filename = os.path.join(
+                calibration_folder,
+                f"calibration_{current_pressure}_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
+            )
+            print(f"Saving calibration data for target {current_pressure} psi to file: {csv_filename}")
+            import csv
+            with open(csv_filename, "w", newline="") as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=["target_pressure", "measured_pressure"])
+                writer.writeheader()
+                writer.writerow({
+                    "target_pressure": current_pressure,
+                    "measured_pressure": measured_pressure
+                })
+            print(f"Calibration data for {current_pressure} psi saved successfully.")
+            current_pressure += increment
+
         complete_popup = ctk.CTkToplevel(self)
         complete_popup.title("Calibration Complete")
-        tk.Label(complete_popup, text="Sensor calibration is complete and data has been saved.").pack(padx=10, pady=10)
+        tk.Label(complete_popup, text="Sensor calibration is complete and all data has been saved.").pack(padx=10,
+                                                                                                          pady=10)
         ctk.CTkButton(complete_popup, text="OK", command=complete_popup.destroy).pack(pady=5)
 
     def update_sensor_buttons(self, success_list):
