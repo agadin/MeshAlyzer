@@ -159,7 +159,7 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
-        self.show_boot_animation, daemon=True
+        self.show_boot_animation, daemon=True()
 
         # Protocol Handling dictionary inti
         self.data_dict = {}
