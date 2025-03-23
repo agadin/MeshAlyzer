@@ -49,10 +49,6 @@ class ProtocolViewer(ctk.CTkFrame):
         self.protocol_folder = protocol_folder
         self.protocol_var = protocol_var
 
-        ## clamp state
-        self.clamp_state = None
-        self.clamp_state = False  # or True, depending on your system
-
         self.protocol_steps = []  # List of parsed protocol steps
         self.step_widgets = []  # References to step widgets for updating opacity
 
@@ -177,6 +173,10 @@ class App(ctk.CTk):
         self.pressure_receiver = PressureReceiver()
         self.pressure_thread = threading.Thread(target=self.pressure_receiver.run, daemon=True)
         self.pressure_thread.start()
+
+        ## clamp state
+        self.clamp_state = None
+        self.clamp_state = False  # or True, depending on your system
 
 
         # --------------------------
@@ -1195,6 +1195,10 @@ class App(ctk.CTk):
         if hasattr(self, 'update_thread'):
             self.update_thread.join()
         self.destroy()
+
+    def update_output_window(self):
+        # Define the method's functionality here
+        pass
 
 if __name__ == "__main__":
     app = App()
