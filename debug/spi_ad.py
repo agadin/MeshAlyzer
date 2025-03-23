@@ -64,8 +64,9 @@ def main():
 
     # Claim RST and CS as outputs and DRDY as input (pass pin numbers as lists)
     try:
-        lgpio.gpio_claim_output(chip_handle, [RST_PIN], [0])
-        lgpio.gpio_claim_output(chip_handle, [CS_PIN], [1])     # CS initially HIGH
+        lgpio.gpio_claim_output(chip_handle, [RST_PIN], 0)  # RST initially LOW
+        lgpio.gpio_claim_output(chip_handle, [CS_PIN], 1)  # CS initially HIGH
+        # CS initially HIGH
         lgpio.gpio_claim_input(chip_handle, [DRDY_PIN])
     except Exception as e:
         print("Failed to claim GPIO lines:", e)
