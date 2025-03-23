@@ -44,7 +44,6 @@ class PressureReceiver:
                 p2 = sensors.get("channel_2", 0.0)
                 p3 = sensors.get("channel_3", 0.0)
                 PressureReceiver._latest_pressures = [p0, p1, p2, p3]
-                print(f"[SERVER] Pressures: {p0:.3f}, {p1:.3f}, {p2:.3f}, {p3:.3f}")
             else:
                 print("[SERVER] Invalid data: missing 'sensors'")
         except json.JSONDecodeError as e:
