@@ -221,8 +221,8 @@ class PreStretchTissueApp(ctk.CTk):
         header_frame = ctk.CTkFrame(self)
         header_frame.pack(fill="x", pady=10)
         try:
-            meshalyzer_img = Image.open("MeshAlyzer.jpeg")
-            stl_img = Image.open("lakelab.jpg")
+            meshalyzer_img = Image.open("img/MeshAlyzer.jpeg")
+            stl_img = Image.open("img/lakelab.jpg")
         except FileNotFoundError:
             meshalyzer_img = Image.new("RGB", (220, 80), color="gray")
             stl_img = Image.new("RGB", (120, 80), color="gray")
