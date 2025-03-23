@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
 import time
+import json
+import serial
 import ADS1263
 import RPi.GPIO as GPIO
 
@@ -11,51 +14,65 @@ class PressureSensorReader:
     def setup(self):
         """Initialize the ADS1263 ADC module."""
         self.ADC = ADS1263.ADS1263()
-
         if self.ADC.ADS1263_init_ADC1('ADS1263_400SPS') == -1:
             raise RuntimeError("Failed to initialize ADC1")
-
         self.ADC.ADS1263_SetMode(0)  # 0 for single-channel mode
 
-    def get_pressure_sensors(self, specific_channel=None):
+    def get_pressure_sensors(self):
         """Retrieve and return pressure sensor values from the ADC."""
         if not self.ADC:
             raise RuntimeError("ADC not initialized. Call setup() first.")
-
         ADC_Values = self.ADC.ADS1263_GetAll(self.channels)
-        sensor_readings = []
-
-        channels_to_read = [specific_channel] if specific_channel is not None else self.channels
-
-        for i in channels_to_read:
-            if ADC_Values[i] >> 31 == 1:
-                sensor_readings.append(-(self.REF * 2 - ADC_Values[i] * self.REF / 0x80000000))
+        sensor_readings = {}
+        # Package each channel reading in a dictionary
+        for i, raw in zip(self.channels, ADC_Values):
+            # Calculate voltage based on sign
+            if raw >> 31 == 1:
+                value = -(self.REF * 2 - raw * self.REF / 0x80000000)
             else:
-                sensor_readings.append(ADC_Values[i] * self.REF / 0x7FFFFFFF)
-
-        return tuple(sensor_readings)
+                value = raw * self.REF / 0x7FFFFFFF
+            sensor_readings[f"channel_{i}"] = value
+        return sensor_readings
 
     def cleanup(self):
         """Safely exit the ADC module."""
         if self.ADC:
             self.ADC.ADS1263_Exit()
 
-
-# Example usage
-if __name__ == "__main__":
+def main():
+    # Open the UART port (adjust the device file if necessary)
     try:
-        reader = PressureSensorReader()
+        ser = serial.Serial('/dev/serial0', baudrate=9600, timeout=1)
+    except serial.SerialException as e:
+        print("Could not open serial port:", e)
+        return
+
+    reader = PressureSensorReader()
+    try:
         reader.setup()
-
-        while True:
-            sensor_values = reader.get_pressure_sensors()
-            for idx, value in enumerate(sensor_values):
-                print(f"Sensor {idx}: {value:.6f} V")
-            time.sleep(1)
-
-    except KeyboardInterrupt:
-        print("Program interrupted. Exiting...")
-        reader.cleanup()
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error initializing sensor: {e}")
+        return
+
+    print("Starting sensor read and transmit loop...")
+    try:
+        while True:
+            sensor_data = reader.get_pressure_sensors()
+            package = {
+                "timestamp": time.time(),
+                "sensors": sensor_data
+            }
+            json_data = json.dumps(package)
+            # Send data with a newline as a delimiter
+            ser.write((json_data + "\n").encode('utf-8'))
+            ser.flush()  # Ensure the data is immediately sent
+            print("Sent:", json_data)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Exiting...")
+    finally:
         reader.cleanup()
+        ser.close()
+
+if __name__ == "__main__":
+    main()
