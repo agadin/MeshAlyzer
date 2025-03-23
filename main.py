@@ -205,7 +205,7 @@ class App(ctk.CTk):
 
         # Left frame for the logo
         self.nav_left_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
-        self.nav_left_frame.pack(side="left", padx=5)
+        self.nav_left_frame.pack(side="left")
 
         # Right frame for nav buttons
         self.nav_right_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
@@ -632,7 +632,7 @@ class App(ctk.CTk):
                 print(f"Error updating Calibrate button: {e}")
                 self.calibrate_button.configure(fg_color="gray")
             self.lps_info_label.configure(
-                text=f"{lps_temp:.2f} | {lps_pressure:.2f}"
+                text=f"{lps_pressure:.4f} hPa | {lps_temp:.2f} °C"
             )
 
     def clear_graphs(self):
