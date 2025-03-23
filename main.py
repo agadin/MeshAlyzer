@@ -30,7 +30,6 @@ import threading
 import cairosvg
 import xml.etree.ElementTree as ET
 
-
 #lps22
 import board
 import busio
