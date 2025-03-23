@@ -95,6 +95,8 @@ sudo systemctl daemon-reexec
 sudo systemctl enable spidev-load.service
 sudo systemctl start spidev-load.service
 ```
+
+##
 ### ADC Setup
 
 1. wiring diagram
