@@ -167,6 +167,8 @@ class App(ctk.CTk):
         self.target_pressure = None
         self.protocol_command = None
         self.target_time = None
+        self.protocol_running = False  # Flag to indicate if the protocol is running
+
 
         # --------------------------
         # input/output init
@@ -484,6 +486,22 @@ class App(ctk.CTk):
 
         self.initialize_protocol_viewer()
         self.process_queue()
+
+    def run_protocol(self):
+        if self.protocol_running:
+            print("Protocol is already running.")
+            return
+        protocol_name = self.protocol_var.get()
+        self.protocol_name_label.configure(text=f"Current Protocol: {protocol_name}")
+        print(f"Running Protocol: {protocol_name}")
+
+        # Start the protocol in a separate thread
+        self.protocol_thread = threading.Thread(target=self.process_protocol, args=(protocol_name,))
+        self.protocol_thread.start()
+        self.protocol_running = True
+
+
+        print(f"Running Protocol: {protocol_name}")
 
     def initialize_protocol_viewer(self):
         # Initialize ProtocolViewer directly

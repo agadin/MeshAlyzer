@@ -1,17 +1,17 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-import lgpio
 import time
+import spidev
+from gpiozero import DigitalOutputDevice, DigitalInputDevice
 
 # ---------------------------------------------------------------------------
-# Define constants for digital levels (since we no longer use RPi.GPIO)
+# Define constants for digital levels
 HIGH = 1
 LOW = 0
 
 # ---------------------------------------------------------------------------
 # ADS1263 configuration dictionaries
-
 
 # gain
 ADS1263_GAIN = {
@@ -149,100 +149,76 @@ ADS1263_CMD = {
 }
 
 # ---------------------------------------------------------------------------
-# Minimal config module implemented with lgpio
+# Minimal config module implemented with gpiozero and spidev
 #
 # This layer provides:
-#   module_init() and module_exit() for setting up/closing the SPI and GPIO chip,
+#   module_init() and module_exit() for setting up/closing the SPI device,
 #   digital_write(pin, value), digital_read(pin),
 #   delay_ms(ms),
 #   spi_writebyte(data) and spi_readbytes(n)
 #
-# Adjust the lgpio API calls below as needed for your environment.
-#
-
 # Global handles
-_chip = None
-_spi_handle = None
-_gpio_wrapper = None
+_spi = None
+digital_out = {}  # dictionary mapping pin number to DigitalOutputDevice
+digital_in = {}   # dictionary mapping pin number to DigitalInputDevice
 
 def module_init():
-    global _chip, _spi_handle, _gpio_wrapper
-    # Open GPIO chip 0
-    _chip = lgpio.gpiochip_open(0)
-    # Create our GPIO wrapper using the chip handle
-    _gpio_wrapper = LGPIOWrapper(_chip)
-    # Open SPI channel 0; note we now pass only 4 arguments.
-    _spi_handle = lgpio.spi_open(_chip, 1, 500000, 0)
-    if isinstance(_spi_handle, int) and _spi_handle < 0:
-        raise RuntimeError("spi_open failed: can not open SPI device")
+    global _spi, digital_out, digital_in
+    # Initialize SPI using spidev
+    _spi = spidev.SpiDev()
+    # Open bus 0, device 1 (adjust as needed)
+    _spi.open(0, 1)
+    _spi.max_speed_hz = 500000
+    _spi.mode = 0
+    # Initialize digital device dictionaries
+    digital_out = {}
+    digital_in = {}
     return 0
 
 def module_exit():
-    global _chip, _spi_handle, _gpio_wrapper
-    try:
-        if _spi_handle is not None and _spi_handle >= 0:
-            lgpio.spi_close(_spi_handle)
-    except Exception as e:
-        print("Error closing SPI:", e)
-    _gpio_wrapper.cleanup()
-    lgpio.gpiochip_close(_chip)
+    global _spi, digital_out, digital_in
+    if _spi is not None:
+        _spi.close()
+    # Close all gpiozero devices
+    for device in digital_out.values():
+        device.close()
+    for device in digital_in.values():
+        device.close()
 
 def digital_write(pin, value):
-    global _gpio_wrapper
-    _gpio_wrapper.digital_write(pin, value)
+    global digital_out
+    # If not already set up, create a DigitalOutputDevice
+    if pin not in digital_out:
+        # Adjust pin numbering mode as needed (BCM vs. board)
+        digital_out[pin] = DigitalOutputDevice(pin, active_high=True, initial_value=False)
+    if value == HIGH:
+        digital_out[pin].on()
+    else:
+        digital_out[pin].off()
 
 def digital_read(pin):
-    global _gpio_wrapper
-    return _gpio_wrapper.digital_read(pin)
+    global digital_in
+    if pin not in digital_in:
+        # Adjust pin parameters as needed (e.g., pull_up)
+        digital_in[pin] = DigitalInputDevice(pin, pull_up=False)
+    # Return HIGH/LOW based on boolean value
+    return HIGH if digital_in[pin].value else LOW
 
 def delay_ms(ms):
     time.sleep(ms / 1000.0)
 
 def spi_writebyte(data):
-    global _spi_handle
-    # data is a list of integers; convert to bytes and write via SPI
-    lgpio.spi_write(_spi_handle, bytes(data))
+    global _spi
+    # data is a list of integers; send it via SPI
+    _spi.xfer2(data)
 
 def spi_readbytes(n):
-    global _spi_handle
-    # Read n bytes and return as a list of integers
-    return list(lgpio.spi_read(_spi_handle, n))
+    global _spi
+    # Read n bytes by transferring dummy data
+    return _spi.xfer2([0] * n)
 
 # ---------------------------------------------------------------------------
-# LGPIOWrapper class for digital I/O
-#
-# This class requests GPIO lines (for output or input) and provides simple
-# digital_write and digital_read methods.
-#
-class LGPIOWrapper:
-    def __init__(self, chip):
-        self.chip = chip
-        self.out_lines = {}
-        self.in_lines = {}
-    def setup_out(self, pin):
-        # Request an output line; adjust parameters as needed.
-        handle = lgpio.gpio_request_line(self.chip, [pin], "ADS1263_out", 0, 0)
-        self.out_lines[pin] = handle
-    def setup_in(self, pin):
-        # Request an input line; adjust parameters as needed.
-        handle = lgpio.gpio_request_line(self.chip, [pin], "ADS1263_in", 0, 1)
-        self.in_lines[pin] = handle
-    def digital_write(self, pin, value):
-        if pin not in self.out_lines:
-            self.setup_out(pin)
-        lgpio.gpio_set_line_value(self.out_lines[pin], value)
-    def digital_read(self, pin):
-        if pin not in self.in_lines:
-            self.setup_in(pin)
-        return lgpio.gpio_get_line_value(self.in_lines[pin])
-    def cleanup(self):
-        for handle in self.out_lines.values():
-            lgpio.gpio_release_line(handle)
-        for handle in self.in_lines.values():
-            lgpio.gpio_release_line(handle)
-
-# ---------------------------------------------------------------------------
-# ADS1263 Driver Class (porting from RPi.GPIO to use our lgpio-based config)
+# ADS1263 Driver Class (using gpiozero and spidev)
 #
 class ADS1263:
     def __init__(self):
