@@ -1,113 +1,54 @@
 #!/usr/bin/env python3
-import serial
+import socket
 import json
 import time
 
 class PressureReceiver:
-    def __init__(self, port='/dev/serial0', baudrate=9600, timeout=2):
+    def __init__(self, host='0.0.0.0', port=65432):
+        self.host = host
         self.port = port
-        self.baudrate = baudrate
-        self.timeout = timeout
-        try:
-            self.ser = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
-            # Clear any old data in buffers
-            self.ser.reset_input_buffer()
-            self.ser.reset_output_buffer()
-            print(f"Opened serial port {self.port} at {self.baudrate} baud.")
-        except Exception as e:
-            print(f"Error opening serial port: {e}")
-            self.ser = None
-
-    def close(self):
-        if self.ser and self.ser.is_open:
-            self.ser.close()
-
-    def get_latest_pressure(self):
-        """Reads a complete JSON message within the timeout period.
-        Returns a tuple with pressure values or None if no valid message is received."""
-        if not self.ser:
-            print("Serial port not open.")
-            return None
-
-        start_time = time.time()
-        while time.time() - start_time < self.timeout:
-            try:
-                line = self.ser.readline().decode('utf-8').strip()
-            except Exception as e:
-                print(f"Error reading line: {e}")
-                continue
-
-            if not line:
-                continue  # No data; keep waiting
-
-            print(f"Received line: {line}")
-            try:
-                data = json.loads(line)
-                if "sensors" in data:
-                    sensors = data["sensors"]
-                    # Extract values with a default of 0.0 if missing
-                    pressure0 = sensors.get("channel_0", 0.0)
-                    pressure1 = sensors.get("channel_1", 0.0)
-                    pressure2 = sensors.get("channel_2", 0.0)
-                    pressure3 = sensors.get("channel_3", 0.0)
-                    return pressure0, pressure1, pressure2, pressure3
-                else:
-                    print("JSON does not contain 'sensors' key.")
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e} for line: {line}")
-                continue
-
-        print("No valid sensor data received within timeout.")
-        return None
+        self.client_socket = None
 
     def run(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind((self.host, self.port))
+            server_socket.listen(1)
+            print(f"[SERVER] Listening on {self.host}:{self.port}...")
+
+            self.client_socket, addr = server_socket.accept()
+            print(f"[SERVER] Connection from {addr}")
+
+            with self.client_socket:
+                buffer = ""
+                while True:
+                    data = self.client_socket.recv(1024).decode("utf-8")
+                    if not data:
+                        print("[SERVER] Connection closed.")
+                        break
+                    buffer += data
+                    while "\n" in buffer:
+                        line, buffer = buffer.split("\n", 1)
+                        self.handle_line(line)
+
+    def handle_line(self, line):
         try:
-            while True:
-                pressures = self.get_latest_pressure()
-                if pressures:
-                    print(f"Pressure Data: {pressures}")
-                else:
-                    print("No pressure data available.")
-                time.sleep(0.5)  # Poll every 0.5 seconds
-        except KeyboardInterrupt:
-            print("Receiver exiting...")
-        finally:
-            self.close()
-
-import serial
-import time
-
-def safe_read_line(ser, retries=5):
-    for attempt in range(retries):
-        try:
-            # Attempt to read a line from the serial port
-            line = ser.readline().decode('utf-8').strip()
-            return line
-        except serial.SerialException as e:
-            print(f"Error reading line (attempt {attempt+1}/{retries}): {e}")
-            # Optionally, wait a moment, close, and reopen the port
-            try:
-                ser.close()
-            except Exception:
-                pass
-            time.sleep(0.5)
-            try:
-                ser.open()
-            except Exception as e2:
-                print(f"Failed to reopen port: {e2}")
-            time.sleep(0.01)
-    return None
-
-# Example usage:
-if __name__ == "__main__":
-    try:
-        ser = serial.Serial('/dev/serial0', baudrate=9600, timeout=2)
-        while True:
-            line = safe_read_line(ser)
-            if line is not None:
-                print(f"Received: {line}")
+            data = json.loads(line)
+            if "sensors" in data:
+                sensors = data["sensors"]
+                p0 = sensors.get("channel_0", 0.0)
+                p1 = sensors.get("channel_1", 0.0)
+                p2 = sensors.get("channel_2", 0.0)
+                p3 = sensors.get("channel_3", 0.0)
+                print(f"[SERVER] Pressures: {p0:.3f}, {p1:.3f}, {p2:.3f}, {p3:.3f}")
             else:
-                print("No data received after multiple attempts")
-            time.sleep(1)
-    except Exception as e:
-        print(f"Fatal error: {e}")
+                print("[SERVER] Invalid data: missing 'sensors'")
+        except json.JSONDecodeError as e:
+            print(f"[SERVER] JSON decode error: {e}")
+
+if __name__ == "__main__":
+    receiver = PressureReceiver()
+    try:
+        receiver.run()
+    except KeyboardInterrupt:
+        print("[SERVER] Shutting down.")
