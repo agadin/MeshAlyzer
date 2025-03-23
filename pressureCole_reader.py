@@ -74,12 +74,40 @@ class PressureReceiver:
         finally:
             self.close()
 
-def main():
-    receiver = PressureReceiver()
-    if receiver.ser:
-        receiver.run()
-    else:
-        print("Failed to open serial port. Check your UART configuration on the Raspberry Pi.")
+import serial
+import time
 
+def safe_read_line(ser, retries=5):
+    for attempt in range(retries):
+        try:
+            # Attempt to read a line from the serial port
+            line = ser.readline().decode('utf-8').strip()
+            return line
+        except serial.SerialException as e:
+            print(f"Error reading line (attempt {attempt+1}/{retries}): {e}")
+            # Optionally, wait a moment, close, and reopen the port
+            try:
+                ser.close()
+            except Exception:
+                pass
+            time.sleep(0.5)
+            try:
+                ser.open()
+            except Exception as e2:
+                print(f"Failed to reopen port: {e2}")
+            time.sleep(0.5)
+    return None
+
+# Example usage:
 if __name__ == "__main__":
-    main()
+    try:
+        ser = serial.Serial('/dev/serial0', baudrate=9600, timeout=2)
+        while True:
+            line = safe_read_line(ser)
+            if line is not None:
+                print(f"Received: {line}")
+            else:
+                print("No data received after multiple attempts")
+            time.sleep(1)
+    except Exception as e:
+        print(f"Fatal error: {e}")
