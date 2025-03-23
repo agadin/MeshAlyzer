@@ -59,14 +59,6 @@ class ProtocolViewer(ctk.CTkFrame):
         self.scrollable_frame = ctk.CTkScrollableFrame(self, width=400, height=800)
         self.scrollable_frame.pack(fill="both", expand=True)
 
-        ## apperance defults
-
-        if self.darkmodeToggle:
-            # Light/dark mode automatic toggle
-            current_hour = datetime.datetime.now().hour
-            default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
-            ctk.set_appearance_mode(default_mode)
-
         # Dynamically update current step opacity
         self.update_current_step()
 
@@ -310,6 +302,14 @@ class App(ctk.CTk):
         # Start the sensor reading in a separate daemon thread
         self.sensor_thread = threading.Thread(target=self.read_sensors, daemon=True)
         self.sensor_thread.start()
+        ## apperance defults
+        self.darkmodeToggle = False
+
+        if self.darkmodeToggle:
+            # Light/dark mode automatic toggle
+            current_hour = datetime.datetime.now().hour
+            default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
+            ctk.set_appearance_mode(default_mode)
 
         self.show_home()
 
