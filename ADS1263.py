@@ -373,6 +373,7 @@ class ADS1263:
         if self.ADS1263_ReadData(ADS1263_REG['REG_ADC2MUX'])[0] != INPMUX:
             print("REG_ADC2MUX unsuccess")
 
+    # python
     def ADS1263_init_ADC1(self, Rate1='ADS1263_14400SPS'):
         if module_init() != 0:
             return -1
@@ -381,7 +382,7 @@ class ADS1263:
         if id == 0x01:
             print("ID Read success")
         else:
-            print("ID Read failed")
+            print(f"ID Read failed, read ID: {id}")
             return -1
         self.ADS1263_WriteCmd(ADS1263_CMD['CMD_STOP1'])
         self.ADS1263_ConfigADC(ADS1263_GAIN['ADS1263_GAIN_1'], ADS1263_DRATE[Rate1])

@@ -114,14 +114,34 @@ class JetsonNano:
     def spi_readbytes(self, n):
         return self.SPI.readbytes(n)
 
+    # python
     def module_init(self):
-        self.GPIO.setmode(self.GPIO.BCM)
-        self.GPIO.setwarnings(False)
-        self.GPIO.setup(self.RST_PIN, self.GPIO.OUT)
-        self.GPIO.setup(self.CS_PIN, self.GPIO.OUT)
-        self.GPIO.setup(self.DRDY_PIN, self.GPIO.IN)
+        # Initialize SPI
         self.SPI.max_speed_hz = 2000000
         self.SPI.mode = 0b01
+
+        # Initialize lgpio: open GPIO chip 0
+        try:
+            self.chip_handle = lgpio.gpiochip_open(0)
+        except Exception as e:
+            print("Error opening GPIO chip:", e)
+            return -1
+
+        # Claim outputs for RST and CS with initial values: RST LOW, CS HIGH
+        try:
+            lgpio.gpio_claim_output(self.chip_handle, [self.RST_PIN], 0)
+            lgpio.gpio_claim_output(self.chip_handle, [self.CS_PIN], 1)
+        except Exception as e:
+            print("Error claiming output lines:", e)
+            return -1
+
+        # Claim input for DRDY (as a list)
+        try:
+            lgpio.gpio_claim_input(self.chip_handle, [self.DRDY_PIN])
+        except Exception as e:
+            print("Error claiming input line:", e)
+            return -1
+
         return 0
 
     def module_exit(self):
