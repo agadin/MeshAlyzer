@@ -496,13 +496,43 @@ class App(ctk.CTk):
         self.step_display = ctk.CTkLabel(display_frame, text="Steps: N/A", **display_style)
         self.step_display.grid(row=0, column=1, padx=10, pady=10)
 
+        self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
+        self.valve_display.grid(row=0, column=4, padx=10, pady=10)
+
         # Create and pack angle display
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
 
-        # Create and pack force display
-        self.force_display = ctk.CTkLabel(display_frame, text="Force: N/A", **display_style)
-        self.force_display.grid(row=0, column=3, padx=10, pady=5)
+        # New: create a frame that will hold two labels
+        self.force_display_frame = ctk.CTkFrame(
+            display_frame,
+            width=250,
+            height=100,
+            corner_radius=20,
+            fg_color="lightblue"
+        )
+        self.force_display_frame.grid(row=0, column=3, padx=10, pady=5)
+
+        # Create the top label for the average force (large and unbold)
+        self.force_display_top = ctk.CTkLabel(
+            self.force_display_frame,
+            text="N/A",
+            font=("Arial", 50),  # larger size, no "bold"
+            fg_color="transparent",  # so the frame's background shows
+            text_color="black"
+        )
+        # Center the top label within the frame
+        self.force_display_top.pack(expand=True, fill="x")
+
+        # Create the bottom label for the individual pressures (smaller and unbold)
+        self.force_display_bottom = ctk.CTkLabel(
+            self.force_display_frame,
+            text="N/A",
+            font=("Arial", 30),  # smaller font size, unbold
+            fg_color="transparent",
+            text_color="black"
+        )
+        self.force_display_bottom.pack(expand=True, fill="x")
 
         self.segmented_button = ctk.CTkSegmentedButton(self.main_frame, values=["Angle v Force", "Simple", "All"],
                                                        command=self.update_graph_view)
@@ -608,32 +638,44 @@ class App(ctk.CTk):
         # Start updating the output text widget
         self.update_output_window()
 
-    def update_displays(self, step_count, current_angle, current_force, minutes, seconds, milliseconds, lps_temp, lps_pressure):
+    def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
             self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
             self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
-            self.angle_display.configure(text=f"{current_angle:.1f}°")
-            self.force_display.configure(text=f"{current_force:.2f} N")
-            if self.protocol_step is None:
-                protocol_step = 0
-            self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
+            self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
+            # If current_pressure2 is not provided, default to current_pressure1
+            if current_pressure2 is None:
+                current_pressure2 = current_pressure1
+            if current_pressure1 is None:
+                current_pressure1 = current_pressure2
 
-            try:
-                calibration_level = 0 #Cole change later
-                if calibration_level == 0:
-                    self.calibrate_button.configure(fg_color="red")
-                elif calibration_level == 1:
-                    self.calibrate_button.configure(fg_color="yellow")
-                elif calibration_level == 2:
-                    self.calibrate_button.configure(fg_color="green")
-                else:
-                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
-            except Exception as e:
-                print(f"Error updating Calibrate button: {e}")
-                self.calibrate_button.configure(fg_color="gray")
-            self.lps_info_label.configure(
-                text=f"{lps_pressure:.4f} hPa | {lps_temp:.2f} °C"
-            )
+            # Calculate average force and update both labels with units (e.g., "N")
+            avg_force = (current_pressure1 + current_pressure2) / 2
+            self.force_display_top.configure(text=f"{avg_force:.2f} N")
+            self.force_display_bottom.configure(text=f"{current_pressure1:.2f} N | {current_pressure2:.2f} N")
+
+        if self.protocol_step is None:
+                protocol_step = 0
+        self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
+
+        self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
+
+        try:
+            calibration_level = 0 #Cole change later
+            if calibration_level == 0:
+                self.calibrate_button.configure(fg_color="red")
+            elif calibration_level == 1:
+                self.calibrate_button.configure(fg_color="yellow")
+            elif calibration_level == 2:
+                self.calibrate_button.configure(fg_color="green")
+            else:
+                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+        except Exception as e:
+            print(f"Error updating Calibrate button: {e}")
+            self.calibrate_button.configure(fg_color="gray")
+        self.lps_info_label.configure(
+            text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
+        )
 
     def clear_graphs(self):
         # Reset the data lists
@@ -1027,8 +1069,8 @@ class App(ctk.CTk):
                 # Update displays with the new sensor data
                 self.update_queue.put({
                     'step_count': self.protocol_step,
-                    'current_angle': self.pressure0_convert,
-                    'current_force': self.pressure3_convert,
+                    'current_input_pressure': self.pressure0_convert,
+                    'current_pressure1': self.pressure3_convert,
                     'minutes': int(time_diff // 60),
                     'seconds': int(time_diff % 60),
                     'milliseconds': int((time_diff * 1000) % 1000)
@@ -1076,13 +1118,16 @@ class App(ctk.CTk):
                 # Update displays with the new sensor data
                 self.update_queue.put({
                     'step_count': self.protocol_step,
-                    'current_angle': self.pressure0_convert,
-                    'current_force': self.pressure3_convert,
+                    'current_input_pressure': self.pressure0_convert,
+                    'current_pressure1': self.pressure1_convert,
+                    'current_pressure2': self.pressure2_convert,
                     'minutes': 0,
                     'seconds': 0,
                     'milliseconds': 0,
                     'LPS_pressure': LPS_pressure,
-                    'LPS_temperature': LPS_temperature
+                    'LPS_temperature': LPS_temperature,
+                    'valve1_state': valve1_state,
+                    'valve2_state': valve2_state
                 })
             # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
@@ -1098,13 +1143,16 @@ class App(ctk.CTk):
                 data = self.update_queue.get_nowait()
                 self.update_displays(
                     step_count=data['step_count'],
-                    current_angle=data['current_angle'],
-                    current_force=data['current_force'],
+                    current_input_pressure=data['current_input_pressure'],
+                    current_pressure1=data['current_pressure1'],
+                    current_pressure2=data['current_pressure2'],
                     minutes=data['minutes'],
                     seconds=data['seconds'],
                     milliseconds=data['milliseconds'],
                     lps_temp=data.get('LPS_temperature', None),
-                    lps_pressure=data.get('LPS_pressure', None)
+                    lps_pressure=data.get('LPS_pressure', None),
+                    valve1_state=data.get('valve1_state', None),
+                    valve2_state=data.get('valve2_state', None)
                 )
 
         except queue.Empty:
