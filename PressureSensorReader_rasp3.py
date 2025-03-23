@@ -81,8 +81,10 @@ def run_client():
         except (socket.error, OSError) as e:
             logging.error(f"Connection error: {e}")
             time.sleep(2)  # Wait before retrying
-        finally:
-            reader.cleanup()
 
 if __name__ == "__main__":
-    run_client()
+    try:
+        run_client()
+    except KeyboardInterrupt:
+        logging.info("Shutting down...")
+        reader.cleanup()
