@@ -68,7 +68,7 @@ def main():
             # Send data with a newline as a delimiter
             ser.write((json_data + "\n").encode('utf-8'))
             print("Sent:", json_data)
-            time.sleep(0.5)  # transmit every 0.5 seconds
+            time.sleep(0.01)  # transmit every 0.5 seconds
     except KeyboardInterrupt:
         print("Transmission interrupted. Exiting...")
     finally:

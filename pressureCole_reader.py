@@ -95,7 +95,7 @@ def safe_read_line(ser, retries=5):
                 ser.open()
             except Exception as e2:
                 print(f"Failed to reopen port: {e2}")
-            time.sleep(0.5)
+            time.sleep(0.01)
     return None
 
 # Example usage:
