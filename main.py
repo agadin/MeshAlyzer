@@ -318,7 +318,7 @@ class App(ctk.CTk):
 
     def show_boot_animation(self):
         # Remove title bar for splash screen effect
-        self.overrideredirect(True)
+        self.overrideredirect(False)
 
         # Set the desired window size (720p video dimensions)
         window_width = 1280
