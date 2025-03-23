@@ -28,7 +28,8 @@ def module_init():
     # Open SPI bus 0, device 0 (modify if needed)
     spi.open(0, 0)
     spi.max_speed_hz = 500000  # Set the SPI speed as needed
-    spi.mode = 0  # Set SPI mode (adjust if necessary)
+    spi.mode = 0             # Set SPI mode to 0 (adjust if necessary)
+    spi.no_cs = True         # Disable hardware CS control (we handle CS manually via lgpio)
 
     # --- Initialize LGPIO ---
     chip_handle = lgpio.gpiochip_open(0)  # Open the first GPIO chip
@@ -38,6 +39,7 @@ def module_init():
     # Claim input for DRDY
     lgpio.gpio_claim_input(chip_handle, DRDY_PIN)
     return 0
+
 
 
 def module_exit():
