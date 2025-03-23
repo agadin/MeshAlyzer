@@ -59,6 +59,14 @@ class ProtocolViewer(ctk.CTkFrame):
         self.scrollable_frame = ctk.CTkScrollableFrame(self, width=400, height=800)
         self.scrollable_frame.pack(fill="both", expand=True)
 
+        ## apperance defults
+
+        if self.darkmodeToggle:
+            # Light/dark mode automatic toggle
+            current_hour = datetime.datetime.now().hour
+            default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
+            ctk.set_appearance_mode(default_mode)
+
         # Dynamically update current step opacity
         self.update_current_step()
 
@@ -415,15 +423,6 @@ class App(ctk.CTk):
 
         self.run_button = ctk.CTkButton(self.sidebar_frame, text="Run Protocol", command=self.run_protocol)
         self.run_button.pack(pady=15)
-
-        # Sidebar
-        self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
-        self.sidebar_frame.pack(side="left", fill="y", padx=15)
-
-        # Light/dark mode automatic toggle
-        current_hour = datetime.datetime.now().hour
-        default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
-        ctk.set_appearance_mode(default_mode)
 
         # Light/Dark mode toggle
         self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Light/Dark Mode", command=self.toggle_mode)
