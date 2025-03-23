@@ -40,11 +40,12 @@ class PressureSensorReader:
             self.ADC.ADS1263_Exit()
 
 def main():
-    # Open the UART port (adjust the device file if necessary)
+    # Open the UART port once
     try:
         ser = serial.Serial('/dev/serial0', baudrate=9600, timeout=1)
-    except serial.SerialException as e:
-        print("Could not open serial port:", e)
+        print("Opened serial port for transmission.")
+    except Exception as e:
+        print(f"Error opening serial port: {e}")
         return
 
     reader = PressureSensorReader()
@@ -52,6 +53,7 @@ def main():
         reader.setup()
     except Exception as e:
         print(f"Error initializing sensor: {e}")
+        ser.close()
         return
 
     print("Starting sensor read and transmit loop...")
@@ -65,11 +67,10 @@ def main():
             json_data = json.dumps(package)
             # Send data with a newline as a delimiter
             ser.write((json_data + "\n").encode('utf-8'))
-            ser.flush()  # Ensure the data is immediately sent
             print("Sent:", json_data)
-            time.sleep(1)
+            time.sleep(1)  # transmit every second
     except KeyboardInterrupt:
-        print("Exiting...")
+        print("Transmission interrupted. Exiting...")
     finally:
         reader.cleanup()
         ser.close()
