@@ -38,6 +38,7 @@ import adafruit_lps2x
 # Sensor import
 from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
+from calibrate_page import CalibratePage
 
 redis_client = {}
 
@@ -265,7 +266,7 @@ class App(ctk.CTk):
             compound="left",
             fg_color="transparent",
             hover_color="gray",
-            command=self.show_inspector
+            command=self.show_calibrate  # Updated to call show_calibrate
         )
         self.inspector_button.pack(side="right", padx=20)
 
@@ -427,7 +428,7 @@ class App(ctk.CTk):
         self.sidebar_frame.pack(side="left", fill="y", padx=15)
 
         # Calibrate button
-        self.calibrate_button = ctk.CTkButton(self.sidebar_frame, text="Calibrate", command=self.show_inspector)
+        self.calibrate_button = ctk.CTkButton(self.sidebar_frame, text="Calibrate", command=self.show_calibrate)
         self.calibrate_button.pack(pady=15, padx=15)
 
         # Protocol selector
@@ -557,16 +558,6 @@ class App(ctk.CTk):
     def toggle_mode(self):
         mode = "Light" if ctk.get_appearance_mode() == "Dark" else "Dark"
         ctk.set_appearance_mode(mode)
-
-    def show_inspector(self):
-        self.home_displayed = False  # Set to False to indicate home is not displayed
-        # create a side bar that has a drop down menu for the user to select the trial they want to inspect. The trials will be read by reading the folders in ./data directory. If there are no trials in the directory the user will be prompted by a pop up window to got to the home page to run a protocol or can manually select one which will open up a file path dialog box for them to select the trial they want to inspect. Automatically create the figures for the trial and display them in the main frame
-        # On the side bar also have a mannual upload box, save all figures button. Add a button if the slider is currently modified that says download cropped data. If slider is not modified, then the button will be greyed out. This button will trigger a popup that will have the default new file name as the folder name but with _cropped appended to the end. The user can change the name if they want. The .csv should be saved to the trial folder
-
-        # once a trial has been selected, open the .csv file and read the data. See logic below on what figures to produce and how to handle the data. At the top of the main frame parse date, animal_ID, trial #, and provided_name (if there). The folder name format will either be f"{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}" or f"./data/{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}". Neatly display this information. Below that Neatly format the figures on the main frame, place a save figure button for each graph (which saves the figure to the current folder selected in ./data). At the bottom of the main frame make a dragable slider that allows the user to set the start and end data displayed. Have this update everything automtaically. In the data the final column is the step column and each step nin the slider should corespond to a step. Make sure to plot an axis for this slider.
-        # Get available trials
-        self.clear_content_frame()  # Clear existing content in the frame
-
 
     def show_settings(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -1231,6 +1222,15 @@ class App(ctk.CTk):
     def update_output_window(self):
         # Define the method's functionality here
         pass
+
+    def show_calibrate(self):
+        self.home_displayed = False  # Indicate that the home page is not displayed
+        self.clear_content_frame()
+
+        # Create a frame for the calibrate page
+        calibrate_frame = CalibratePage(self.content_frame, app=self)
+        calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
 
 if __name__ == "__main__":
     app = App()
