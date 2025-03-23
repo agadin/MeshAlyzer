@@ -48,7 +48,53 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
    ```bash
    python main.py
    ```
+### Raspberry Pi 3 setup
+1. Create automatic startupfile
+Create a file called '/etc/systemd/system/pi3-sensor.service' with the following content :
+```ini
+[Unit]
+Description=Sensor Data Sender Service
+After=network.target
 
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/path/to/PressureSensorReader.py
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+Then enable and start the service with:
+
+```
+sudo systemctl enable pi3-sensor.service
+sudo systemctl start pi3-sensor.service
+```
+
+2. Run the script to test the sensor:
+```bash
+sudo nano /etc/systemd/system/spidev-load.service
+```
+add:
+```ini
+[Unit]
+Description=Load spidev module at boot
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/modprobe spidev
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+```
+Then enable and start the service with:
+```bash
+sudo systemctl daemon-reexec
+sudo systemctl enable spidev-load.service
+sudo systemctl start spidev-load.service
+```
 ### ADC Setup
 
 1. wiring diagram
