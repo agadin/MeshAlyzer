@@ -3,13 +3,16 @@ import time
 import json
 import socket
 import logging
+from logging.handlers import RotatingFileHandler
 import ADS1263
 
-LOG_FILE = "/home/pi/pressure_sensor.log"
+LOG_FILE = "/home/lakelab/pressure_sensor.log"
+LOG_MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+LOG_BACKUP_COUNT = 3
 
-# Configure logging
+# Configure logging with RotatingFileHandler
 logging.basicConfig(
-    filename=LOG_FILE,
+    handlers=[RotatingFileHandler(LOG_FILE, maxBytes=LOG_MAX_SIZE, backupCount=LOG_BACKUP_COUNT)],
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
