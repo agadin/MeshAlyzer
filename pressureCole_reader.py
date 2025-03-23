@@ -1,15 +1,18 @@
+#!/usr/bin/env python3
 import serial
 import json
 import time
 
 class PressureReceiver:
-    def __init__(self, port='/dev/serial0', baudrate=9600, timeout=1):
+    def __init__(self, port='/dev/serial0', baudrate=9600, timeout=2):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
-        # Open the serial port once
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=self.timeout)
+            # Clear any old data in buffers
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
             print(f"Opened serial port {self.port} at {self.baudrate} baud.")
         except Exception as e:
             print(f"Error opening serial port: {e}")
@@ -20,10 +23,12 @@ class PressureReceiver:
             self.ser.close()
 
     def get_latest_pressure(self):
-        """
-        Attempt to read a complete JSON message within the timeout period.
-        Returns the sensor pressures as a tuple if successful, or None.
-        """
+        """Reads a complete JSON message within the timeout period.
+        Returns a tuple with pressure values or None if no valid message is received."""
+        if not self.ser:
+            print("Serial port not open.")
+            return None
+
         start_time = time.time()
         while time.time() - start_time < self.timeout:
             try:
@@ -31,23 +36,27 @@ class PressureReceiver:
             except Exception as e:
                 print(f"Error reading line: {e}")
                 continue
+
             if not line:
-                # No data in this read; try again
-                continue
+                continue  # No data; keep waiting
+
             print(f"Received line: {line}")
             try:
                 data = json.loads(line)
                 if "sensors" in data:
                     sensors = data["sensors"]
-                    # Extract pressure values for channels 0-3 (default to 0.0 if missing)
+                    # Extract values with a default of 0.0 if missing
                     pressure0 = sensors.get("channel_0", 0.0)
                     pressure1 = sensors.get("channel_1", 0.0)
                     pressure2 = sensors.get("channel_2", 0.0)
                     pressure3 = sensors.get("channel_3", 0.0)
                     return pressure0, pressure1, pressure2, pressure3
-            except json.JSONDecodeError:
-                print("Invalid JSON received, skipping line.")
+                else:
+                    print("JSON does not contain 'sensors' key.")
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {e} for line: {line}")
                 continue
+
         print("No valid sensor data received within timeout.")
         return None
 
@@ -67,7 +76,10 @@ class PressureReceiver:
 
 def main():
     receiver = PressureReceiver()
-    receiver.run()
+    if receiver.ser:
+        receiver.run()
+    else:
+        print("Failed to open serial port. Check your UART configuration on the Raspberry Pi.")
 
 if __name__ == "__main__":
     main()
