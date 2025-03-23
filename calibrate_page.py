@@ -1,12 +1,9 @@
-# --- New CalibratePage class ---
+# --- New CalibratePage class (modified for 10-second continuous supply with neutral call) ---
 import customtkinter as ctk
 import shutil
-import customtkinter as ctk
 import multiprocessing.shared_memory as sm
-from tkinter import Canvas, Frame, Scrollbar, filedialog
+from tkinter import Canvas, Frame, Scrollbar, filedialog, StringVar
 from PIL import Image, ImageTk, ImageOps
-
-from tkinter import Canvas, StringVar
 import cv2
 import queue
 import time
@@ -23,16 +20,14 @@ import matplotlib.ticker as ticker
 import datetime
 import tkinter as tk
 import subprocess
-import queue
 import threading
 import sys
 import os
 import filecmp
-import threading
 import cairosvg
 import xml.etree.ElementTree as ET
 
-#lps22
+# lps22
 import board
 import busio
 import adafruit_lps2x
@@ -94,11 +89,7 @@ class CalibratePage(ctk.CTkFrame):
     def toggle_sensor(self, sensor_index):
         # Toggle selection state and update button color (still gray if not yet calibrated)
         self.sensor_selected[sensor_index] = not self.sensor_selected[sensor_index]
-        # For visual feedback, change relief or border width (or color) when selected:
-        if self.sensor_selected[sensor_index]:
-            new_color = "darkgray"  # slightly different shade when selected
-        else:
-            new_color = "gray"
+        new_color = "darkgray" if self.sensor_selected[sensor_index] else "gray"
         if sensor_index == 0:
             self.sensor1_button.configure(fg_color=new_color)
         elif sensor_index == 1:
@@ -112,7 +103,6 @@ class CalibratePage(ctk.CTkFrame):
         self.ax.set_title("Pressure Sensor Converted Values")
         self.ax.set_xlabel("Time (s)")
         self.ax.set_ylabel("Pressure Convert Value")
-        # Extract time and pressure_convert values
         times = [data['time'] for data in self.app.sensor_data if data['time'] >= 0]
         if times:
             p0 = [data['pressure0_convert'] for data in self.app.sensor_data if data['time'] >= 0]
@@ -125,7 +115,6 @@ class CalibratePage(ctk.CTkFrame):
             self.ax.plot(times, p3, label="Pressure3_convert")
             self.ax.legend()
         self.canvas.draw()
-        # Update graph every 1 second
         self.after(1000, self.update_graph)
 
     def start_check_calibration(self):
@@ -149,11 +138,8 @@ class CalibratePage(ctk.CTkFrame):
             except ValueError:
                 tk.Label(popup, text="Invalid input, please enter a number.", fg="red").pack()
                 return
-
-            # Update sensor selection based on popup checkboxes.
             self.sensor_selected = [var.get() for var in sensor_vars]
             popup.destroy()
-            # Run calibration check in a separate thread to avoid blocking UI.
             threading.Thread(target=self.perform_check_calibration, args=(ref_pressure,), daemon=True).start()
 
         submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
@@ -161,73 +147,52 @@ class CalibratePage(ctk.CTkFrame):
 
     def perform_check_calibration(self, ref_pressure):
         """
-        Perform the calibration check process:
-        - Depending on sensor selection, call valve supply methods.
-        - Activate for 1 second max, then vent for 1.5 seconds.
-        - Repeat 5 times and record sensor values from pressure0, pressure1, pressure2.
-        - Convert the recorded values.
-        - Compare against ref_pressure (+/- 5% tolerance).
-        - Update sensor button colors accordingly.
+        Calibration check process:
+          - Depending on sensor selection, call valve supply methods.
+          - Activate the valves continuously for 10 seconds.
+          - After 10 seconds, call the neutral method on both valves.
+          - Record the latest sensor values and perform a calibration check.
         """
-        # This is a placeholder implementation.
-        success = [False, False, False]  # flags for sensor 1,2,3
+        # Activate valves based on sensor selection
+        if self.sensor_selected[1]:
+            self.app.valve1.supply()
+        if self.sensor_selected[2]:
+            self.app.valve2.supply()
+        if self.sensor_selected[0] and not any(self.sensor_selected[1:]):
+            self.app.valve1.supply()
+            self.app.valve2.supply()
 
-        # For demonstration, we simulate 5 cycles with a simple sleep.
-        recorded_values = {0: [], 1: [], 2: []}
-        for cycle in range(5):
-            # Determine which valves to supply based on sensor selection.
-            # If sensor 2 selected, call valve1.supply; if sensor 3 selected, call valve2.supply.
-            # If only sensor 1 is selected, call both.
-            if self.sensor_selected[1]:
-                self.app.valve1.supply()
-            if self.sensor_selected[2]:
-                self.app.valve2.supply()
-            if (self.sensor_selected[0] and not any(self.sensor_selected[1:])):
-                self.app.valve1.supply()
-                self.app.valve2.supply()
-            time.sleep(1)  # Supply period
+        time.sleep(10)  # Continuous supply for 10 seconds
 
-            # After supply period, start venting.
-            self.app.valve1.vent()
-            self.app.valve2.vent()
-            time.sleep(1.5)  # Vent period
+        # Set valves to neutral after supply period
+        self.app.valve1.neutral()
+        self.app.valve2.neutral()
 
-            # Record the current sensor values (using the pressure_sensor_converter as-is)
-            rec = self.app.sensor_data[-1]  # get the latest sensor reading
-            # Record only for pressure0, pressure1, pressure2
-            recorded_values[0].append(rec.get('pressure0_convert', 0))
-            recorded_values[1].append(rec.get('pressure1_convert', 0))
-            recorded_values[2].append(rec.get('pressure2_convert', 0))
-
-        # Process recorded values (here we simply compute the average for each sensor)
-        avg_values = [sum(vals) / len(vals) if vals else 0 for vals in recorded_values.values()]
-
-        # Compare each average value with ref_pressure (+/- 5% tolerance)
+        # Record the current sensor reading after 10 seconds
+        rec = self.app.sensor_data[-1]
+        avg_values = [
+            rec.get('pressure0_convert', 0),
+            rec.get('pressure1_convert', 0),
+            rec.get('pressure2_convert', 0)
+        ]
         tolerance = 0.05
+        success = [False, False, False]
         for i, avg in enumerate(avg_values):
             if ref_pressure != 0 and abs(avg - ref_pressure) / ref_pressure <= tolerance:
                 success[i] = True
             else:
                 success[i] = False
-
-        # Update button colors based on calibration success:
         self.update_sensor_buttons(success)
-
-    def update_sensor_buttons(self, success_list):
-        # success_list: list of booleans for sensor 1, 2, 3
-        # Set color to green if True, else red.
-        color_map = {True: "green", False: "red"}
-        self.sensor1_button.configure(fg_color=color_map[success_list[0]])
-        self.sensor2_button.configure(fg_color=color_map[success_list[1]])
-        self.sensor3_button.configure(fg_color=color_map[success_list[2]])
 
     def start_sensor_calibration(self):
         """
-        Start the full sensor calibration process:
+        Sensor calibration process:
          - Prompt the user for a reference pressure of 0 psi.
-         - Then, for pressures from 0 to 145 psi in increments of 7.25 psi,
-           perform the supply/vent cycle, record sensor data and save to CSV.
-         - (Placeholder implementation provided.)
+         - For pressures from 0 to 145 psi in increments of 7.25 psi:
+             - Activate both valves continuously for 10 seconds.
+             - Then, set valves to neutral and record a sensor reading.
+         - Save the recorded data to a CSV file.
+         - No venting is performed.
         """
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
@@ -254,46 +219,46 @@ class CalibratePage(ctk.CTkFrame):
     def perform_sensor_calibration(self, ref_pressure):
         """
         For each calibration step from 0 psi to 145 psi (increment 7.25 psi):
-          - Activate supply for 1 second (both valves), then vent for 1.5 seconds.
-          - Repeat 5 times and record sensor data from pressure0, pressure1, pressure2.
-          - Save the recorded data to a CSV file in a folder named with the calibration date.
-        This placeholder should be expanded to include the full calibration loop.
+          - Activate both valves continuously for 10 seconds.
+          - After 10 seconds, set valves to neutral.
+          - Record a single sensor reading.
+          - Save the collected data to a CSV file.
         """
         current_pressure = 0
         increment = 7.25
         calibration_results = []  # list to store calibration data for each step
 
         while current_pressure <= 145:
-            recorded_values = {0: [], 1: [], 2: []}
-            for cycle in range(5):
-                # Activate both valves supply
-                self.app.valve1.supply()
-                self.app.valve2.supply()
-                time.sleep(1)
-                self.app.valve1.vent()
-                self.app.valve2.vent()
-                time.sleep(1.5)
-                rec = self.app.sensor_data[-1]
-                recorded_values[0].append(rec.get('pressure0_convert', 0))
-                recorded_values[1].append(rec.get('pressure1_convert', 0))
-                recorded_values[2].append(rec.get('pressure2_convert', 0))
-            # Compute averages for this step
-            avg_values = [sum(vals) / len(vals) if vals else 0 for vals in recorded_values.values()]
+            # Activate both valves for a continuous 10-second period
+            self.app.valve1.supply()
+            self.app.valve2.supply()
+            time.sleep(10)
+            # Set valves to neutral after supply period
+            self.app.valve1.neutral()
+            self.app.valve2.neutral()
+            # Record sensor reading
+            rec = self.app.sensor_data[-1]
+            avg_values = [
+                rec.get('pressure0_convert', 0),
+                rec.get('pressure1_convert', 0),
+                rec.get('pressure2_convert', 0)
+            ]
             calibration_results.append({
                 "reference_pressure": current_pressure,
                 "avg_pressure0_convert": avg_values[0],
                 "avg_pressure1_convert": avg_values[1],
                 "avg_pressure2_convert": avg_values[2]
             })
-            # Here you may decide to update the UI or log the results.
             current_pressure += increment
 
-        # Save calibration_results to CSV in a folder (e.g., calibration_<date>/raw_<timestamp>_0_psi_calibration.csv)
+        # Save calibration_results to CSV in a folder named with the calibration date.
         calibration_folder = f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}"
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
-        csv_filename = os.path.join(calibration_folder,
-                                    f"raw_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_0_psi_calibration.csv")
+        csv_filename = os.path.join(
+            calibration_folder,
+            f"raw_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_0_psi_calibration.csv"
+        )
         import csv
         with open(csv_filename, "w", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=[
@@ -302,8 +267,15 @@ class CalibratePage(ctk.CTkFrame):
             writer.writeheader()
             for row in calibration_results:
                 writer.writerow(row)
-        # Optionally, display a popup to indicate calibration is complete.
+        # Show a completion popup.
         complete_popup = ctk.CTkToplevel(self)
         complete_popup.title("Calibration Complete")
         tk.Label(complete_popup, text="Sensor calibration is complete and data has been saved.").pack(padx=10, pady=10)
         ctk.CTkButton(complete_popup, text="OK", command=complete_popup.destroy).pack(pady=5)
+
+    def update_sensor_buttons(self, success_list):
+        # Update sensor button colors based on calibration success (green if within tolerance, red otherwise).
+        color_map = {True: "green", False: "red"}
+        self.sensor1_button.configure(fg_color=color_map[success_list[0]])
+        self.sensor2_button.configure(fg_color=color_map[success_list[1]])
+        self.sensor3_button.configure(fg_color=color_map[success_list[2]])
