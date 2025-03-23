@@ -1,6 +1,5 @@
-#!/usr/bin/python3
-import lgpio
 import spidev
+import lgpio
 import time
 
 # ---------------------------------------------------------------------------
@@ -147,20 +146,11 @@ ADS1263_CMD = {
 }
 
 # ---------------------------------------------------------------------------
-# Minimal config module implemented with lgpio and spidev for SPI
+# Minimal config module implemented with spidev for SPI and lgpio for GPIO
 #
-# This layer provides:
-#   module_init() and module_exit() for setting up/closing the SPI and GPIO chip,
-#   digital_write(pin, value), digital_read(pin),
-#   delay_ms(ms),
-#   spi_writebyte(data) and spi_readbytes(n)
-#
-# Adjust the API calls below as needed for your environment.
-#
-
 # Global handles
 _chip = None
-_spi = None  # spidev instance for SPI transfers
+_spi = None
 _gpio_wrapper = None
 
 
@@ -170,11 +160,13 @@ def module_init():
     _chip = lgpio.gpiochip_open(0)
     _gpio_wrapper = LGPIOWrapper(_chip)
 
-    # Open SPI device using spidev (bus 0, CS 0)
+    # Initialize SPI using spidev
     _spi = spidev.SpiDev()
+    # Open SPI bus 0, device 0 (adjust bus/device numbers as needed)
     _spi.open(0, 0)
-    _spi.max_speed_hz = 250000  # Adjust speed as needed
-    _spi.mode = 0
+    _spi.max_speed_hz = 250000
+    # Disable spidev's chip-select since we handle it manually via lgpio:
+    _spi.no_cs = True
     return 0
 
 
@@ -189,11 +181,6 @@ def module_exit():
     lgpio.gpiochip_close(_chip)
 
 
-def digital_write(pin, value):
-    global _gpio_wrapper
-    _gpio_wrapper.digital_write(pin, value)
-
-
 def digital_read(pin):
     global _gpio_wrapper
     return _gpio_wrapper.digital_read(pin)
@@ -205,21 +192,18 @@ def delay_ms(ms):
 
 def spi_writebyte(data):
     global _spi
-    # Use spidev's full-duplex transfer; ignore returned data.
+    # data is a list of integers; use spidev to transfer data
     _spi.xfer2(data)
 
 
 def spi_readbytes(n):
     global _spi
-    # To read n bytes, send n dummy bytes (0x00)
-    return _spi.xfer2([0] * n)
+    # Read n bytes by sending dummy bytes (0x00)
+    return _spi.xfer2([0x00] * n)
 
 
 # ---------------------------------------------------------------------------
 # LGPIOWrapper class for digital I/O
-#
-# This class requests GPIO lines (for output or input) and provides simple
-# digital_write and digital_read methods.
 #
 class LGPIOWrapper:
     def __init__(self, chip):
@@ -229,12 +213,12 @@ class LGPIOWrapper:
 
     def setup_out(self, pin):
         # Request an output line; adjust parameters as needed.
-        handle = lgpio.request_lines(self.chip, [pin], "ADS1263_out", 0, 0)
+        handle = lgpio.gpio_request_line(self.chip, [pin], "ADS1263_out", 0, 0)
         self.out_lines[pin] = handle
 
     def setup_in(self, pin):
         # Request an input line; adjust parameters as needed.
-        handle = lgpio.request_lines(self.chip, [pin], "ADS1263_in", 0, 1)
+        handle = lgpio.gpio_request_line(self.chip, [pin], "ADS1263_in", 0, 1)
         self.in_lines[pin] = handle
 
     def digital_write(self, pin, value):
@@ -255,14 +239,14 @@ class LGPIOWrapper:
 
 
 # ---------------------------------------------------------------------------
-# ADS1263 Driver Class (porting from RPi.GPIO to use our lgpio-based config and spidev for SPI)
+# ADS1263 Driver Class (using spidev for SPI and lgpio for GPIO)
 #
 class ADS1263:
     def __init__(self):
-        # Define your pin numbers as needed:
-        self.rst_pin = 5  # Reset pin
-        self.cs_pin = 6  # Chip-select pin
-        self.drdy_pin = 13  # Data ready pin
+        # Define your pin numbers for reset, chip-select and DRDY.
+        self.rst_pin = 5  # Replace with your actual reset pin number
+        self.cs_pin = 6  # Replace with your actual chip-select pin number
+        self.drdy_pin = 13  # Replace with your actual DRDY pin number
         self.ScanMode = 1
 
     # Hardware reset
@@ -353,7 +337,7 @@ class ADS1263:
 
     # Configure ADC2 parameters: gain and data rate
     def ADS1263_ConfigADC2(self, gain, drate):
-        ADC2CFG = 0x20  # Use VAVDD/VAVSS as reference
+        ADC2CFG = 0x20  # 0x20: use VAVDD/VAVSS as reference
         ADC2CFG |= (drate << 6) | gain
         self.ADS1263_WriteReg(ADS1263_REG['REG_ADC2CFG'], ADC2CFG)
         if self.ADS1263_ReadData(ADS1263_REG['REG_ADC2CFG'])[0] == ADC2CFG:
