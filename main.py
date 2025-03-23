@@ -368,7 +368,7 @@ class App(ctk.CTk):
 
                 # Display video frame on the canvas
                 canvas.create_image(0, 0, anchor="nw", image=image)
-                canvas.image = image  # Prevent garbage collection
+                canvas.image = image  # Keep a reference to avoid garbage collection
 
                 # Update overlay text based on time
                 elapsed_time = time.time() - start_time
@@ -376,7 +376,7 @@ class App(ctk.CTk):
                     setup_status.set(setup_steps[current_step_index][0])
                     current_step_index += 1
                     if current_step_index < len(setup_steps):
-                        next_step_time = elapsed_time + setup_steps[current_step_index][1]
+                        next_step_time = setup_steps[current_step_index][1]
 
                 # Overlay text on the canvas
                 canvas.delete("text")
@@ -395,10 +395,8 @@ class App(ctk.CTk):
             video.release()
             canvas.destroy()
 
-        # Start video playback
+        # Start the video playback
         play_video()
-
-        # Restore window decorations after video
         self.overrideredirect(False)
 
     def clear_content_frame(self):
