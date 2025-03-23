@@ -149,7 +149,7 @@ class App(ctk.CTk):
             print(f"Failed to set icon: {e}")
 
         # Window configuration
-        self.title("RatFlex")
+        self.title("MeshAlyzer")
         self.resizable(False, False)
         # Calculate the center of the screen
         screen_width = self.winfo_screenwidth()
@@ -318,7 +318,7 @@ class App(ctk.CTk):
 
     def show_boot_animation(self):
         # Remove title bar for splash screen effect
-        self.overrideredirect(False)
+        self.overrideredirect(True)
 
         # Set the desired window size (720p video dimensions)
         window_width = 1280
@@ -368,7 +368,7 @@ class App(ctk.CTk):
 
                 # Display video frame on the canvas
                 canvas.create_image(0, 0, anchor="nw", image=image)
-                canvas.image = image  # Keep a reference to avoid garbage collection
+                canvas.image = image  # Prevent garbage collection
 
                 # Update overlay text based on time
                 elapsed_time = time.time() - start_time
@@ -376,13 +376,13 @@ class App(ctk.CTk):
                     setup_status.set(setup_steps[current_step_index][0])
                     current_step_index += 1
                     if current_step_index < len(setup_steps):
-                        next_step_time = setup_steps[current_step_index][1]
+                        next_step_time = elapsed_time + setup_steps[current_step_index][1]
 
                 # Overlay text on the canvas
                 canvas.delete("text")
                 canvas.create_text(
                     canvas.winfo_width() // 2,
-                    (canvas.winfo_height() // 2)-50,
+                    (canvas.winfo_height() // 2) - 50,
                     text=setup_status.get(),
                     font=("Arial", 24),
                     fill="white",
@@ -392,13 +392,14 @@ class App(ctk.CTk):
                 self.update()
                 time.sleep(1 / video.get(cv2.CAP_PROP_FPS))
 
-
             video.release()
             canvas.destroy()
-        # Start the video playback
-        play_video()
-        self.overrideredirect(False)
 
+        # Start video playback
+        play_video()
+
+        # Restore window decorations after video
+        self.overrideredirect(False)
 
     def clear_content_frame(self):
         for widget in self.content_frame.winfo_children():
@@ -411,7 +412,6 @@ class App(ctk.CTk):
             self.pressure1 = pressure1
             self.pressure2 = pressure2
             self.pressure3 = pressure3
-            print(f"Updated Pressures: {pressure0:.2f}, {pressure1:.2f}, {pressure2:.2f}, {pressure3:.2f}")
 
     def show_home(self):
         self.clear_content_frame()
