@@ -343,7 +343,7 @@ class App(ctk.CTk):
 
         # Function to play video
         def play_video():
-            video_path = "./img/STL_Boot_2.mp4"
+            video_path = "./img/MeshAlyzer.mp4"
             video = cv2.VideoCapture(video_path)
 
             setup_steps = [
