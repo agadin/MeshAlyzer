@@ -1,0 +1,4 @@
+This test will verify that the MeshAlyzer's pressure transducers maintain at least 99% accuracy.
+The transducers will be zeroed, then exposed to incremental pressures from 0~kPa to 1000~kPa in 50~kPa steps by using the tanks calibrated air regulator.
+The sensor readings will be compared to the regulator, and a machine model will be used to develop a formula to calibrate the sensors based on a real-time self-calibration approach for pressure sensors using an artificial neural network, making precise calibration essential for accurate training.
+The test will pass if the sensors show at least 99% accuracy when compared to the regulator across all pressures tested after calibration.
