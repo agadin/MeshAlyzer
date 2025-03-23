@@ -29,7 +29,6 @@ def module_init():
     spi.open(0, 0)
     spi.max_speed_hz = 500000  # Set the SPI speed as needed
     spi.mode = 0             # Set SPI mode to 0 (adjust if necessary)
-    spi.no_cs = True         # Disable hardware CS control (we handle CS manually via lgpio)
 
     # --- Initialize LGPIO ---
     chip_handle = lgpio.gpiochip_open(0)  # Open the first GPIO chip
