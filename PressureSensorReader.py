@@ -37,3 +37,16 @@ class PressureReceiver:
         except Exception as e:
             print(f"Error reading serial: {e}")
             return 0.0, 0.0, 0.0, 0.0
+
+def main():
+    receiver = PressureReceiver()
+    try:
+        while True:
+            pressure_data = receiver.get_latest_pressure()
+            print(f"Pressure Data: {pressure_data}")
+            time.sleep(5)
+    except KeyboardInterrupt:
+        print("Exiting...")
+
+if __name__ == "__main__":
+    main()
