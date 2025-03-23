@@ -404,14 +404,11 @@ class App(ctk.CTk):
             widget.destroy()
 
     def update_pressure_values(self):
-        while self.running:
             pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
             self.pressure0 = pressure0
             self.pressure1 = pressure1
             self.pressure2 = pressure2
             self.pressure3 = pressure3
-            print(  pressure0, pressure1, pressure2, pressure3)
-
     def show_home(self):
         self.clear_content_frame()
 
