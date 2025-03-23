@@ -16,12 +16,15 @@ class PressureReceiver:
                 start_time = time.time()
                 while time.time() - start_time < self.timeout:
                     line = ser.readline().decode('utf-8').strip()
+                    print(f"Read line: {line}")  # Debug: print each line read
                     if not line:
                         continue
                     try:
                         data = json.loads(line)
                         latest_line = data
+                        print(f"Decoded JSON: {data}")  # Debug: print decoded JSON
                     except json.JSONDecodeError:
+                        print("JSON decode error")  # Debug: print JSON decode error
                         continue
 
                 if latest_line and "sensors" in latest_line:
@@ -31,8 +34,10 @@ class PressureReceiver:
                     pressure1 = sensors.get("channel_1", 0.0)
                     pressure2 = sensors.get("channel_2", 0.0)
                     pressure3 = sensors.get("channel_3", 0.0)
+                    print(f"Pressure values: {pressure0}, {pressure1}, {pressure2}, {pressure3}")  # Debug: print pressure values
                     return pressure0, pressure1, pressure2, pressure3
                 else:
+                    print("No valid sensor data found")  # Debug: print no valid sensor data
                     return 0.0, 0.0, 0.0, 0.0  # fallback values
         except Exception as e:
             print(f"Error reading serial: {e}")
@@ -46,13 +51,16 @@ class PressureReceiver:
             with serial.Serial(self.port, self.baudrate, timeout=self.timeout) as ser:
                 while packet_count < 10:
                     line = ser.readline().decode('utf-8').strip()
+                    print(f"Read line: {line}")  # Debug: print each line read
                     if not line:
                         continue
                     try:
                         data = json.loads(line)
                         if "sensors" in data:
                             packet_count += 1
+                            print(f"Packet {packet_count} received")  # Debug: print packet count
                     except json.JSONDecodeError:
+                        print("JSON decode error")  # Debug: print JSON decode error
                         continue
 
         except Exception as e:
@@ -60,12 +68,11 @@ class PressureReceiver:
             return 0.0
 
         total_time = time.time() - start_time
+        print(f"Total time to receive 10 packets: {total_time:.2f} seconds")  # Debug: print total time
         return total_time
 
 def main():
     receiver = PressureReceiver()
-    pressure_data = receiver.get_latest_pressure()
-    print(f"Pressure Data: {pressure_data}")
     print("Starting to receive pressure data...")
     total_time = receiver.test_average_speed()
     print(f"Total time to receive 10 packets: {total_time:.2f} seconds")
