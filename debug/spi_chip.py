@@ -1,41 +1,30 @@
 #!/usr/bin/python3
-import lgpio
+import spidev
 import time
 
+
 def main():
-    try:
-        # Open the GPIO chip (usually chip 0 on Raspberry Pi)
-        chip = lgpio.gpiochip_open(0)
-        print("GPIO chip opened.")
+    # Create an SPI instance
+    spi = spidev.SpiDev()
 
-        # Open SPI channel 0 with 500 kHz speed, mode 0, flags 0
-        spi_handle = lgpio.spi_open(chip, 0, 500000, 0, 0)
-        print("SPI device opened on channel 0.")
+    # Open SPI bus 0, chip select (CS) 0
+    spi.open(0, 0)
+    spi.max_speed_hz = 500000  # Set speed to 500 kHz
+    spi.mode = 0  # Set SPI mode to 0
 
-        # Send a dummy command (adjust the command bytes as needed)
-        dummy_command = bytes([0x00])
-        lgpio.spi_write(spi_handle, dummy_command)
-        print("Sent dummy command.")
+    print("SPI device opened using spidev.")
 
-        # Wait briefly before reading the response
-        time.sleep(0.1)
-        data = lgpio.spi_read(spi_handle, 4)  # Read 4 bytes from the device
-        print("Received data:", list(data))
+    # Send a dummy command (0x00) and simultaneously read 4 bytes.
+    # xfer2 performs a full-duplex SPI transaction.
+    dummy_command = [0x00]
+    # Append dummy bytes (e.g., 0) to read 4 bytes in response.
+    response = spi.xfer2(dummy_command + [0x00] * 4)
+    print("Received data:", response)
 
-    except Exception as e:
-        print("An error occurred:", e)
-    finally:
-        # Cleanup: close the SPI channel and GPIO chip
-        try:
-            lgpio.spi_close(spi_handle)
-            print("SPI device closed.")
-        except Exception:
-            pass
-        try:
-            lgpio.gpiochip_close(chip)
-            print("GPIO chip closed.")
-        except Exception:
-            pass
+    # Close the SPI connection
+    spi.close()
+    print("SPI device closed.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
