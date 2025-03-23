@@ -1098,6 +1098,7 @@ class App(ctk.CTk):
                     seconds=data['seconds'],
                     milliseconds=data['milliseconds']
                 )
+                print(f"Processed data: {data}")
         except queue.Empty:
             pass
         self.after(100, self.process_queue)
