@@ -1071,7 +1071,8 @@ class App(ctk.CTk):
                     seconds=0,
                     milliseconds=0
                 )
-            time.sleep(0.05)
+            print(f"Recorded data: {self.sensor_data[-1]}")
+            time.sleep(0.5)
 
     def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
         """Convert the pressure sensor value to a desired unit."""
