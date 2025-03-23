@@ -1,4 +1,4 @@
-# --- New CalibratePage class (updated to collect raw pressure values) ---
+# --- New CalibratePage class (updated with 7.25 psi increments) ---
 import customtkinter as ctk
 import shutil
 import multiprocessing.shared_memory as sm
@@ -119,9 +119,9 @@ class CalibratePage(ctk.CTkFrame):
         ref_entry.pack(padx=10, pady=5)
         tk.Label(popup, text="Select sensors experiencing the reference pressure:").pack(padx=10, pady=5)
         sensor_vars = [tk.BooleanVar(), tk.BooleanVar(), tk.BooleanVar()]
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 1 (Pressure0)", variable=sensor_vars[0]).pack(padx=10, pady=2)
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 2 (Pressure1)", variable=sensor_vars[1]).pack(padx=10, pady=2)
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 3 (Pressure2)", variable=sensor_vars[2]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 1", variable=sensor_vars[0]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 2", variable=sensor_vars[1]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 3", variable=sensor_vars[2]).pack(padx=10, pady=2)
 
         def on_submit():
             try:
@@ -144,9 +144,11 @@ class CalibratePage(ctk.CTkFrame):
         if self.sensor_selected[0] and not any(self.sensor_selected[1:]):
             self.app.valve1.supply()
             self.app.valve2.supply()
+        print("Check Calibration: Valves activated. Waiting 10 seconds...")
         time.sleep(10)
         self.app.valve1.neutral()
         self.app.valve2.neutral()
+        print("Check Calibration: Valves set to neutral.")
         rec = self.app.sensor_data[-1]
         avg_values = [
             rec.get('pressure0', 0),
@@ -161,11 +163,12 @@ class CalibratePage(ctk.CTkFrame):
             else:
                 success[i] = False
         self.update_sensor_buttons(success)
+        print(f"Check Calibration: Sensor readings: {avg_values}. Success flags: {success}")
 
     def start_sensor_calibration(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
-        desired_pressures = [round(i * 7.27, 2) for i in range(int(145 / 7.27) + 1)]
+        desired_pressures = [round(i * 7.25, 2) for i in range(int(145 / 7.25) + 1)]
         prompt_text = ("Calibrate sensors for desired pressures:\n" +
                        ", ".join(str(p) + " psi" for p in desired_pressures) +
                        "\n\nEnter reference pressure (should be 0 psi):")
@@ -190,14 +193,17 @@ class CalibratePage(ctk.CTkFrame):
 
     def perform_sensor_calibration(self, ref_pressure):
         current_pressure = 0
-        increment = 7.27
+        increment = 7.25
         calibration_results = []
+        print("Starting full sensor calibration...")
         while current_pressure <= 145:
+            print(f"Calibrating at {current_pressure} psi...")
             self.app.valve1.supply()
             self.app.valve2.supply()
             time.sleep(10)
             self.app.valve1.neutral()
             self.app.valve2.neutral()
+            print("Valves set to neutral after 10 seconds.")
             rec = self.app.sensor_data[-1]
             avg_values = [
                 rec.get('pressure0', 0),
@@ -210,15 +216,22 @@ class CalibratePage(ctk.CTkFrame):
                 "avg_pressure1": avg_values[1],
                 "avg_pressure2": avg_values[2]
             })
+            print(f"Recorded data at {current_pressure} psi: {avg_values}")
             current_pressure += increment
 
-        calibration_folder = f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}"
+        base_folder = "calibration_data"
+        if not os.path.exists(base_folder):
+            os.makedirs(base_folder)
+            print(f"Created base folder: {base_folder}")
+        calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
+            print(f"Created calibration folder: {calibration_folder}")
         csv_filename = os.path.join(
             calibration_folder,
             f"raw_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_0_psi_calibration.csv"
         )
+        print(f"Saving calibration data to CSV file: {csv_filename}")
         import csv
         with open(csv_filename, "w", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=[
@@ -227,6 +240,7 @@ class CalibratePage(ctk.CTkFrame):
             writer.writeheader()
             for row in calibration_results:
                 writer.writerow(row)
+        print("Calibration data successfully saved.")
         complete_popup = ctk.CTkToplevel(self)
         complete_popup.title("Calibration Complete")
         tk.Label(complete_popup, text="Sensor calibration is complete and data has been saved.").pack(padx=10, pady=10)
