@@ -596,6 +596,8 @@ class App(ctk.CTk):
         self.update_output_window()
 
     def update_displays(self, step_count, current_angle, current_force, minutes, seconds, milliseconds):
+        print("Step count: ", step_count)
+        print("Current angle: ", current_angle)
         if self.home_displayed:
             if step_count is not None:
                 self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
