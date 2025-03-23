@@ -1,4 +1,4 @@
-# --- New CalibratePage class (modified) ---
+# --- New CalibratePage class (updated to collect raw pressure values) ---
 import customtkinter as ctk
 import shutil
 import multiprocessing.shared_memory as sm
@@ -53,21 +53,20 @@ class CalibratePage(ctk.CTkFrame):
                                                  command=self.start_sensor_calibration)
         self.sensor_calib_button.pack(side="left", padx=10)
 
-        # Graph frame in the middle to show pressureX_convert values
+        # Graph frame in the middle to show pressure values
         self.graph_frame = ctk.CTkFrame(self)
         self.graph_frame.pack(expand=True, fill="both", padx=10, pady=5)
         self.fig, self.ax = plt.subplots(figsize=(6, 4))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
         self.canvas.get_tk_widget().pack(expand=True, fill="both")
-        self.ax.set_title("Pressure Sensor Converted Values")
+        self.ax.set_title("Pressure Sensor Raw Values")
         self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("Pressure Convert Value")
+        self.ax.set_ylabel("Pressure Value")
 
         # Bottom frame with sensor toggle buttons
         self.bottom_frame = ctk.CTkFrame(self, height=50)
         self.bottom_frame.pack(fill="x", padx=10, pady=5)
 
-        # Create three sensor buttons – default color is gray.
         self.sensor1_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 1", fg_color="gray",
                                             command=lambda: self.toggle_sensor(0))
         self.sensor1_button.pack(side="left", padx=10)
@@ -80,14 +79,10 @@ class CalibratePage(ctk.CTkFrame):
                                             command=lambda: self.toggle_sensor(2))
         self.sensor3_button.pack(side="left", padx=10)
 
-        # Sensor selection state (True if selected)
         self.sensor_selected = [False, False, False]
-
-        # Start a periodic update of the graph
         self.update_graph()
 
     def toggle_sensor(self, sensor_index):
-        # Toggle selection state and update button color (still gray if not yet calibrated)
         self.sensor_selected[sensor_index] = not self.sensor_selected[sensor_index]
         new_color = "darkgray" if self.sensor_selected[sensor_index] else "gray"
         if sensor_index == 0:
@@ -98,34 +93,30 @@ class CalibratePage(ctk.CTkFrame):
             self.sensor3_button.configure(fg_color=new_color)
 
     def update_graph(self):
-        # Clear the axes and plot current data from app.sensor_data
         self.ax.cla()
-        self.ax.set_title("Pressure Sensor Converted Values")
+        self.ax.set_title("Pressure Sensor Raw Values")
         self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("Pressure Convert Value")
+        self.ax.set_ylabel("Pressure Value")
         times = [data['time'] for data in self.app.sensor_data if data['time'] >= 0]
         if times:
-            p0 = [data['pressure0_convert'] for data in self.app.sensor_data if data['time'] >= 0]
-            p1 = [data['pressure1_convert'] for data in self.app.sensor_data if data['time'] >= 0]
-            p2 = [data['pressure2_convert'] for data in self.app.sensor_data if data['time'] >= 0]
-            p3 = [data['pressure3_convert'] for data in self.app.sensor_data if data['time'] >= 0]
-            self.ax.plot(times, p0, label="Pressure0_convert")
-            self.ax.plot(times, p1, label="Pressure1_convert")
-            self.ax.plot(times, p2, label="Pressure2_convert")
-            self.ax.plot(times, p3, label="Pressure3_convert")
+            p0 = [data['pressure0'] for data in self.app.sensor_data if data['time'] >= 0]
+            p1 = [data['pressure1'] for data in self.app.sensor_data if data['time'] >= 0]
+            p2 = [data['pressure2'] for data in self.app.sensor_data if data['time'] >= 0]
+            p3 = [data['pressure3'] for data in self.app.sensor_data if data['time'] >= 0]
+            self.ax.plot(times, p0, label="Pressure0")
+            self.ax.plot(times, p1, label="Pressure1")
+            self.ax.plot(times, p2, label="Pressure2")
+            self.ax.plot(times, p3, label="Pressure3")
             self.ax.legend()
         self.canvas.draw()
         self.after(1000, self.update_graph)
 
     def start_check_calibration(self):
-        # Popup to prompt the user for a reference pressure and sensor selection
         popup = ctk.CTkToplevel(self)
         popup.title("Check Calibration")
-
         tk.Label(popup, text="Enter Reference Pressure:").pack(padx=10, pady=5)
         ref_entry = ctk.CTkEntry(popup)
         ref_entry.pack(padx=10, pady=5)
-
         tk.Label(popup, text="Select sensors experiencing the reference pressure:").pack(padx=10, pady=5)
         sensor_vars = [tk.BooleanVar(), tk.BooleanVar(), tk.BooleanVar()]
         ctk.CTkCheckBox(popup, text="Pressure Sensor 1 (Pressure0)", variable=sensor_vars[0]).pack(padx=10, pady=2)
@@ -146,13 +137,6 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn.pack(padx=10, pady=10)
 
     def perform_check_calibration(self, ref_pressure):
-        """
-        Calibration check process:
-          - Depending on sensor selection, call valve supply methods.
-          - Activate the valves continuously for 10 seconds.
-          - After 10 seconds, call the neutral method on both valves.
-          - Record the latest sensor values and perform a calibration check.
-        """
         if self.sensor_selected[1]:
             self.app.valve1.supply()
         if self.sensor_selected[2]:
@@ -160,18 +144,14 @@ class CalibratePage(ctk.CTkFrame):
         if self.sensor_selected[0] and not any(self.sensor_selected[1:]):
             self.app.valve1.supply()
             self.app.valve2.supply()
-
-        time.sleep(10)  # Continuous supply for 10 seconds
-
-        # Turn off the supply by setting valves to neutral
+        time.sleep(10)
         self.app.valve1.neutral()
         self.app.valve2.neutral()
-
         rec = self.app.sensor_data[-1]
         avg_values = [
-            rec.get('pressure0_convert', 0),
-            rec.get('pressure1_convert', 0),
-            rec.get('pressure2_convert', 0)
+            rec.get('pressure0', 0),
+            rec.get('pressure1', 0),
+            rec.get('pressure2', 0)
         ]
         tolerance = 0.05
         success = [False, False, False]
@@ -183,21 +163,9 @@ class CalibratePage(ctk.CTkFrame):
         self.update_sensor_buttons(success)
 
     def start_sensor_calibration(self):
-        """
-        Sensor calibration process:
-         - Prompt the user for a reference pressure of 0 psi.
-         - Display a prompt indicating that calibration will be done for pressures
-           increasing by 7.25 psi from 0 up to 145 psi.
-         - For each desired pressure:
-             - Activate both valves continuously for 10 seconds.
-             - Then set the valves to neutral and record a sensor reading.
-         - Save the collected data to a CSV file.
-         - No venting is performed.
-        """
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
-        # Updated prompt showing desired pressures from 0 to 145 psi in 7.25 psi increments.
-        desired_pressures = [round(i * 7.25, 2) for i in range(int(145 / 7.25) + 1)]
+        desired_pressures = [round(i * 7.27, 2) for i in range(int(145 / 7.27) + 1)]
         prompt_text = ("Calibrate sensors for desired pressures:\n" +
                        ", ".join(str(p) + " psi" for p in desired_pressures) +
                        "\n\nEnter reference pressure (should be 0 psi):")
@@ -221,17 +189,9 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn.pack(padx=10, pady=10)
 
     def perform_sensor_calibration(self, ref_pressure):
-        """
-        For each calibration step from 0 psi to 145 psi (increment 7.25 psi):
-          - Activate both valves continuously for 10 seconds.
-          - After 10 seconds, set valves to neutral.
-          - Record a single sensor reading.
-          - Save the collected data to a CSV file.
-        """
         current_pressure = 0
-        increment = 7.25
-        calibration_results = []  # store calibration data for each step
-
+        increment = 7.27
+        calibration_results = []
         while current_pressure <= 145:
             self.app.valve1.supply()
             self.app.valve2.supply()
@@ -240,19 +200,18 @@ class CalibratePage(ctk.CTkFrame):
             self.app.valve2.neutral()
             rec = self.app.sensor_data[-1]
             avg_values = [
-                rec.get('pressure0_convert', 0),
-                rec.get('pressure1_convert', 0),
-                rec.get('pressure2_convert', 0)
+                rec.get('pressure0', 0),
+                rec.get('pressure1', 0),
+                rec.get('pressure2', 0)
             ]
             calibration_results.append({
                 "reference_pressure": current_pressure,
-                "avg_pressure0_convert": avg_values[0],
-                "avg_pressure1_convert": avg_values[1],
-                "avg_pressure2_convert": avg_values[2]
+                "avg_pressure0": avg_values[0],
+                "avg_pressure1": avg_values[1],
+                "avg_pressure2": avg_values[2]
             })
             current_pressure += increment
 
-        # Create CSV folder if it doesn't exist
         calibration_folder = f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}"
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
@@ -263,7 +222,7 @@ class CalibratePage(ctk.CTkFrame):
         import csv
         with open(csv_filename, "w", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=[
-                "reference_pressure", "avg_pressure0_convert", "avg_pressure1_convert", "avg_pressure2_convert"
+                "reference_pressure", "avg_pressure0", "avg_pressure1", "avg_pressure2"
             ])
             writer.writeheader()
             for row in calibration_results:
