@@ -229,12 +229,12 @@ class LGPIOWrapper:
 
     def setup_out(self, pin):
         # Request an output line; adjust parameters as needed.
-        handle = lgpio.gpio_request_line(self.chip, [pin], "ADS1263_out", 0, 0)
+        handle = lgpio.request_lines(self.chip, [pin], "ADS1263_out", 0, 0)
         self.out_lines[pin] = handle
 
     def setup_in(self, pin):
         # Request an input line; adjust parameters as needed.
-        handle = lgpio.gpio_request_line(self.chip, [pin], "ADS1263_in", 0, 1)
+        handle = lgpio.request_lines(self.chip, [pin], "ADS1263_in", 0, 1)
         self.in_lines[pin] = handle
 
     def digital_write(self, pin, value):
