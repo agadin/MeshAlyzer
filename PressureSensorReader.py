@@ -44,7 +44,7 @@ def main():
         while True:
             pressure_data = receiver.get_latest_pressure()
             print(f"Pressure Data: {pressure_data}")
-            time.sleep(5)
+            time.sleep(3)
     except KeyboardInterrupt:
         print("Exiting...")
 
