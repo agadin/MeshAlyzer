@@ -527,9 +527,6 @@ class App(ctk.CTk):
 
         print(f"Running Protocol: {protocol_name}")
 
-    def process_queue(self):
-        print("Processing queue...")  # Replace with actual logic if nessesary
-
     def initialize_protocol_viewer(self):
         # Initialize ProtocolViewer directly
         self.protocol_viewer = ProtocolViewer(
@@ -1086,7 +1083,7 @@ class App(ctk.CTk):
                     'seconds': int(time_diff % 60),
                     'milliseconds': int((time_diff * 1000) % 1000)
                 })
-            print(f"Recorded data: {self.sensor_data[-1]}")
+            # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
 
     def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
@@ -1098,7 +1095,6 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
-                print(f"Processed data: {data}")
                 self.update_displays(
                     step_count=data['step_count'],
                     current_angle=data['current_angle'],
