@@ -67,5 +67,22 @@ def main():
         reader.cleanup()
         ser.close()
 
+def test_serial_connection():
+    try:
+        ser = serial.Serial('/dev/serial0', 9600, timeout=1)
+        print("Starting to send test messages continuously...")
+        try:
+            while True:
+                ser.write(b'hello from pi3\n')
+                print("Test message sent successfully.")
+                time.sleep(1)  # Adjust the sleep time as needed
+        except KeyboardInterrupt:
+            print("Keyboard interrupt received. Stopping...")
+        finally:
+            ser.close()
+    except Exception as e:
+        print(f"Error during serial test: {e}")
+
 if __name__ == "__main__":
+    test_serial_connection()
     main()

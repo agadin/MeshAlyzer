@@ -87,6 +87,40 @@ def main():
             time.sleep(3)
     except KeyboardInterrupt:
         print("Exiting...")
+def wait_for_input_or_message(ser):
+    input_event = threading.Event()
+    message_event = threading.Event()
+
+    def wait_for_input():
+        input("Press Enter to continue...")
+        input_event.set()
+
+    def wait_for_message():
+        while not message_event.is_set():
+            line = ser.readline().decode('utf-8').strip()
+            if line:
+                print(f"Received message: {line}")
+                message_event.set()
+
+    input_thread = threading.Thread(target=wait_for_input)
+    message_thread = threading.Thread(target=wait_for_message)
+
+    input_thread.start()
+    message_thread.start()
+
+    while not (input_event.is_set() or message_event.is_set()):
+        pass
+
+def test_serial_connection():
+    try:
+        ser = serial.Serial('/dev/serial0', 9600, timeout=1)
+        ser.write(b'hello from pi3\n')
+        print("Test message sent successfully.")
+        wait_for_input_or_message(ser)
+        ser.close()
+    except Exception as e:
+        print(f"Error during serial test: {e}")
 
 if __name__ == "__main__":
+    test_serial_connection()
     main()
