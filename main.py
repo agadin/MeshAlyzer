@@ -49,6 +49,10 @@ class ProtocolViewer(ctk.CTkFrame):
         self.protocol_folder = protocol_folder
         self.protocol_var = protocol_var
 
+        ## clamp state
+        self.clamp_state = None
+        self.clamp_state = False  # or True, depending on your system
+
         self.protocol_steps = []  # List of parsed protocol steps
         self.step_widgets = []  # References to step widgets for updating opacity
 
@@ -500,8 +504,10 @@ class App(ctk.CTk):
         self.protocol_thread.start()
         self.protocol_running = True
 
-
         print(f"Running Protocol: {protocol_name}")
+
+    def process_queue(self):
+        print("Processing queue...")  # Replace with actual logic if nessesary
 
     def initialize_protocol_viewer(self):
         # Initialize ProtocolViewer directly
