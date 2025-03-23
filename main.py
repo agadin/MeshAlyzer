@@ -376,7 +376,7 @@ class App(ctk.CTk):
                     setup_status.set(setup_steps[current_step_index][0])
                     current_step_index += 1
                     if current_step_index < len(setup_steps):
-                        next_step_time = setup_steps[current_step_index][1]
+                        next_step_time = elapsed_time + setup_steps[current_step_index][1]
 
                 # Overlay text on the canvas
                 canvas.delete("text")
