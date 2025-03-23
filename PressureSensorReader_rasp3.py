@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import time
 import json
 import socket
@@ -59,29 +58,31 @@ def run_client():
         logging.error(f"Sensor initialization failed: {e}")
         return
 
-    try:
-        logging.info(f"Attempting to connect to server at {SERVER_IP}:{SERVER_PORT}")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((SERVER_IP, SERVER_PORT))
-            logging.info("Connected to server. Starting data transmission...")
+    while True:
+        try:
+            logging.info(f"Attempting to connect to server at {SERVER_IP}:{SERVER_PORT}")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((SERVER_IP, SERVER_PORT))
+                logging.info("Connected to server. Starting data transmission...")
 
-            while True:
-                sensor_data = reader.get_pressure_sensors()
-                package = {
-                    "timestamp": time.time(),
-                    "sensors": sensor_data
-                }
-                json_data = json.dumps(package)
-                s.sendall((json_data + "\n").encode("utf-8"))
-                time.sleep(0.01)
-
-    except Exception as e:
-        logging.error(f"Client encountered an error: {e}")
-    finally:
-        reader.cleanup()
+                while True:
+                    try:
+                        sensor_data = reader.get_pressure_sensors()
+                        package = {
+                            "timestamp": time.time(),
+                            "sensors": sensor_data
+                        }
+                        json_data = json.dumps(package)
+                        s.sendall((json_data + "\n").encode("utf-8"))
+                        time.sleep(0.01)
+                    except (socket.error, OSError) as e:
+                        logging.error(f"Error sending data: {e}")
+                        break  # Exit the inner loop to reconnect
+        except (socket.error, OSError) as e:
+            logging.error(f"Connection error: {e}")
+            time.sleep(2)  # Wait before retrying
+        finally:
+            reader.cleanup()
 
 if __name__ == "__main__":
-    while True:
-        run_client()
-        logging.warning("Restarting script after failure...")
-        time.sleep(2)
+    run_client()
