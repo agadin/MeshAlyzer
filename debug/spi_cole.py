@@ -1,88 +1,97 @@
-#!/usr/bin/env python3
-"""
-Debugging script for ADS1263 initialization issue.
-"""
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
 
-import spidev
-import lgpio
 import time
+import ADS1263
+import RPi.GPIO as GPIO
 
-# ADS1263 definitions
-REG_ID = 0x00
-CMD_RREG = 0x20  # Read register command base
+REF = 5.08  # Modify according to actual voltage
+# external AVDD and AVSS(Default), or internal 2.5V
 
-# Pin definitions (BCM numbering)
-RST_PIN = 18   # Reset pin
-CS_PIN = 22    # Chip Select pin (handled manually via lgpio)
-DRDY_PIN = 17  # Data Ready pin
+# ADC1 test part
+TEST_ADC1 = True
+# ADC2 test part
+TEST_ADC2 = False
+# ADC1 rate test part, For faster speeds use the C program
+TEST_ADC1_RATE = False
+# RTD test part
+TEST_RTD = False
 
-def hardware_reset(chip_handle):
-    """Perform a hardware reset on the ADS1263."""
-    print("Performing hardware reset...")
-    lgpio.gpio_write(chip_handle, RST_PIN, 1)
-    time.sleep(0.2)
-    lgpio.gpio_write(chip_handle, RST_PIN, 0)
-    time.sleep(0.2)
-    lgpio.gpio_write(chip_handle, RST_PIN, 1)
-    time.sleep(0.2)
-    print("Hardware reset complete.")
+try:
+    ADC = ADS1263.ADS1263()
 
-def read_chip_id(spi, chip_handle):
-    """Read the ADS1263 ID register and return the raw byte."""
-    print("Reading chip ID...")
-    lgpio.gpio_write(chip_handle, CS_PIN, 0)
-    spi.xfer2([CMD_RREG | REG_ID, 0x00])
-    result = spi.xfer2([0x00])
-    lgpio.gpio_write(chip_handle, CS_PIN, 1)
-    print(f"Raw ID byte: 0x{result[0]:02X}")
-    return result[0]
+    # The faster the rate, the worse the stability
+    # and the need to choose a suitable digital filter(REG_MODE1)
+    if (ADC.ADS1263_init_ADC1('ADS1263_400SPS') == -1):
+        exit()
+    ADC.ADS1263_SetMode(0)  # 0 is singleChannel, 1 is diffChannel
 
-def main():
-    # Initialize SPI
-    spi = spidev.SpiDev()
-    spi.open(0, 0)
-    spi.max_speed_hz = 2000000  # 2 MHz (adjust if necessary)
-    spi.mode = 0b01           # ADS1263 typically uses mode 1 (try mode 0 if needed)
-    try:
-        spi.no_cs = True
-    except Exception as e:
-        print("Warning: Could not disable hardware CS:", e)
+    # ADC.ADS1263_DAC_Test(1, 1)      # Open IN6
+    # ADC.ADS1263_DAC_Test(0, 1)      # Open IN7
 
-    # Initialize lgpio: open GPIO chip 0 and claim pins
-    try:
-        chip_handle = lgpio.gpiochip_open(0)
-    except Exception as e:
-        print("Failed to open GPIO chip:", e)
-        spi.close()
-        return
+    if (TEST_ADC1):  # ADC1 Test
+        channelList = [0, 1, 2, 3, 4]  # The channel must be less than 10
+        while (1):
+            ADC_Value = ADC.ADS1263_GetAll(channelList)  # get ADC1 value
+            for i in channelList:
+                if (ADC_Value[i] >> 31 == 1):
+                    print("ADC1 IN%d = -%lf" % (i, (REF * 2 - ADC_Value[i] * REF / 0x80000000)))
+                else:
+                    print("ADC1 IN%d = %lf" % (i, (ADC_Value[i] * REF / 0x7fffffff)))  # 32bit
+            for i in channelList:
+                print("\33[2A")
 
-    try:
-        # Claim RST and CS as outputs and DRDY as input (pass pin numbers as lists)
-        lgpio.gpio_claim_output(chip_handle, [RST_PIN], 0)  # RST initially LOW
-        lgpio.gpio_claim_output(chip_handle, [CS_PIN], 1)  # CS initially HIGH
-        lgpio.gpio_claim_input(chip_handle, [DRDY_PIN])
-    except Exception as e:
-        print("Failed to claim GPIO lines:", e)
-        spi.close()
-        lgpio.gpiochip_close(chip_handle)
-        return
+    elif (TEST_ADC2):
+        if (ADC.ADS1263_init_ADC2('ADS1263_ADC2_400SPS') == -1):
+            exit()
+        while (1):
+            ADC_Value = ADC.ADS1263_GetAll_ADC2()  # get ADC2 value
+            for i in range(0, 10):
+                if (ADC_Value[i] >> 23 == 1):
+                    print("ADC2 IN%d = -%lf" % (i, (REF * 2 - ADC_Value[i] * REF / 0x800000)))
+                else:
+                    print("ADC2 IN%d = %lf" % (i, (ADC_Value[i] * REF / 0x7fffff)))  # 24bit
+            print("\33[11A")
 
-    # Reset the ADS1263
-    hardware_reset(chip_handle)
+    elif (TEST_ADC1_RATE):  # rate test
+        time_start = time.time()
+        ADC_Value = []
+        isSingleChannel = True
+        if isSingleChannel:
+            while (1):
+                ADC_Value.append(ADC.ADS1263_GetChannalValue(0))
+                if len(ADC_Value) == 5000:
+                    time_end = time.time()
+                    print(time_start, time_end)
+                    print(time_end - time_start)
+                    print('frequency = ', 5000 / (time_end - time_start))
+                    break
+        else:
+            while (1):
+                ADC_Value.append(ADC.ADS1263_GetChannalValue(0))
+                if len(ADC_Value) == 5000:
+                    time_end = time.time()
+                    print(time_start, time_end)
+                    print(time_end - time_start)
+                    print('frequency = ', 5000 / (time_end - time_start))
+                    break
 
-    # Read the chip ID
-    raw_id = read_chip_id(spi, chip_handle)
-    chip_id = raw_id >> 5
-    print(f"Extracted chip ID: 0x{chip_id:02X}")
+    elif (TEST_RTD):  # RTD Test
+        while (1):
+            ADC_Value = ADC.ADS1263_RTD_Test()
+            RES = ADC_Value / 2147483647.0 * 2.0 * 2000.0  # 2000.0 -- 2000R, 2.0 -- 2*i
+            print("RES is %lf" % RES)
+            TEMP = (RES / 100.0 - 1.0) / 0.00385  # 0.00385 -- pt100
+            print("TEMP is %lf" % TEMP)
+            print("\33[3A")
 
-    if chip_id == 0x01:
-        print("ADS1263 chip ID is correct. The board appears to be working!")
-    else:
-        print("ADS1263 chip ID mismatch. Check wiring and initialization.")
+    ADC.ADS1263_Exit()
 
-    # Cleanup resources
-    spi.close()
-    lgpio.gpiochip_close(chip_handle)
+except IOError as e:
+    print(e)
 
-if __name__ == "__main__":
-    main()
+except KeyboardInterrupt:
+    print("ctrl + c:")
+    print("Program end")
+    ADC.ADS1263_Exit()
+    exit()
