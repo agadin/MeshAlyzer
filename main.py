@@ -49,10 +49,6 @@ class ProtocolViewer(ctk.CTkFrame):
         self.protocol_folder = protocol_folder
         self.protocol_var = protocol_var
 
-        ## clamp state
-        self.clamp_state = None
-        self.clamp_state = False  # or True, depending on your system
-
         self.protocol_steps = []  # List of parsed protocol steps
         self.step_widgets = []  # References to step widgets for updating opacity
 
@@ -172,6 +168,10 @@ class App(ctk.CTk):
         self.protocol_command = None
         self.target_time = None
         self.protocol_running = False  # Flag to indicate if the protocol is running
+
+        ## clamp state
+        self.clamp_state = None
+        self.clamp_state = False  # or True, depending on your system
 
 
         # --------------------------
@@ -1182,6 +1182,10 @@ class App(ctk.CTk):
         if hasattr(self, 'update_thread'):
             self.update_thread.join()
         self.destroy()
+
+    def update_output_window(self):
+        # Define the method's functionality here
+        pass
 
 if __name__ == "__main__":
     app = App()
