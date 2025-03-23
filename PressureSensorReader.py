@@ -64,6 +64,9 @@ class PressureReceiver:
 
 def main():
     receiver = PressureReceiver()
+    pressure_data = receiver.get_latest_pressure()
+    print(f"Pressure Data: {pressure_data}")
+    print("Starting to receive pressure data...")
     total_time = receiver.test_average_speed()
     print(f"Total time to receive 10 packets: {total_time:.2f} seconds")
 
