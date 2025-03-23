@@ -37,7 +37,7 @@ import busio
 import adafruit_lps2x
 
 # Sensor import
-from PressureSensorReader import PressureSensorReader
+from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
 
 redis_client =[]
