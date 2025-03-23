@@ -1,10 +1,12 @@
 import serial
-import time
+from time import sleep
 
-ser = serial.Serial('/dev/serial0', 9600, timeout=1)
-
+ser = serial.Serial ("/dev/serial0", 9600)    #Open port with baud rate
 while True:
-    message = "Hello from Pi 3!\n"
-    ser.write(message.encode('utf-8'))
-    print("Sent:", message.strip())
-    time.sleep(1)
+    #received_data = ser.read()              #read serial port
+    #sleep(0.03)
+    #data_left = ser.inWaiting()             #check for remaining byte
+    #received_data += ser.read(data_left)
+    #print (received_data)                   #print received data
+    w = "Hello"
+    ser.write(w.encode())                #transmit data serially
