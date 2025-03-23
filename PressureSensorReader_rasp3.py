@@ -4,7 +4,6 @@ import json
 import serial
 import ADS1263
 import RPi.GPIO as GPIO
-
 class PressureSensorReader:
     def __init__(self, ref_voltage=5.08, channels=None):
         self.REF = ref_voltage  # Reference voltage

@@ -1,6 +1,7 @@
 import serial
 import json
 import time
+import threading
 
 class PressureReceiver:
     def __init__(self, port='/dev/serial0', baudrate=9600, timeout=1):
