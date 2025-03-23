@@ -16,9 +16,10 @@ class PressureReceiver:
                 start_time = time.time()
                 while time.time() - start_time < self.timeout:
                     line = ser.readline().decode('utf-8').strip()
-                    print(f"Read line: {line}")  # Debug: print each line read
                     if not line:
+                        print("Received blank line")  # Debug: print blank line
                         continue
+                    print(f"Read line: {line}")  # Debug: print each line read
                     try:
                         data = json.loads(line)
                         latest_line = data
@@ -51,9 +52,10 @@ class PressureReceiver:
             with serial.Serial(self.port, self.baudrate, timeout=self.timeout) as ser:
                 while packet_count < 10:
                     line = ser.readline().decode('utf-8').strip()
-                    print(f"Read line: {line}")  # Debug: print each line read
                     if not line:
+                        print("Received blank line")  # Debug: print blank line
                         continue
+                    print(f"Read line: {line}")  # Debug: print each line read
                     try:
                         data = json.loads(line)
                         if "sensors" in data:
