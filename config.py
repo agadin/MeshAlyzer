@@ -3,20 +3,14 @@
 /*****************************************************************************
  * | File        :   config.py
  * | Author      :   Waveshare team (modified)
- * | Function    :   Hardware underlying interface using lgpio for Raspberry Pi
+ * | Function    :   Hardware underlying interface using lgpio instead of RPi.GPIO
  * | Info        :
  *----------------
- * | This version:   V1.0 (modified)
+ * | This version:   V1.0 (modified for lgpio)
  * | Date        :   2020-12-12 (original), updated for lgpio
- * | Info        :
  ******************************************************************************
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction...
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND...
- *
+ * Permission is hereby granted...
  *****************************************************************************/
 """
 
@@ -28,7 +22,7 @@ import lgpio  # Using lgpio instead of RPi.GPIO
 
 
 class RaspberryPi:
-    # Pin definition
+    # Pin definition (BCM numbering)
     RST_PIN = 18
     CS_PIN = 22
     DRDY_PIN = 17
@@ -55,27 +49,47 @@ class RaspberryPi:
     def module_init(self):
         # Initialize SPI
         self.SPI.max_speed_hz = 2000000
+        # You may experiment with mode 0 or mode 1; try mode 0 if mode 1 still fails.
         self.SPI.mode = 0b01
 
         # Initialize lgpio: open GPIO chip 0
-        self.chip_handle = lgpio.gpiochip_open(0)
+        try:
+            self.chip_handle = lgpio.gpiochip_open(0)
+        except Exception as e:
+            print("Error opening GPIO chip:", e)
+            return -1
+
         # Claim outputs for RST and CS with initial values: RST LOW, CS HIGH
-        lgpio.gpio_claim_output(self.chip_handle, self.RST_PIN, 0)
-        lgpio.gpio_claim_output(self.chip_handle, self.CS_PIN, 1)
-        # Claim input for DRDY
-        lgpio.gpio_claim_input(self.chip_handle, self.DRDY_PIN)
+        try:
+            # Note: pass pin numbers as a list
+            lgpio.gpio_claim_output(self.chip_handle, [self.RST_PIN], 0)
+            lgpio.gpio_claim_output(self.chip_handle, [self.CS_PIN], 1)
+        except Exception as e:
+            print("Error claiming output lines:", e)
+            return -1
+
+        # Claim input for DRDY (as a list)
+        try:
+            lgpio.gpio_claim_input(self.chip_handle, [self.DRDY_PIN])
+        except Exception as e:
+            print("Error claiming input line:", e)
+            return -1
+
         return 0
 
     def module_exit(self):
         # Set pins to a safe state and close resources
-        lgpio.gpio_write(self.chip_handle, self.RST_PIN, 0)
-        lgpio.gpio_write(self.chip_handle, self.CS_PIN, 0)
+        try:
+            lgpio.gpio_write(self.chip_handle, self.RST_PIN, 0)
+            lgpio.gpio_write(self.chip_handle, self.CS_PIN, 0)
+            lgpio.gpiochip_close(self.chip_handle)
+        except Exception as e:
+            print("Error during cleanup:", e)
         self.SPI.close()
-        lgpio.gpiochip_close(self.chip_handle)
 
 
 class JetsonNano:
-    # Pin definition
+    # Pin definition (BCM numbering)
     RST_PIN = 18
     CS_PIN = 22
     DRDY_PIN = 17
