@@ -1,8 +1,11 @@
 import serial
+from time import sleep
 
-ser = serial.Serial('/dev/serial0', 9600, timeout=2)
-
+ser = serial.Serial ("/dev/serial0", 9600)    #Open port with baud rate
 while True:
-    line = ser.readline().decode('utf-8').strip()
-    if line:
-        print("Received:", line)
+    received_data = ser.read(5)              #read serial port
+    sleep(0.03)
+    data_left = ser.inWaiting()             #check for remaining byte
+    received_data += ser.read(data_left)
+    print (received_data)                   #print received data
+    #ser.write(received_data)                #transmit data serially
