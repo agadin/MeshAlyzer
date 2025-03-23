@@ -191,34 +191,68 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
         submit_btn.pack(padx=10, pady=10)
 
+    def prompt_measured_pressure(self, target_pressure):
+        """
+        Displays a popup that prompts the user to enter the measured pressure
+        for the given target_pressure. This function blocks until the popup is closed.
+        Returns the measured pressure as a float.
+        """
+        result = []
+        popup = ctk.CTkToplevel(self)
+        popup.title("Measured Pressure")
+        tk.Label(popup, text=f"Target pressure: {target_pressure} psi.\nEnter the measured pressure:").pack(padx=10,
+                                                                                                            pady=5)
+        entry = ctk.CTkEntry(popup)
+        entry.pack(padx=10, pady=5)
+
+        def on_submit():
+            try:
+                val = float(entry.get())
+            except ValueError:
+                tk.Label(popup, text="Invalid input. Please enter a number.", fg="red").pack()
+                return
+            result.append(val)
+            popup.destroy()
+
+        submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
+        submit_btn.pack(padx=10, pady=10)
+        popup.wait_window()  # Wait until popup is closed.
+        if result:
+            return result[0]
+        else:
+            return 0
+
     def perform_sensor_calibration(self, ref_pressure):
+        """
+        For each calibration step from 0 psi to 145 psi (increment 7.25 psi):
+          - Activate both valves continuously for 10 seconds.
+          - After 10 seconds, set valves to neutral.
+          - Prompt the user to type in the measured pressure.
+          - Record the target and measured pressures.
+          - Save all calibration data to a CSV file under the base folder 'calibration_data'.
+        """
         current_pressure = 0
         increment = 7.25
         calibration_results = []
         print("Starting full sensor calibration...")
         while current_pressure <= 145:
-            print(f"Calibrating at {current_pressure} psi...")
+            print(f"Calibrating at target {current_pressure} psi...")
             self.app.valve1.supply()
             self.app.valve2.supply()
             time.sleep(10)
             self.app.valve1.neutral()
             self.app.valve2.neutral()
             print("Valves set to neutral after 10 seconds.")
-            rec = self.app.sensor_data[-1]
-            avg_values = [
-                rec.get('pressure0', 0),
-                rec.get('pressure1', 0),
-                rec.get('pressure2', 0)
-            ]
+            # Prompt the user for the measured pressure
+            measured_pressure = self.prompt_measured_pressure(current_pressure)
+            print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
             calibration_results.append({
-                "reference_pressure": current_pressure,
-                "avg_pressure0": avg_values[0],
-                "avg_pressure1": avg_values[1],
-                "avg_pressure2": avg_values[2]
+                "target_pressure": current_pressure,
+                "measured_pressure": measured_pressure
             })
-            print(f"Recorded data at {current_pressure} psi: {avg_values}")
             current_pressure += increment
 
+        # Save the calibration results under the base folder 'calibration_data'
         base_folder = "calibration_data"
         if not os.path.exists(base_folder):
             os.makedirs(base_folder)
@@ -235,7 +269,7 @@ class CalibratePage(ctk.CTkFrame):
         import csv
         with open(csv_filename, "w", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=[
-                "reference_pressure", "avg_pressure0", "avg_pressure1", "avg_pressure2"
+                "target_pressure", "measured_pressure"
             ])
             writer.writeheader()
             for row in calibration_results:
