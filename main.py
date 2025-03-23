@@ -1090,6 +1090,7 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
+                print(f"Processed data: {data}")
                 self.update_displays(
                     step_count=data['step_count'],
                     current_angle=data['current_angle'],
@@ -1098,7 +1099,7 @@ class App(ctk.CTk):
                     seconds=data['seconds'],
                     milliseconds=data['milliseconds']
                 )
-                print(f"Processed data: {data}")
+
         except queue.Empty:
             pass
         self.after(100, self.process_queue)
