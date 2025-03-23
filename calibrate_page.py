@@ -1,4 +1,4 @@
-# --- New CalibratePage class (modified for 10-second continuous supply with neutral call) ---
+# --- New CalibratePage class (modified) ---
 import customtkinter as ctk
 import shutil
 import multiprocessing.shared_memory as sm
@@ -153,7 +153,6 @@ class CalibratePage(ctk.CTkFrame):
           - After 10 seconds, call the neutral method on both valves.
           - Record the latest sensor values and perform a calibration check.
         """
-        # Activate valves based on sensor selection
         if self.sensor_selected[1]:
             self.app.valve1.supply()
         if self.sensor_selected[2]:
@@ -164,11 +163,10 @@ class CalibratePage(ctk.CTkFrame):
 
         time.sleep(10)  # Continuous supply for 10 seconds
 
-        # Set valves to neutral after supply period
+        # Turn off the supply by setting valves to neutral
         self.app.valve1.neutral()
         self.app.valve2.neutral()
 
-        # Record the current sensor reading after 10 seconds
         rec = self.app.sensor_data[-1]
         avg_values = [
             rec.get('pressure0_convert', 0),
@@ -188,16 +186,22 @@ class CalibratePage(ctk.CTkFrame):
         """
         Sensor calibration process:
          - Prompt the user for a reference pressure of 0 psi.
-         - For pressures from 0 to 145 psi in increments of 7.25 psi:
+         - Display a prompt indicating that calibration will be done for pressures
+           increasing by 7.25 psi from 0 up to 145 psi.
+         - For each desired pressure:
              - Activate both valves continuously for 10 seconds.
-             - Then, set valves to neutral and record a sensor reading.
-         - Save the recorded data to a CSV file.
+             - Then set the valves to neutral and record a sensor reading.
+         - Save the collected data to a CSV file.
          - No venting is performed.
         """
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
-
-        tk.Label(popup, text="Enter Reference Pressure (should be 0 psi):").pack(padx=10, pady=5)
+        # Updated prompt showing desired pressures from 0 to 145 psi in 7.25 psi increments.
+        desired_pressures = [round(i * 7.25, 2) for i in range(int(145 / 7.25) + 1)]
+        prompt_text = ("Calibrate sensors for desired pressures:\n" +
+                       ", ".join(str(p) + " psi" for p in desired_pressures) +
+                       "\n\nEnter reference pressure (should be 0 psi):")
+        tk.Label(popup, text=prompt_text).pack(padx=10, pady=5)
         ref_entry = ctk.CTkEntry(popup)
         ref_entry.pack(padx=10, pady=5)
 
@@ -226,17 +230,14 @@ class CalibratePage(ctk.CTkFrame):
         """
         current_pressure = 0
         increment = 7.25
-        calibration_results = []  # list to store calibration data for each step
+        calibration_results = []  # store calibration data for each step
 
         while current_pressure <= 145:
-            # Activate both valves for a continuous 10-second period
             self.app.valve1.supply()
             self.app.valve2.supply()
             time.sleep(10)
-            # Set valves to neutral after supply period
             self.app.valve1.neutral()
             self.app.valve2.neutral()
-            # Record sensor reading
             rec = self.app.sensor_data[-1]
             avg_values = [
                 rec.get('pressure0_convert', 0),
@@ -251,7 +252,7 @@ class CalibratePage(ctk.CTkFrame):
             })
             current_pressure += increment
 
-        # Save calibration_results to CSV in a folder named with the calibration date.
+        # Create CSV folder if it doesn't exist
         calibration_folder = f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}"
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
@@ -267,14 +268,12 @@ class CalibratePage(ctk.CTkFrame):
             writer.writeheader()
             for row in calibration_results:
                 writer.writerow(row)
-        # Show a completion popup.
         complete_popup = ctk.CTkToplevel(self)
         complete_popup.title("Calibration Complete")
         tk.Label(complete_popup, text="Sensor calibration is complete and data has been saved.").pack(padx=10, pady=10)
         ctk.CTkButton(complete_popup, text="OK", command=complete_popup.destroy).pack(pady=5)
 
     def update_sensor_buttons(self, success_list):
-        # Update sensor button colors based on calibration success (green if within tolerance, red otherwise).
         color_map = {True: "green", False: "red"}
         self.sensor1_button.configure(fg_color=color_map[success_list[0]])
         self.sensor2_button.configure(fg_color=color_map[success_list[1]])
