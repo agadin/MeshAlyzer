@@ -49,7 +49,9 @@ class ProtocolViewer(ctk.CTkFrame):
         self.protocol_var = protocol_var
 
         self.protocol_steps = []  # List of parsed protocol steps
-        self.step_widgets = []  # References to step widgets for updating opacity
+        self.step_widgets = []  # References to step widgets for updating
+        # opacity
+
 
         self.scrollable_frame = ctk.CTkScrollableFrame(self, width=400, height=800)
         self.scrollable_frame.pack(fill="both", expand=True)
@@ -1021,8 +1023,8 @@ class App(ctk.CTk):
                 # Update displays with the new sensor data
                 self.update_queue.put({
                     'step_count': self.protocol_step,
-                    'current_angle': self.angle_display,
-                    'current_force': self.force_display,
+                    'current_angle': self.pressure0_convert,
+                    'current_force': self.pressure3_convert,
                     'minutes': int(time_diff // 60),
                     'seconds': int(time_diff % 60),
                     'milliseconds': int((time_diff * 1000) % 1000)
