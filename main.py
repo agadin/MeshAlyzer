@@ -303,8 +303,11 @@ class App(ctk.CTk):
         self.sensor_data = []
 
         # Start the sensor reading in a separate daemon thread
+        self.update_queue = queue.Queue()
         self.sensor_thread = threading.Thread(target=self.read_sensors, daemon=True)
         self.sensor_thread.start()
+        self.process_queue()
+
         ## apperance defults
         self.darkmodeToggle = False
 
@@ -343,7 +346,7 @@ class App(ctk.CTk):
 
         # Function to play video
         def play_video():
-            video_path = "./img/STL_Boot_2.mp4"
+            video_path = "./img/MeshAlyzer.mp4"
             video = cv2.VideoCapture(video_path)
 
             setup_steps = [
@@ -411,6 +414,7 @@ class App(ctk.CTk):
             self.pressure3 = pressure3
     def show_home(self):
         self.clear_content_frame()
+        self.home_displayed = True
 
         # Sidebar
         self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
@@ -536,6 +540,7 @@ class App(ctk.CTk):
         self.protocol_viewer.load_protocol(protocol_name)
 
     def show_protocol_builder(self):
+        self.home_displayed = False  # Set to False to indicate home is not displayed
         """Display the protocol builder page with a sidebar and main content area."""
         self.clear_content_frame()
 
@@ -544,6 +549,7 @@ class App(ctk.CTk):
         ctk.set_appearance_mode(mode)
 
     def show_inspector(self):
+        self.home_displayed = False  # Set to False to indicate home is not displayed
         # create a side bar that has a drop down menu for the user to select the trial they want to inspect. The trials will be read by reading the folders in ./data directory. If there are no trials in the directory the user will be prompted by a pop up window to got to the home page to run a protocol or can manually select one which will open up a file path dialog box for them to select the trial they want to inspect. Automatically create the figures for the trial and display them in the main frame
         # On the side bar also have a mannual upload box, save all figures button. Add a button if the slider is currently modified that says download cropped data. If slider is not modified, then the button will be greyed out. This button will trigger a popup that will have the default new file name as the folder name but with _cropped appended to the end. The user can change the name if they want. The .csv should be saved to the trial folder
 
@@ -553,6 +559,7 @@ class App(ctk.CTk):
 
 
     def show_settings(self):
+        self.home_displayed = False  # Set to False to indicate home is not displayed
         """Show settings and monitor protocol_runner.py output"""
         self.clear_content_frame()
 
@@ -582,44 +589,45 @@ class App(ctk.CTk):
         self.update_output_window()
 
     def update_displays(self, step_count, current_angle, current_force, minutes, seconds, milliseconds):
-        if step_count is not None:
-            self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
-            if step_count < 0:
-                if self.step_time is not None:
-                    self.step_display.configure(text=f"{self.step_time:.1f}s")
+        if self.home_displayed:
+            if step_count is not None:
+                self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
+                if step_count < 0:
+                    if self.step_time is not None:
+                        self.step_display.configure(text=f"{self.step_time:.1f}s")
+                else:
+                    self.moving_steps_total= redis_client.get("moving_steps_total")
+                    if self.moving_steps_total is None:
+                        self.moving_steps_total = 0
+                    self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
+                self.angle_display.configure(text=f"{current_angle:.1f}°")
+                self.force_display.configure(text=f"{current_force:.2f} N")
+                current_step_number = redis_client.get("current_step_number")
+                if current_step_number is None:
+                    current_step_number = 0
+                self.protocol_step_counter.configure(text=f"Step: {current_step_number} / {self.total_steps}")
             else:
-                self.moving_steps_total= redis_client.get("moving_steps_total")
-                if self.moving_steps_total is None:
-                    self.moving_steps_total = 0
-                self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
-            self.angle_display.configure(text=f"{current_angle:.1f}°")
-            self.force_display.configure(text=f"{current_force:.2f} N")
-            current_step_number = redis_client.get("current_step_number")
-            if current_step_number is None:
-                current_step_number = 0
-            self.protocol_step_counter.configure(text=f"Step: {current_step_number} / {self.total_steps}")
-        else:
-            self.step_display.configure(text="N/A")
-            self.angle_display.configure(text="N/A")
-            self.force_display.configure(text="N/A")
-            self.time_display.configure(text=f"{int(0):02}:{int(0):02}:{int(0):02}.{0:03}")
-            current_step = redis_client.get("current_step")
-            if current_step is None:
-                current_step = 0
-            self.protocol_step_counter.configure(text=f"Step: {current_step} / {self.total_steps}")
-        try:
-            calibration_level = int(redis_client.get("calibration_Level") or 0)
-            if calibration_level == 0:
-                self.calibrate_button.configure(fg_color="red")
-            elif calibration_level == 1:
-                self.calibrate_button.configure(fg_color="yellow")
-            elif calibration_level == 2:
-                self.calibrate_button.configure(fg_color="green")
-            else:
-                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
-        except Exception as e:
-            print(f"Error updating Calibrate button: {e}")
-            self.calibrate_button.configure(fg_color="gray")
+                self.step_display.configure(text="N/A")
+                self.angle_display.configure(text="N/A")
+                self.force_display.configure(text="N/A")
+                self.time_display.configure(text=f"{int(0):02}:{int(0):02}:{int(0):02}.{0:03}")
+                current_step = redis_client.get("current_step")
+                if current_step is None:
+                    current_step = 0
+                self.protocol_step_counter.configure(text=f"Step: {current_step} / {self.total_steps}")
+            try:
+                calibration_level = int(redis_client.get("calibration_Level") or 0)
+                if calibration_level == 0:
+                    self.calibrate_button.configure(fg_color="red")
+                elif calibration_level == 1:
+                    self.calibrate_button.configure(fg_color="yellow")
+                elif calibration_level == 2:
+                    self.calibrate_button.configure(fg_color="green")
+                else:
+                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+            except Exception as e:
+                print(f"Error updating Calibrate button: {e}")
+                self.calibrate_button.configure(fg_color="gray")
 
     def clear_graphs(self):
         # Reset the data lists
@@ -1011,14 +1019,14 @@ class App(ctk.CTk):
                 })
 
                 # Update displays with the new sensor data
-                self.update_displays(
-                    step_count=self.protocol_step,
-                    current_angle=self.angle_display,
-                    current_force=self.force_display,
-                    minutes=int(time_diff // 60),
-                    seconds=int(time_diff % 60),
-                    milliseconds=int((time_diff * 1000) % 1000)
-                )
+                self.update_queue.put({
+                    'step_count': self.protocol_step,
+                    'current_angle': self.angle_display,
+                    'current_force': self.force_display,
+                    'minutes': int(time_diff // 60),
+                    'seconds': int(time_diff % 60),
+                    'milliseconds': int((time_diff * 1000) % 1000)
+                })
             else:
                 # Record the time difference between the protocol start time and the current time
                 current_time = time.time()
@@ -1060,14 +1068,14 @@ class App(ctk.CTk):
                 })
 
                 # Update displays with the new sensor data
-                self.update_displays(
-                    step_count=self.protocol_step,
-                    current_angle=self.pressure0_convert,
-                    current_force=self.pressure3_convert,
-                    minutes=0,
-                    seconds=0,
-                    milliseconds=0
-                )
+                self.update_queue.put({
+                    'step_count': self.protocol_step,
+                    'current_angle': self.angle_display,
+                    'current_force': self.force_display,
+                    'minutes': int(time_diff // 60),
+                    'seconds': int(time_diff % 60),
+                    'milliseconds': int((time_diff * 1000) % 1000)
+                })
             print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.5)
 
@@ -1075,6 +1083,22 @@ class App(ctk.CTk):
         """Convert the pressure sensor value to a desired unit."""
         # cole add logic here
         return pressure0 , pressure1, pressure2, pressure3
+
+    def process_queue(self):
+        try:
+            while True:
+                data = self.update_queue.get_nowait()
+                self.update_displays(
+                    step_count=data['step_count'],
+                    current_angle=data['current_angle'],
+                    current_force=data['current_force'],
+                    minutes=data['minutes'],
+                    seconds=data['seconds'],
+                    milliseconds=data['milliseconds']
+                )
+        except queue.Empty:
+            pass
+        self.after(100, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
