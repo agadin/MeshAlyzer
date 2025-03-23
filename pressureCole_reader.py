@@ -68,7 +68,7 @@ class PressureReceiver:
                     print(f"Pressure Data: {pressures}")
                 else:
                     print("No pressure data available.")
-                time.sleep(1)  # Poll every second
+                time.sleep(0.5)  # Poll every 0.5 seconds
         except KeyboardInterrupt:
             print("Receiver exiting...")
         finally:
