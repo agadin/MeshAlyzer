@@ -28,7 +28,7 @@ def module_init():
     # Open SPI bus 0, device 0 (modify if needed)
     spi.open(0, 0)
     spi.max_speed_hz = 500000  # Set the SPI speed as needed
-    spi.mode = 0b01  # Set SPI mode (adjust if necessary)
+    spi.mode = 0  # Set SPI mode (adjust if necessary)
 
     # --- Initialize LGPIO ---
     chip_handle = lgpio.gpiochip_open(0)  # Open the first GPIO chip
