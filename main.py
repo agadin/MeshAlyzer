@@ -172,6 +172,7 @@ class App(ctk.CTk):
         self.target_time = None
         self.protocol_running = False  # Flag to indicate if the protocol is running
         self.total_steps = 0
+        self.moving_steps_total = 0
 
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
@@ -600,14 +601,7 @@ class App(ctk.CTk):
         print("Current angle: ", current_angle)
         if self.home_displayed:
                 self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
-                if step_count < 0:
-                    if self.step_time is not None:
-                        self.step_display.configure(text=f"{self.step_time:.1f}s")
-                else:
-                    self.moving_steps_total= redis_client.get("moving_steps_total")
-                    if self.moving_steps_total is None:
-                        self.moving_steps_total = 0
-                    self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
+                self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
                 self.angle_display.configure(text=f"{current_angle:.1f}°")
                 self.force_display.configure(text=f"{current_force:.2f} N")
                 current_step_number = redis_client.get("current_step_number")
