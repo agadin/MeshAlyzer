@@ -151,6 +151,9 @@ class App(ctk.CTk):
             print(f"Failed to set icon: {e}")
 
         # Window configuration
+
+        self.show_boot_animation()
+
         self.title("MeshAlyzer")
         self.resizable(False, False)
         # Calculate the center of the screen
@@ -160,7 +163,6 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
-        self.show_boot_animation()
 
         # Protocol Handling dictionary inti
         self.data_dict = {}
