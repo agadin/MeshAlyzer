@@ -1,5 +1,41 @@
 # --- New CalibratePage class ---
 import customtkinter as ctk
+import shutil
+import customtkinter as ctk
+import multiprocessing.shared_memory as sm
+from tkinter import Canvas, Frame, Scrollbar, filedialog
+from PIL import Image, ImageTk, ImageOps
+
+from tkinter import Canvas, StringVar
+import cv2
+import queue
+import time
+import struct
+import csv
+from collections import defaultdict
+from threading import Thread
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import pandas as pd
+import seaborn as sns
+from tkinter import ttk
+import matplotlib.ticker as ticker
+import datetime
+import tkinter as tk
+import subprocess
+import queue
+import threading
+import sys
+import os
+import filecmp
+import threading
+import cairosvg
+import xml.etree.ElementTree as ET
+
+#lps22
+import board
+import busio
+import adafruit_lps2x
 
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
