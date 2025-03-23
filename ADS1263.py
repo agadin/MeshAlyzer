@@ -170,19 +170,21 @@ def module_init():
     _chip = lgpio.gpiochip_open(0)
     # Create our GPIO wrapper using the chip handle
     _gpio_wrapper = LGPIOWrapper(_chip)
-    # Open SPI channel 0; set speed (e.g., 500kHz), mode 0, flags 0
-    _spi_handle = lgpio.spi_open(_chip, 0, 500000, 0, 0)
+    # Open SPI channel 0; try channel 0 or 1 as needed.
+    _spi_handle = lgpio.spi_open(_chip, 0, 500000, 0)
+    if isinstance(_spi_handle, int) and _spi_handle < 0:
+        raise RuntimeError("spi_open failed: can not open SPI device")
     return 0
 
 def module_exit():
     global _chip, _spi_handle, _gpio_wrapper
-    lgpio.spi_close(_spi_handle)
+    try:
+        if _spi_handle is not None and _spi_handle >= 0:
+            lgpio.spi_close(_spi_handle)
+    except Exception as e:
+        print("Error closing SPI:", e)
     _gpio_wrapper.cleanup()
     lgpio.gpiochip_close(_chip)
-
-def digital_write(pin, value):
-    global _gpio_wrapper
-    _gpio_wrapper.digital_write(pin, value)
 
 def digital_read(pin):
     global _gpio_wrapper
