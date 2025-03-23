@@ -1,4 +1,6 @@
 # --- New CalibratePage class ---
+import customtkinter as ctk
+
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
         """
