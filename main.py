@@ -205,7 +205,7 @@ class App(ctk.CTk):
 
         # Left frame for the logo
         self.nav_left_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
-        self.nav_left_frame.pack(side="left", padx=20)
+        self.nav_left_frame.pack(side="left", padx=5)
 
         # Right frame for nav buttons
         self.nav_right_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
@@ -219,7 +219,7 @@ class App(ctk.CTk):
         pil_image = Image.open(image_path)
 
         # Create a CTkImage object
-        logo_image = ctk.CTkImage(light_image=pil_image, size=(50, 50))
+        logo_image = ctk.CTkImage(light_image=pil_image, size=(60, 60))
 
 
         # Use the white icon in a CTkButton
@@ -322,6 +322,8 @@ class App(ctk.CTk):
             current_hour = datetime.datetime.now().hour
             default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
             ctk.set_appearance_mode(default_mode)
+        else:
+            ctk.set_appearance_mode("Dark")
 
         # Initialize the home display
         self.show_home()
@@ -450,6 +452,16 @@ class App(ctk.CTk):
         # Light/Dark mode toggle
         self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Light/Dark Mode", command=self.toggle_mode)
         self.mode_toggle.pack(pady=15)
+
+
+        self.lps_info_label = ctk.CTkLabel(
+            self.sidebar_frame,
+            text="LPS: N/A | N/A",
+            text_color="darkgrey",  # Dark grey text
+            font=("Arial", 10)
+        )
+        self.lps_info_label.pack(side="bottom", pady=10, padx=10)
+
 
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
@@ -596,32 +608,32 @@ class App(ctk.CTk):
         # Start updating the output text widget
         self.update_output_window()
 
-    def update_displays(self, step_count, current_angle, current_force, minutes, seconds, milliseconds):
-        print("Step count: ", step_count)
-        print("Current angle: ", current_angle)
+    def update_displays(self, step_count, current_angle, current_force, minutes, seconds, milliseconds, lps_temp, lps_pressure):
         if self.home_displayed:
-                self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
-                self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
-                self.angle_display.configure(text=f"{current_angle:.1f}°")
-                self.force_display.configure(text=f"{current_force:.2f} N")
-                current_step_number = redis_client.get("current_step_number")
-                if current_step_number is None:
-                    current_step_number = 0
-                self.protocol_step_counter.configure(text=f"Step: {current_step_number} / {self.total_steps}")
+            self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
+            self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
+            self.angle_display.configure(text=f"{current_angle:.1f}°")
+            self.force_display.configure(text=f"{current_force:.2f} N")
+            if self.protocol_step is None:
+                protocol_step = 0
+            self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
 
-        try:
-            calibration_level = 0 #Cole change later
-            if calibration_level == 0:
-                self.calibrate_button.configure(fg_color="red")
-            elif calibration_level == 1:
-                self.calibrate_button.configure(fg_color="yellow")
-            elif calibration_level == 2:
-                self.calibrate_button.configure(fg_color="green")
-            else:
-                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
-        except Exception as e:
-            print(f"Error updating Calibrate button: {e}")
-            self.calibrate_button.configure(fg_color="gray")
+            try:
+                calibration_level = 0 #Cole change later
+                if calibration_level == 0:
+                    self.calibrate_button.configure(fg_color="red")
+                elif calibration_level == 1:
+                    self.calibrate_button.configure(fg_color="yellow")
+                elif calibration_level == 2:
+                    self.calibrate_button.configure(fg_color="green")
+                else:
+                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+            except Exception as e:
+                print(f"Error updating Calibrate button: {e}")
+                self.calibrate_button.configure(fg_color="gray")
+            self.lps_info_label.configure(
+                text=f"{lps_temp:.2f} | {lps_pressure:.2f}"
+            )
 
     def clear_graphs(self):
         # Reset the data lists
@@ -1068,7 +1080,9 @@ class App(ctk.CTk):
                     'current_force': self.pressure3_convert,
                     'minutes': 0,
                     'seconds': 0,
-                    'milliseconds': 0
+                    'milliseconds': 0,
+                    'LPS_pressure': LPS_pressure,
+                    'LPS_temperature': LPS_temperature
                 })
             # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
@@ -1088,7 +1102,9 @@ class App(ctk.CTk):
                     current_force=data['current_force'],
                     minutes=data['minutes'],
                     seconds=data['seconds'],
-                    milliseconds=data['milliseconds']
+                    milliseconds=data['milliseconds'],
+                    lps_temp=data.get('LPS_temperature', None),
+                    lps_pressure=data.get('LPS_pressure', None)
                 )
 
         except queue.Empty:
