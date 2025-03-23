@@ -166,10 +166,19 @@ class CalibratePage(ctk.CTkFrame):
         print(f"Check Calibration: Sensor readings: {avg_values}. Success flags: {success}")
 
     def start_sensor_calibration(self):
+        """
+        Sensor calibration process:
+         - Prompt the user for a reference pressure (should be 0 psi) once.
+         - For each target pressure (0 to 145 psi in 7.25 psi increments):
+             * Prompt the user to enter the measured pressure for that target (before supplying air).
+             * Activate both valves for 10 seconds.
+             * Call the neutral methods to stop the air supply.
+             * Save a separate CSV file (for that target pressure) under the base folder 'calibration_data'.
+        """
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
         desired_pressures = [round(i * 7.25, 2) for i in range(int(145 / 7.25) + 1)]
-        prompt_text = ("Calibrate sensors for desired pressures:\n" +
+        prompt_text = ("Calibration will be performed for target pressures:\n" +
                        ", ".join(str(p) + " psi" for p in desired_pressures) +
                        "\n\nEnter reference pressure (should be 0 psi):")
         tk.Label(popup, text=prompt_text).pack(padx=10, pady=5)
@@ -191,17 +200,16 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
         submit_btn.pack(padx=10, pady=10)
 
-    def prompt_measured_pressure(self, target_pressure):
+    def prompt_measured_pressure_before(self, target_pressure):
         """
-        Displays a popup that prompts the user to enter the measured pressure
-        for the given target_pressure. This function blocks until the popup is closed.
-        Returns the measured pressure as a float.
+        Displays a popup prompting the user to input the measured pressure
+        for the given target pressure before the air supply is activated.
+        Returns the entered value as a float.
         """
         result = []
         popup = ctk.CTkToplevel(self)
-        popup.title("Measured Pressure")
-        tk.Label(popup, text=f"Target pressure: {target_pressure} psi.\nEnter the measured pressure:").pack(padx=10,
-                                                                                                            pady=5)
+        popup.title("Enter Measured Pressure")
+        tk.Label(popup, text=f"Set value of pressure close to ~{target_pressure} psi:").pack(padx=10, pady=5)
         entry = ctk.CTkEntry(popup)
         entry.pack(padx=10, pady=5)
 
@@ -216,50 +224,39 @@ class CalibratePage(ctk.CTkFrame):
 
         submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
         submit_btn.pack(padx=10, pady=10)
-        popup.wait_window()  # Wait until popup is closed.
-        if result:
-            return result[0]
-        else:
-            return 0
+        popup.wait_window()  # Wait until the popup is closed.
+        return result[0] if result else 0
 
     def perform_sensor_calibration(self, ref_pressure):
-        """
-        For each calibration step from 0 psi to 145 psi (increment 7.25 psi):
-          - Activate both valves continuously for 10 seconds.
-          - After 10 seconds, set valves to neutral.
-          - Prompt the user to enter the measured pressure.
-          - Save a separate CSV file (one per target pressure) containing the target and measured pressure.
-          - All files are saved under a base folder 'calibration_data'.
-        """
         current_pressure = 0
         increment = 7.25
         base_folder = "calibration_data"
         if not os.path.exists(base_folder):
             os.makedirs(base_folder)
             print(f"Created base folder: {base_folder}")
+        calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
+        if not os.path.exists(calibration_folder):
+            os.makedirs(calibration_folder)
+            print(f"Created calibration folder: {calibration_folder}")
 
+        print("Starting full sensor calibration...")
         while current_pressure <= 145:
             print(f"Calibrating at target {current_pressure} psi...")
-            # Activate both valves
+            # Prompt the user for the measured pressure for the current target BEFORE supplying air.
+            measured_pressure = self.prompt_measured_pressure_before(current_pressure)
+            print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
+
+            # Supply air for 10 seconds.
             self.app.valve1.supply()
             self.app.valve2.supply()
+            print("Valves activated for 10 seconds...")
             time.sleep(10)
-            # Turn valves off
+            # Stop air supply.
             self.app.valve1.neutral()
             self.app.valve2.neutral()
             print("Valves set to neutral after 10 seconds.")
 
-            # Prompt user for measured pressure
-            measured_pressure = self.prompt_measured_pressure(current_pressure)
-            print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
-
-            # Create calibration folder under the base folder with current date
-            calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
-            if not os.path.exists(calibration_folder):
-                os.makedirs(calibration_folder)
-                print(f"Created calibration folder: {calibration_folder}")
-
-            # Create a unique CSV file name for this target pressure
+            # Save a separate CSV file for this target pressure.
             csv_filename = os.path.join(
                 calibration_folder,
                 f"calibration_{current_pressure}_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
@@ -276,6 +273,7 @@ class CalibratePage(ctk.CTkFrame):
             print(f"Calibration data for {current_pressure} psi saved successfully.")
             current_pressure += increment
 
+        print("Full sensor calibration complete. All data saved.")
         complete_popup = ctk.CTkToplevel(self)
         complete_popup.title("Calibration Complete")
         tk.Label(complete_popup, text="Sensor calibration is complete and all data has been saved.").pack(padx=10,
