@@ -78,13 +78,18 @@ sudo nano /etc/systemd/system/spidev-load.service
 add:
 ```ini
 [Unit]
-Description=Load spidev module at boot
-After=multi-user.target
+[Unit]
+Description=Pressure Sensor Client
+After=network.target
 
 [Service]
-Type=oneshot
-ExecStart=/sbin/modprobe spidev
-RemainAfterExit=true
+ExecStartPre=/sbin/modprobe spidev
+ExecStart=/usr/bin/python3 /home/lakelab/MeshAlyzer/PressureSensorReader_rasp3.py
+Restart=always
+User=lakelab
+WorkingDirectory=/home/lakelab
+StandardOutput=inherit
+StandardError=inherit
 
 [Install]
 WantedBy=multi-user.target

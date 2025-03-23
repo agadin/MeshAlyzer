@@ -37,7 +37,7 @@ import busio
 import adafruit_lps2x
 
 # Sensor import
-from PressureSensorReader import PressureReceiver as PressureSensorReader
+from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
 
 redis_client = {}
@@ -173,12 +173,16 @@ class App(ctk.CTk):
         self.target_time = None
         self.protocol_running = False  # Flag to indicate if the protocol is running
 
+        # Initialize PressureReceiver
+        self.pressure_receiver = PressureReceiver()
+        self.pressure_thread = threading.Thread(target=self.pressure_receiver.run, daemon=True)
+        self.pressure_thread.start()
+
 
         # --------------------------
         # input/output init
         # --------------------------
 
-        self.pressure_system = PressureSensorReader()
         self.valve1 = ValveController(supply_pins=[5], vent_pins=[27])
         self.valve2 = ValveController(supply_pins=[12], vent_pins=[24])
         self.i2c = busio.I2C(board.SCL, board.SDA)
@@ -400,6 +404,15 @@ class App(ctk.CTk):
     def clear_content_frame(self):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
+
+    def update_pressure_values(self):
+        while self.running:
+            pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
+            self.pressure0 = pressure0
+            self.pressure1 = pressure1
+            self.pressure2 = pressure2
+            self.pressure3 = pressure3
+            print(f"Updated Pressures: {pressure0:.2f}, {pressure1:.2f}, {pressure2:.2f}, {pressure3:.2f}")
 
     def show_home(self):
         self.clear_content_frame()
@@ -972,9 +985,9 @@ class App(ctk.CTk):
                 LPS_temperature = self.lps.temperature
 
                 # Convert pressure and temperature values using the converter function
-                pressure0, pressure1, pressure2, pressure3 = PressureSensorReader.getpressures()
+                self.update_pressure_values()
 
-                pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert= self.pressure_sensor_converter(pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
+                pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
 
                 #get valve state
                 valve1_state= self.valve1.get_state()
@@ -986,13 +999,13 @@ class App(ctk.CTk):
                     'time': time_diff,
                     'LPS_pressure': LPS_pressure,
                     'LPS_temperature': LPS_temperature,
-                    'pressure0': pressure0,
+                    'pressure0': self.pressure0,
                     'pressure0_convert': pressure0_convert,
-                    'pressure1': pressure1,
+                    'pressure1': self.pressure1,
                     'pressure1_convert': pressure1_convert,
-                    'pressure2': pressure2,
+                    'pressure2': self.pressure2,
                     'pressure2_convert': pressure2_convert,
-                    'pressure3': pressure3,
+                    'pressure3': self.pressure3,
                     'pressure3_convert': pressure3_convert,
                     'valve1_state': valve1_state,
                     'valve2_state': valve2_state,
@@ -1021,10 +1034,10 @@ class App(ctk.CTk):
                 LPS_temperature = self.lps.temperature
 
                 # Convert pressure and temperature values using the converter function
-                pressure0, pressure1, pressure2, pressure3 = PressureSensorReader.getpressures()
+                self.update_pressure_values()
 
                 pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert = self.pressure_sensor_converter(
-                    pressure0, pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
+                    self.pressure0, self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
 
                 # get valve state
                 valve1_state = self.valve1.get_state()
@@ -1035,13 +1048,13 @@ class App(ctk.CTk):
                     'time': -1,
                     'LPS_pressure': LPS_pressure,
                     'LPS_temperature': LPS_temperature,
-                    'pressure0': pressure0,
+                    'pressure0': self.pressure0,
                     'pressure0_convert': pressure0_convert,
-                    'pressure1': pressure1,
+                    'pressure1': self.pressure1,
                     'pressure1_convert': pressure1_convert,
-                    'pressure2': pressure2,
+                    'pressure2': self.pressure2,
                     'pressure2_convert': pressure2_convert,
-                    'pressure3': pressure3,
+                    'pressure3': self.pressure3,
                     'pressure3_convert': pressure3_convert,
                     'valve1_state': valve1_state,
                     'valve2_state': valve2_state,
