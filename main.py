@@ -325,6 +325,16 @@ class App(ctk.CTk):
         else:
             ctk.set_appearance_mode("Dark")
 
+        #clampmotor setup
+        try:
+            self.motor_controller = MotorController(port="/dev/ttyACM0", baudrate=9600)
+        except Exception as e:
+            print(f"Failed to initialize MotorController: {e}")
+
+            # Variables to track button hold state
+        self.motor_forward_pressed = False
+        self.motor_forward_active = False
+
         # Initialize the home display
         self.show_home()
 
@@ -453,6 +463,12 @@ class App(ctk.CTk):
         self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Light/Dark Mode", command=self.toggle_mode)
         self.mode_toggle.pack(pady=15)
 
+        # Add the new motor control button
+        self.motor_forward_button = ctk.CTkButton(self.sidebar_frame, text="Advance Motor")
+        self.motor_forward_button.pack(pady=15)
+        # Bind mouse press and release events
+        self.motor_forward_button.bind("<ButtonPress-1>", self.start_motor_forward)
+        self.motor_forward_button.bind("<ButtonRelease-1>", self.stop_motor_forward)
 
         self.lps_info_label = ctk.CTkLabel(
             self.sidebar_frame,
@@ -637,6 +653,35 @@ class App(ctk.CTk):
 
         # Start updating the output text widget
         self.update_output_window()
+
+    def start_motor_forward(self, event):
+        # When the button is pressed, record the time and set the flag.
+        self.motor_forward_pressed = True
+        self.motor_forward_press_time = time.time()
+        # After 300ms (debounce delay), check if still pressed.
+        self.after(300, self.check_motor_forward_hold)
+
+    def check_motor_forward_hold(self):
+        # If the button is still pressed and 0.3 seconds have passed, start motor activity.
+        if self.motor_forward_pressed and (time.time() - self.motor_forward_press_time >= 0.3):
+            self.motor_forward_active = True
+            self.send_motor_forward_command()
+
+    def send_motor_forward_command(self):
+        if self.motor_forward_active:
+            # Send a short-duration forward command.
+            # Adjust the command string as needed by your Arduino code.
+            self.motor_controller.send_command("forward,both,0.1")
+            # Schedule this method to run again (e.g., every 100ms) while held down.
+            self.after(100, self.send_motor_forward_command)
+
+    def stop_motor_forward(self, event):
+        # On button release, stop the motor activity.
+        self.motor_forward_pressed = False
+        self.motor_forward_active = False
+        # Send a stop command to the motor controller.
+        self.motor_controller.send_command("stop")
+
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
