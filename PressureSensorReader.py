@@ -38,8 +38,36 @@ class PressureReceiver:
             print(f"Error reading serial: {e}")
             return 0.0, 0.0, 0.0, 0.0
 
+    def test_average_speed(self):
+        packet_count = 0
+        start_time = time.time()
+
+        try:
+            with serial.Serial(self.port, self.baudrate, timeout=self.timeout) as ser:
+                while packet_count < 10:
+                    line = ser.readline().decode('utf-8').strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        if "sensors" in data:
+                            packet_count += 1
+                    except json.JSONDecodeError:
+                        continue
+
+        except Exception as e:
+            print(f"Error reading serial: {e}")
+            return 0.0
+
+        total_time = time.time() - start_time
+        return total_time
+
 def main():
     receiver = PressureReceiver()
+    total_time = receiver.test_average_speed()
+    print(f"Total time to receive 10 packets: {total_time:.2f} seconds")
+
+    print("Listening for the most recent packet every 3 seconds...")
     try:
         while True:
             pressure_data = receiver.get_latest_pressure()
