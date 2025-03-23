@@ -30,156 +30,71 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/agadin/MeshAlyzer.git
+   git clone https://github.com/your-username/MeshAlyzer.git
    cd MeshAlyzer
    ```
 
 2. Install dependencies:
-Below is an updated README installation section that uses **lgpio** instead of **RPi.GPIO**. This version outlines the installation steps and highlights potential conflicts—especially if you’re also using libraries (like gpiozero) that normally expect RPi.GPIO.
+   ```bash
+   sudo apt-get install python3-lgpio
+   pip install -r requirements.txt
+   ```
 
----
+3. Connect hardware components:
+   - Link pressure sensors to ADCs as shown in the wiring diagram.
+   - Ensure relays and valves are connected to the Raspberry Pi GPIO pins as specified.
 
-# Installation
+4. Launch the application:
+   ```bash
+   python main.py
+   ```
+### Raspberry Pi 3 setup
+1. Create automatic startupfile
+Create a file called '/etc/systemd/system/pi3-sensor.service' with the following content :
+```ini
+[Unit]
+Description=Sensor Data Sender Service
+After=network.target
 
-This guide details how to set up your Raspberry Pi environment to run the project’s Python scripts while using **lgpio** as your GPIO interface.
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/path/to/PressureSensorReader.py
+Restart=always
+User=pi
 
-> **Note:**  
-> Ensure that **RPi.GPIO** is not installed (or used) if you’re switching to **lgpio**. If you’ve previously installed RPi.GPIO, remove it or avoid importing it in your projects. When using gpiozero, you may need to set its pin factory to `lgpio` (see below).
+[Install]
+WantedBy=multi-user.target
+```
+Then enable and start the service with:
 
-## Prerequisites
-- **Hardware:** Raspberry Pi running Raspberry Pi OS.
-- **Network:** Active Internet connection.
-- **Access:** Local terminal or SSH.
-- **Tools:** Git (typically pre-installed on Raspberry Pi OS).
-
-## 1. System Update
-
-Update your package lists and upgrade installed packages:
-```bash
-sudo apt update && sudo apt upgrade -y
+```
+sudo systemctl enable pi3-sensor.service
+sudo systemctl start pi3-sensor.service
 ```
 
-## 2. Installing System Packages
-
-Install essential system-level packages:
+2. Run the script to test the sensor:
 ```bash
-# Install Python development tools and I2C utilities
-sudo apt-get install python3-pip python3-dev i2c-tools
-
-# Install pigpio for advanced GPIO control (required by some scripts)
-sudo apt install pigpio
-
-# Install lgpio (use this instead of RPi.GPIO)
-sudo apt install python3-lgpio
-
-# (Optional) Install OpenCV for image processing tasks
-sudo apt install python3-opencv
-
-# Ensure SPI support is enabled (if your project requires it)
-sudo modprobe spidev
+sudo nano /etc/systemd/system/spidev-load.service
 ```
+add:
+```ini
+[Unit]
+Description=Load spidev module at boot
+After=multi-user.target
 
-## 3. Setting Up a Python Virtual Environment
+[Service]
+Type=oneshot
+ExecStart=/sbin/modprobe spidev
+RemainAfterExit=true
 
-It is recommended to use a virtual environment for managing Python dependencies:
+[Install]
+WantedBy=multi-user.target
+```
+Then enable and start the service with:
 ```bash
-# Create a virtual environment named "myenv"
-python3 -m venv myenv
-
-# Activate the virtual environment
-source myenv/bin/activate
+sudo systemctl daemon-reexec
+sudo systemctl enable spidev-load.service
+sudo systemctl start spidev-load.service
 ```
-
-## 4. Python Dependencies
-
-Install the necessary Python libraries. **Do not install RPi.GPIO**—use lgpio for GPIO access instead:
-
-```bash
-# Install gpiozero (and tell it to use lgpio as the backend)
-pip install gpiozero
-
-# If gpiozero does not automatically detect lgpio, set the pin factory before running your scripts:
-# export GPIOZERO_PIN_FACTORY=lgpio
-
-# LED and Neopixel control
-pip install rpi_ws281x
-pip install adafruit-circuitpython-neopixel
-
-# Adafruit Blinka (for CircuitPython compatibility on Raspberry Pi)
-pip3 install --force-reinstall adafruit-blinka
-
-# Character LCD library (if using LCD displays)
-pip3 install adafruit-circuitpython-charlcd
-
-# Serial communication
-pip install pyserial
-
-# Image processing and data visualization
-pip install opencv-python matplotlib pillow pandas seaborn
-
-# Additional utilities
-pip install tkfontawesome libxslt libxml2 cairosvg
-
-# GitHub API for interacting with GitHub
-pip install PyGithub
-```
-
-If your project provides a `requirements.txt` file, you can install all dependencies at once:
-```bash
-pip install -r requirements.txt
-```
-
-## 5. Using lgpio with gpiozero
-
-Since **gpiozero** defaults to RPi.GPIO, set the pin factory to **lgpio** if needed. You can do this by adding the following line to your shell or your project’s startup script:
-```bash
-export GPIOZERO_PIN_FACTORY=lgpio
-```
-This ensures that gpiozero uses **lgpio** for GPIO access.
-
-## 6. Starting the pigpio Daemon
-
-```bash
-sudo pigpiod
-```
-
-## 6. Installing Adafruit Blinka
-Download and run the Adafruit Blinka installer to ensure proper hardware support for CircuitPython libraries:
-
-```bash
-wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/raspi-blinka.py
-sudo -E env PATH=$PATH python3 raspi-blinka.py
-```
-
-## 7. Additional Configuration
-
-- **Hardware Access:**  
-  Allow low-level hardware access if required:
-  ```bash
-  sudo chmod 666 /dev/mem
-  ```
-
-- **Interface Settings:**  
-  Use the Raspberry Pi configuration tool to enable additional interfaces (I2C, SPI, VNC, etc.):
-  ```bash
-  sudo raspi-config
-  ```
-
-## 8. Running the Application
-
-After completing the installation and configuration steps, run your Python scripts:
-```bash
-python main.py
-```
-
-Keep your project code up-to-date by using:
-```bash
-git pull
-```
-
----
-
-
 ### ADC Setup
 
 1. wiring diagram

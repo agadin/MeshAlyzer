@@ -1,61 +1,39 @@
+import serial
+import json
 import time
-import ADS1263
-import RPi.GPIO as GPIO
 
-class PressureSensorReader:
-    def __init__(self, ref_voltage=5.08, channels=None):
-        self.REF = ref_voltage  # Reference voltage
-        self.channels = channels if channels is not None else [0, 1, 2, 3, 4]
-        self.ADC = None
+class PressureReceiver:
+    def __init__(self, port='/dev/serial0', baudrate=9600, timeout=1):
+        self.port = port
+        self.baudrate = baudrate
+        self.timeout = timeout
 
-    def setup(self):
-        """Initialize the ADS1263 ADC module."""
-        self.ADC = ADS1263.ADS1263()
+    def get_latest_pressure(self):
+        try:
+            with serial.Serial(self.port, self.baudrate, timeout=self.timeout) as ser:
+                latest_line = None
 
-        if self.ADC.ADS1263_init_ADC1('ADS1263_400SPS') == -1:
-            raise RuntimeError("Failed to initialize ADC1")
+                start_time = time.time()
+                while time.time() - start_time < self.timeout:
+                    line = ser.readline().decode('utf-8').strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        latest_line = data
+                    except json.JSONDecodeError:
+                        continue
 
-        self.ADC.ADS1263_SetMode(0)  # 0 for single-channel mode
-
-    def get_pressure_sensors(self, specific_channel=None):
-        """Retrieve and return pressure sensor values from the ADC."""
-        if not self.ADC:
-            raise RuntimeError("ADC not initialized. Call setup() first.")
-
-        ADC_Values = self.ADC.ADS1263_GetAll(self.channels)
-        sensor_readings = []
-
-        channels_to_read = [specific_channel] if specific_channel is not None else self.channels
-
-        for i in channels_to_read:
-            if ADC_Values[i] >> 31 == 1:
-                sensor_readings.append(-(self.REF * 2 - ADC_Values[i] * self.REF / 0x80000000))
-            else:
-                sensor_readings.append(ADC_Values[i] * self.REF / 0x7FFFFFFF)
-
-        return tuple(sensor_readings)
-
-    def cleanup(self):
-        """Safely exit the ADC module."""
-        if self.ADC:
-            self.ADC.ADS1263_Exit()
-
-
-# Example usage
-if __name__ == "__main__":
-    try:
-        reader = PressureSensorReader()
-        reader.setup()
-
-        while True:
-            sensor_values = reader.get_pressure_sensors()
-            for sensor, value in sensor_values.items():
-                print(f"{sensor}: {value:.6f} V")
-            time.sleep(1)
-
-    except KeyboardInterrupt:
-        print("Program interrupted. Exiting...")
-        reader.cleanup()
-    except Exception as e:
-        print(f"Error: {e}")
-        reader.cleanup()
+                if latest_line and "sensors" in latest_line:
+                    sensors = latest_line["sensors"]
+                    # Safely extract values for 4 channels
+                    pressure0 = sensors.get("channel_0", 0.0)
+                    pressure1 = sensors.get("channel_1", 0.0)
+                    pressure2 = sensors.get("channel_2", 0.0)
+                    pressure3 = sensors.get("channel_3", 0.0)
+                    return pressure0, pressure1, pressure2, pressure3
+                else:
+                    return 0.0, 0.0, 0.0, 0.0  # fallback values
+        except Exception as e:
+            print(f"Error reading serial: {e}")
+            return 0.0, 0.0, 0.0, 0.0
