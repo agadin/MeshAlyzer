@@ -40,7 +40,7 @@ import adafruit_lps2x
 from PressureSensorReader import PressureReceiver as PressureSensorReader
 from ValveController import ValveController
 
-redis_client =[]
+redis_client = {}
 
 class ProtocolViewer(ctk.CTkFrame):
     def __init__(self, master, protocol_folder, protocol_var, redis_client, *args, **kwargs):
@@ -215,7 +215,7 @@ class App(ctk.CTk):
             image=logo_image,
             text="",
             fg_color="transparent",
-            hover_color="#ffffff30",
+            hover_color="black" , # or another valid 6-digit hex or named color
             command=self.show_home
         )
         self.logo_button.pack()
@@ -240,7 +240,7 @@ class App(ctk.CTk):
             image=settings_icon,
             compound="left",
             fg_color="transparent",
-            hover_color="#ffffff30",
+            hover_color="black",
             command=self.show_settings
         )
         self.settings_button.pack(side="right", padx=20)
@@ -252,7 +252,7 @@ class App(ctk.CTk):
             image=calibrate_icon,
             compound="left",
             fg_color="transparent",
-            hover_color="#ffffff30",
+            hover_color="black",
             command=self.show_inspector
         )
         self.inspector_button.pack(side="right", padx=20)
@@ -276,7 +276,7 @@ class App(ctk.CTk):
             text_color="white",
             compound="left",
             fg_color="transparent",
-            hover_color="#ffffff30",
+            hover_color="black",
             command=self.show_home
         )
         self.home_button.pack(side="right", padx=20)
@@ -967,7 +967,7 @@ class App(ctk.CTk):
                 LPS_temperature = self.lps.temperature
 
                 # Convert pressure and temperature values using the converter function
-                pressure0, pressure1, pressure2, pressure3 = self.pressure_system.get_pressure_sensors()
+                pressure0, pressure1, pressure2, pressure3 = PressureSensorReader.getpressures()
 
                 pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert= self.pressure_sensor_converter(pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
 
@@ -1016,7 +1016,7 @@ class App(ctk.CTk):
                 LPS_temperature = self.lps.temperature
 
                 # Convert pressure and temperature values using the converter function
-                pressure0, pressure1, pressure2, pressure3 = self.pressure_system.get_pressure_sensors()
+                pressure0, pressure1, pressure2, pressure3 = PressureSensorReader.getpressures()
 
                 pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert = self.pressure_sensor_converter(
                     pressure0, pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature)
