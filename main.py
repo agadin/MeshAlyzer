@@ -982,7 +982,7 @@ class App(ctk.CTk):
                 # Convert pressure and temperature values using the converter function
                 self.update_pressure_values()
 
-                pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert, self.pressure3_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
 
                 #get valve state
                 valve1_state= self.valve1.get_state()
@@ -995,13 +995,13 @@ class App(ctk.CTk):
                     'LPS_pressure': LPS_pressure,
                     'LPS_temperature': LPS_temperature,
                     'pressure0': self.pressure0,
-                    'pressure0_convert': pressure0_convert,
+                    'pressure0_convert': self.pressure0_convert,
                     'pressure1': self.pressure1,
-                    'pressure1_convert': pressure1_convert,
+                    'pressure1_convert': self.pressure1_convert,
                     'pressure2': self.pressure2,
-                    'pressure2_convert': pressure2_convert,
+                    'pressure2_convert': self.pressure2_convert,
                     'pressure3': self.pressure3,
-                    'pressure3_convert': pressure3_convert,
+                    'pressure3_convert': self.pressure3_convert,
                     'valve1_state': valve1_state,
                     'valve2_state': valve2_state,
                     'self_target_pressure': self.target_pressure,
@@ -1031,7 +1031,7 @@ class App(ctk.CTk):
                 # Convert pressure and temperature values using the converter function
                 self.update_pressure_values()
 
-                pressure0_convert, pressure1_convert, pressure2_convert, pressure3_convert = self.pressure_sensor_converter(
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert, self.pressure3_convert = self.pressure_sensor_converter(
                     self.pressure0, self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
 
                 # get valve state
@@ -1044,13 +1044,13 @@ class App(ctk.CTk):
                     'LPS_pressure': LPS_pressure,
                     'LPS_temperature': LPS_temperature,
                     'pressure0': self.pressure0,
-                    'pressure0_convert': pressure0_convert,
+                    'pressure0_convert': self.pressure0_convert,
                     'pressure1': self.pressure1,
-                    'pressure1_convert': pressure1_convert,
+                    'pressure1_convert': self.pressure1_convert,
                     'pressure2': self.pressure2,
-                    'pressure2_convert': pressure2_convert,
+                    'pressure2_convert': self.pressure2_convert,
                     'pressure3': self.pressure3,
-                    'pressure3_convert': pressure3_convert,
+                    'pressure3_convert': self.pressure3_convert,
                     'valve1_state': valve1_state,
                     'valve2_state': valve2_state,
                     'self_target_pressure': self.target_pressure,
