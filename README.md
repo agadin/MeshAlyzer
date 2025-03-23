@@ -30,7 +30,7 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/MeshAlyzer.git
+   git clone https://github.com/agadin/MeshAlyzer.git
    cd MeshAlyzer
    ```
 
