@@ -1,5 +1,6 @@
 import time
-import ADS1263  # Assumes your ADS1263 module now uses lgpio
+import ADS1263
+import RPi.GPIO as GPIO
 
 class PressureSensorReader:
     def __init__(self, ref_voltage=5.08, channels=None):
@@ -10,8 +11,10 @@ class PressureSensorReader:
     def setup(self):
         """Initialize the ADS1263 ADC module."""
         self.ADC = ADS1263.ADS1263()
+
         if self.ADC.ADS1263_init_ADC1('ADS1263_400SPS') == -1:
             raise RuntimeError("Failed to initialize ADC1")
+
         self.ADC.ADS1263_SetMode(0)  # 0 for single-channel mode
 
     def get_pressure_sensors(self, specific_channel=None):
@@ -22,11 +25,9 @@ class PressureSensorReader:
         ADC_Values = self.ADC.ADS1263_GetAll(self.channels)
         sensor_readings = []
 
-        # If a specific channel is provided, only read that channel; otherwise, all channels
         channels_to_read = [specific_channel] if specific_channel is not None else self.channels
 
         for i in channels_to_read:
-            # Interpret the signed 32-bit result
             if ADC_Values[i] >> 31 == 1:
                 sensor_readings.append(-(self.REF * 2 - ADC_Values[i] * self.REF / 0x80000000))
             else:
@@ -48,8 +49,8 @@ if __name__ == "__main__":
 
         while True:
             sensor_values = reader.get_pressure_sensors()
-            for idx, value in enumerate(sensor_values):
-                print(f"Sensor {idx}: {value:.6f} V")
+            for sensor, value in sensor_values.items():
+                print(f"{sensor}: {value:.6f} V")
             time.sleep(1)
 
     except KeyboardInterrupt:
