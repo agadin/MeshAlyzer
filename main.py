@@ -222,7 +222,11 @@ class App(ctk.CTk):
         pil_image = Image.open(image_path)
 
         # Create a CTkImage object
-        logo_image = ctk.CTkImage(light_image=pil_image, size=(60, 60))
+        logo_image = ctk.CTkImage(
+            light_image=Image.open("./img/lakelogo_dark.png"),  # Used when Light mode is active
+            dark_image=Image.open("./img/lakelogo.png"),  # Used when Dark mode is active
+            size=(60, 60)
+        )
 
 
         # Use the white icon in a CTkButton
@@ -243,10 +247,29 @@ class App(ctk.CTk):
         settings_icon_image = Image.open("./img/fa-cog.png")
 
         # Create CTkImage objects
-        home_icon = ctk.CTkImage(light_image=home_icon_image, size=(20, 20))
-        protocol_icon = ctk.CTkImage(light_image=protocol_icon_image, size=(20, 20))
-        calibrate_icon = ctk.CTkImage(light_image=calibrate_icon_image, size=(20, 20))
-        settings_icon = ctk.CTkImage(light_image=settings_icon_image, size=(20, 20))
+        home_icon = ctk.CTkImage(
+            light_image=Image.open("./img/fa-home_dark.png"),
+            dark_image=Image.open("./img/fa-home.png"),
+            size=(20, 20)
+        )
+
+        protocol_icon = ctk.CTkImage(
+            light_image=Image.open("./img/fa-tools_dark.png"),
+            dark_image=Image.open("./img/fa-tools.png"),
+            size=(20, 20)
+        )
+
+        calibrate_icon = ctk.CTkImage(
+            light_image=Image.open("./img/fa-tachometer-alt_dark.png"),
+            dark_image=Image.open("./img/fa-tachometer-alt.png"),
+            size=(20, 20)
+        )
+
+        settings_icon = ctk.CTkImage(
+            light_image=Image.open("./img/fa-cog_dark.png"),
+            dark_image=Image.open("./img/fa-cog.png"),
+            size=(20, 20)
+        )
 
         # --- Navigation Buttons on Right Side ---
         self.settings_button = ctk.CTkButton(
@@ -536,7 +559,7 @@ class App(ctk.CTk):
         self.force_display_top = ctk.CTkLabel(
             self.force_display_frame,
             text="N/A",
-            font=("Arial", 50),  # larger size, no "bold"
+            font=("Arial", 50, "bold"),
             fg_color="transparent",  # so the frame's background shows
             text_color="black"
         )
@@ -1183,7 +1206,12 @@ class App(ctk.CTk):
     def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
         """Convert the pressure sensor value to a desired unit."""
         # cole add logic here
-        return pressure0 , pressure1, pressure2, pressure3
+        #temp logic: (pressure0 / 5) *100
+        conv_pressure0 = (pressure0 / 5) * 100
+        conv_pressure1 = (pressure1 / 5) * 100
+        conv_pressure2 = (pressure2 / 5) * 100
+        conv_pressure3 = (pressure3 / 5) * 100
+        return conv_pressure0 , conv_pressure1, conv_pressure2, conv_pressure3
 
     def process_queue(self):
         try:
