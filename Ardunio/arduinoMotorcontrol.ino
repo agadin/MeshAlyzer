@@ -7,7 +7,7 @@
 
 #define DEFAULT_DUTY 128  // PWM duty (50% of 255)
 
-// --- Left Motor Driver Pins ---
+// --- Left Motor Driver Pins --
 const int FL_ENA = 5;   // PWM pin for front left enable
 const int FL_IN1 = 8;   // Direction control pin
 const int FL_IN2 = 7;   // Direction control pin
