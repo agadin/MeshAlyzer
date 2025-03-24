@@ -39,6 +39,8 @@ import adafruit_lps2x
 from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
 from clamp_motor import MotorController
+from calibrate_page import CalibratePage
+
 
 redis_client = {}
 
