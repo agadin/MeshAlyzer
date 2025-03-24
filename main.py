@@ -218,27 +218,39 @@ class App(ctk.CTk):
         # Create a white icon from the SVG file
         icon_size = (20, 20)
 
-        image_path = "./img/lakelogo.png"
-        pil_image = Image.open(image_path)
-
-        # Create a CTkImage object
+        # Create CTkImage for the first logo (lake logo)
         logo_image = ctk.CTkImage(
-            light_image=Image.open("./img/lakelogo_dark.png"),  # Used when Light mode is active
-            dark_image=Image.open("./img/lakelogo.png"),  # Used when Dark mode is active
+            light_image=Image.open("./img/lakelogo_dark.png"),  # For light mode
+            dark_image=Image.open("./img/lakelogo.png"),  # For dark mode
             size=(60, 60)
         )
 
-
-        # Use the white icon in a CTkButton
+        # Create the first CTkButton with the lake logo
         self.logo_button = ctk.CTkButton(
             self.nav_left_frame,
             image=logo_image,
             text="",
             fg_color="transparent",
-            hover_color="gray" , # or another valid 6-digit hex or named color
             command=self.show_home
         )
-        self.logo_button.pack()
+        self.logo_button.pack(side="left", padx=10)
+
+        # Create CTkImage for the second logo (mesh logo)
+        mesh_logo_image = ctk.CTkImage(
+            light_image=Image.open("./img/meshlogo_dark.png"),  # Use same image for both modes, or adjust if needed
+            dark_image=Image.open("./img/meshlogo.png"),
+            size=(60, 60)
+        )
+
+        # Create a second CTkButton with the mesh logo
+        self.mesh_logo_button = ctk.CTkButton(
+            self.nav_left_frame,
+            image=mesh_logo_image,
+            text="",
+            fg_color="transparent",
+            command=self.show_home  # Replace with the desired command
+        )
+        self.mesh_logo_button.pack(side="left", padx=10)
 
         # Load the PNG images
         home_icon_image = Image.open("./img/fa-home.png")
@@ -486,7 +498,7 @@ class App(ctk.CTk):
         self.run_button.pack(pady=15)
 
         # Light/Dark mode toggle
-        self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Light/Dark Mode", command=self.toggle_mode)
+        self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Dark/Light Mode", command=self.toggle_mode)
         self.mode_toggle.pack(pady=15)
 
         # Add the new motor control button
