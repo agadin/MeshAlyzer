@@ -234,7 +234,7 @@ class App(ctk.CTk):
             hover_color="gray",
             command=self.show_home
         )
-        self.logo_button.pack(side="left", padx=10)
+        self.logo_button.pack(side="left")
 
         high_res_mesh_logo_dark = Image.open("./img/meshlogo_dark.png")
         high_res_mesh_logo = Image.open("./img/meshlogo.png")
@@ -260,7 +260,7 @@ class App(ctk.CTk):
             fg_color="transparent",
             command=self.show_home  # Replace with the desired command
         )
-        self.mesh_logo_button.pack(side="left", padx=10)
+        self.mesh_logo_button.pack(side="left")
 
         # Load the PNG images
         home_icon_image = Image.open("./img/fa-home.png")
