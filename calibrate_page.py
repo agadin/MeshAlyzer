@@ -156,6 +156,10 @@ class CalibratePage(ctk.CTkFrame):
             except ValueError:
                 tk.Label(popup, text="Invalid input, please enter a number.", fg="red").pack()
                 return
+            # Ensure the maximum reference pressure is 100 psi.
+            if ref_pressure > 100:
+                tk.Label(popup, text="Reference pressure must be <= 100 psi.", fg="red").pack(padx=10, pady=5)
+                return
             self.sensor_selected = [var.get() for var in sensor_vars]
             popup.destroy()
             threading.Thread(target=self.perform_check_calibration, args=(ref_pressure,), daemon=True).start()
@@ -221,7 +225,8 @@ class CalibratePage(ctk.CTkFrame):
     def start_sensor_calibration(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
-        desired_pressures = [round(i * 7.25, 2) for i in range(int(145 / 7.25) + 1)]
+        # Generate target pressures from 0 to 100 psi using an increment of 7.25 psi.
+        desired_pressures = [round(i * 7.25, 2) for i in range(int(100 / 7.25) + 1)]
         prompt_text = ("Calibration will be performed for target pressures:\n" +
                        ", ".join(str(p) + " psi" for p in desired_pressures) +
                        "\n\nEnter reference pressure (should be 0 psi):")
@@ -256,7 +261,8 @@ class CalibratePage(ctk.CTkFrame):
             os.makedirs(calibration_folder)
             print(f"Created calibration folder: {calibration_folder}")
         print("Starting full sensor calibration...")
-        while current_pressure <= 145:
+        # Loop now stops at 100 psi instead of 145 psi.
+        while current_pressure <= 100:
             print(f"Calibrating at target {current_pressure} psi...")
             # Prompt for measured pressure BEFORE supplying air
             measured_pressure = self.prompt_measured_pressure_before(current_pressure)
