@@ -231,6 +231,7 @@ class App(ctk.CTk):
             image=logo_image,
             text="",
             fg_color="transparent",
+            hover_color="gray",
             command=self.show_home
         )
         self.logo_button.pack(side="left", padx=10)
@@ -247,6 +248,7 @@ class App(ctk.CTk):
             self.nav_left_frame,
             image=mesh_logo_image,
             text="",
+            hover_color="gray",
             fg_color="transparent",
             command=self.show_home  # Replace with the desired command
         )
