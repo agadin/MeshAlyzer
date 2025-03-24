@@ -38,6 +38,7 @@ import adafruit_lps2x
 # Sensor import
 from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
+from clamp_motor import MotorController
 
 redis_client = {}
 
@@ -172,6 +173,7 @@ class App(ctk.CTk):
         self.target_time = None
         self.protocol_running = False  # Flag to indicate if the protocol is running
         self.total_steps = 0
+        self.moving_steps_total = 0
 
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
@@ -204,7 +206,7 @@ class App(ctk.CTk):
 
         # Left frame for the logo
         self.nav_left_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
-        self.nav_left_frame.pack(side="left", padx=20)
+        self.nav_left_frame.pack(side="left")
 
         # Right frame for nav buttons
         self.nav_right_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
@@ -218,7 +220,7 @@ class App(ctk.CTk):
         pil_image = Image.open(image_path)
 
         # Create a CTkImage object
-        logo_image = ctk.CTkImage(light_image=pil_image, size=(50, 50))
+        logo_image = ctk.CTkImage(light_image=pil_image, size=(60, 60))
 
 
         # Use the white icon in a CTkButton
@@ -321,6 +323,18 @@ class App(ctk.CTk):
             current_hour = datetime.datetime.now().hour
             default_mode = "Dark" if current_hour >= 18 or current_hour < 6 else "Light"
             ctk.set_appearance_mode(default_mode)
+        else:
+            ctk.set_appearance_mode("Dark")
+
+        #clampmotor setup
+        try:
+            self.motor_controller = MotorController(port="/dev/ttyACM0", baudrate=9600)
+        except Exception as e:
+            print(f"Failed to initialize MotorController: {e}")
+
+            # Variables to track button hold state
+        self.motor_forward_pressed = False
+        self.motor_forward_active = False
 
         # Initialize the home display
         self.show_home()
@@ -450,6 +464,22 @@ class App(ctk.CTk):
         self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Light/Dark Mode", command=self.toggle_mode)
         self.mode_toggle.pack(pady=15)
 
+        # Add the new motor control button
+        self.motor_forward_button = ctk.CTkButton(self.sidebar_frame, text="Advance Motor")
+        self.motor_forward_button.pack(pady=15)
+        # Bind mouse press and release events
+        self.motor_forward_button.bind("<ButtonPress-1>", self.start_motor_forward)
+        self.motor_forward_button.bind("<ButtonRelease-1>", self.stop_motor_forward)
+
+        self.lps_info_label = ctk.CTkLabel(
+            self.sidebar_frame,
+            text="LPS: N/A | N/A",
+            text_color="darkgrey",  # Dark grey text
+            font=("Arial", 10)
+        )
+        self.lps_info_label.pack(side="bottom", pady=10, padx=10)
+
+
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.main_frame.pack(side="left", expand=True, fill="both", padx=10)
@@ -483,13 +513,43 @@ class App(ctk.CTk):
         self.step_display = ctk.CTkLabel(display_frame, text="Steps: N/A", **display_style)
         self.step_display.grid(row=0, column=1, padx=10, pady=10)
 
+        self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
+        self.valve_display.grid(row=0, column=4, padx=10, pady=10)
+
         # Create and pack angle display
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
 
-        # Create and pack force display
-        self.force_display = ctk.CTkLabel(display_frame, text="Force: N/A", **display_style)
-        self.force_display.grid(row=0, column=3, padx=10, pady=5)
+        # New: create a frame that will hold two labels
+        self.force_display_frame = ctk.CTkFrame(
+            display_frame,
+            width=250,
+            height=100,
+            corner_radius=20,
+            fg_color="lightblue"
+        )
+        self.force_display_frame.grid(row=0, column=3, padx=10, pady=5)
+
+        # Create the top label for the average force (large and unbold)
+        self.force_display_top = ctk.CTkLabel(
+            self.force_display_frame,
+            text="N/A",
+            font=("Arial", 50),  # larger size, no "bold"
+            fg_color="transparent",  # so the frame's background shows
+            text_color="black"
+        )
+        # Center the top label within the frame
+        self.force_display_top.pack(expand=True, fill="x")
+
+        # Create the bottom label for the individual pressures (smaller and unbold)
+        self.force_display_bottom = ctk.CTkLabel(
+            self.force_display_frame,
+            text="N/A",
+            font=("Arial", 30),  # smaller font size, unbold
+            fg_color="transparent",
+            text_color="black"
+        )
+        self.force_display_bottom.pack(expand=True, fill="x")
 
         self.segmented_button = ctk.CTkSegmentedButton(self.main_frame, values=["Angle v Force", "Simple", "All"],
                                                        command=self.update_graph_view)
@@ -526,9 +586,6 @@ class App(ctk.CTk):
         self.protocol_running = True
 
         print(f"Running Protocol: {protocol_name}")
-
-    def process_queue(self):
-        print("Processing queue...")  # Replace with actual logic if nessesary
 
     def initialize_protocol_viewer(self):
         # Initialize ProtocolViewer directly
@@ -598,46 +655,73 @@ class App(ctk.CTk):
         # Start updating the output text widget
         self.update_output_window()
 
-    def update_displays(self, step_count, current_angle, current_force, minutes, seconds, milliseconds):
+    def start_motor_forward(self, event):
+        # When the button is pressed, record the time and set the flag.
+        self.motor_forward_pressed = True
+        self.motor_forward_press_time = time.time()
+        # After 300ms (debounce delay), check if still pressed.
+        self.after(300, self.check_motor_forward_hold)
+
+    def check_motor_forward_hold(self):
+        # If the button is still pressed and 0.3 seconds have passed, start motor activity.
+        if self.motor_forward_pressed and (time.time() - self.motor_forward_press_time >= 0.3):
+            self.motor_forward_active = True
+            self.send_motor_forward_command()
+
+    def send_motor_forward_command(self):
+        if self.motor_forward_active:
+            # Send a short-duration forward command.
+            # Adjust the command string as needed by your Arduino code.
+            self.motor_controller.send_command("forward,both,0.1")
+            # Schedule this method to run again (e.g., every 100ms) while held down.
+            self.after(100, self.send_motor_forward_command)
+
+    def stop_motor_forward(self, event):
+        # On button release, stop the motor activity.
+        self.motor_forward_pressed = False
+        self.motor_forward_active = False
+        # Send a stop command to the motor controller.
+        self.motor_controller.send_command("stop")
+
+
+    def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
-            if step_count is not None:
-                self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
-                if step_count < 0:
-                    if self.step_time is not None:
-                        self.step_display.configure(text=f"{self.step_time:.1f}s")
-                else:
-                    self.moving_steps_total= redis_client.get("moving_steps_total")
-                    if self.moving_steps_total is None:
-                        self.moving_steps_total = 0
-                    self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
-                self.angle_display.configure(text=f"{current_angle:.1f}°")
-                self.force_display.configure(text=f"{current_force:.2f} N")
-                current_step_number = redis_client.get("current_step_number")
-                if current_step_number is None:
-                    current_step_number = 0
-                self.protocol_step_counter.configure(text=f"Step: {current_step_number} / {self.total_steps}")
+            self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
+            self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
+            self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
+            # If current_pressure2 is not provided, default to current_pressure1
+            if current_pressure2 is None:
+                current_pressure2 = current_pressure1
+            if current_pressure1 is None:
+                current_pressure1 = current_pressure2
+
+            # Calculate average force and update both labels with units (e.g., "N")
+            avg_force = (current_pressure1 + current_pressure2) / 2
+            self.force_display_top.configure(text=f"{avg_force:.2f} N")
+            self.force_display_bottom.configure(text=f"{current_pressure1:.2f} N | {current_pressure2:.2f} N")
+
+        if self.protocol_step is None:
+                protocol_step = 0
+        self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
+
+        self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
+
+        try:
+            calibration_level = 0 #Cole change later
+            if calibration_level == 0:
+                self.calibrate_button.configure(fg_color="red")
+            elif calibration_level == 1:
+                self.calibrate_button.configure(fg_color="yellow")
+            elif calibration_level == 2:
+                self.calibrate_button.configure(fg_color="green")
             else:
-                self.step_display.configure(text="N/A")
-                self.angle_display.configure(text="N/A")
-                self.force_display.configure(text="N/A")
-                self.time_display.configure(text=f"{int(0):02}:{int(0):02}:{int(0):02}.{0:03}")
-                current_step = redis_client.get("current_step")
-                if current_step is None:
-                    current_step = 0
-                self.protocol_step_counter.configure(text=f"Step: {current_step} / {self.total_steps}")
-            try:
-                calibration_level = 0 #Cole change later
-                if calibration_level == 0:
-                    self.calibrate_button.configure(fg_color="red")
-                elif calibration_level == 1:
-                    self.calibrate_button.configure(fg_color="yellow")
-                elif calibration_level == 2:
-                    self.calibrate_button.configure(fg_color="green")
-                else:
-                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
-            except Exception as e:
-                print(f"Error updating Calibrate button: {e}")
-                self.calibrate_button.configure(fg_color="gray")
+                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+        except Exception as e:
+            print(f"Error updating Calibrate button: {e}")
+            self.calibrate_button.configure(fg_color="gray")
+        self.lps_info_label.configure(
+            text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
+        )
 
     def clear_graphs(self):
         # Reset the data lists
@@ -1031,8 +1115,8 @@ class App(ctk.CTk):
                 # Update displays with the new sensor data
                 self.update_queue.put({
                     'step_count': self.protocol_step,
-                    'current_angle': self.pressure0_convert,
-                    'current_force': self.pressure3_convert,
+                    'current_input_pressure': self.pressure0_convert,
+                    'current_pressure1': self.pressure3_convert,
                     'minutes': int(time_diff // 60),
                     'seconds': int(time_diff % 60),
                     'milliseconds': int((time_diff * 1000) % 1000)
@@ -1080,13 +1164,18 @@ class App(ctk.CTk):
                 # Update displays with the new sensor data
                 self.update_queue.put({
                     'step_count': self.protocol_step,
-                    'current_angle': self.pressure0_convert,
-                    'current_force': self.pressure3_convert,
-                    'minutes': int(time_diff // 60),
-                    'seconds': int(time_diff % 60),
-                    'milliseconds': int((time_diff * 1000) % 1000)
+                    'current_input_pressure': self.pressure0_convert,
+                    'current_pressure1': self.pressure1_convert,
+                    'current_pressure2': self.pressure2_convert,
+                    'minutes': 0,
+                    'seconds': 0,
+                    'milliseconds': 0,
+                    'LPS_pressure': LPS_pressure,
+                    'LPS_temperature': LPS_temperature,
+                    'valve1_state': valve1_state,
+                    'valve2_state': valve2_state
                 })
-            print(f"Recorded data: {self.sensor_data[-1]}")
+            # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
 
     def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
@@ -1098,14 +1187,18 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
-                print(f"Processed data: {data}")
                 self.update_displays(
                     step_count=data['step_count'],
-                    current_angle=data['current_angle'],
-                    current_force=data['current_force'],
+                    current_input_pressure=data['current_input_pressure'],
+                    current_pressure1=data['current_pressure1'],
+                    current_pressure2=data['current_pressure2'],
                     minutes=data['minutes'],
                     seconds=data['seconds'],
-                    milliseconds=data['milliseconds']
+                    milliseconds=data['milliseconds'],
+                    lps_temp=data.get('LPS_temperature', None),
+                    lps_pressure=data.get('LPS_pressure', None),
+                    valve1_state=data.get('valve1_state', None),
+                    valve2_state=data.get('valve2_state', None)
                 )
 
         except queue.Empty:
