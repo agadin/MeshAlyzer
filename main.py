@@ -1328,7 +1328,6 @@ class App(ctk.CTk):
     def show_calibrate(self):
         self.home_displayed = False  # Indicate that the home page is not displayed
         self.clear_content_frame()
-
         # Create a frame for the calibrate page
         calibrate_frame = CalibratePage(self.content_frame, app=self)
         calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
