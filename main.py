@@ -269,7 +269,7 @@ class App(ctk.CTk):
             compound="left",
             fg_color="transparent",
             hover_color="gray",
-            command=self.show_inspector
+            command=self.show_calibrate
         )
         self.inspector_button.pack(side="right", padx=20)
 
@@ -443,7 +443,7 @@ class App(ctk.CTk):
         self.sidebar_frame.pack(side="left", fill="y", padx=15)
 
         # Calibrate button
-        self.calibrate_button = ctk.CTkButton(self.sidebar_frame, text="Calibrate", command=self.show_inspector)
+        self.calibrate_button = ctk.CTkButton(self.sidebar_frame, text="Calibrate", command=self.show_calibrate)
         self.calibrate_button.pack(pady=15, padx=15)
 
         # Protocol selector
@@ -617,7 +617,7 @@ class App(ctk.CTk):
         mode = "Light" if ctk.get_appearance_mode() == "Dark" else "Dark"
         ctk.set_appearance_mode(mode)
 
-    def show_inspector(self):
+    def show_calibrate(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
         # create a side bar that has a drop down menu for the user to select the trial they want to inspect. The trials will be read by reading the folders in ./data directory. If there are no trials in the directory the user will be prompted by a pop up window to got to the home page to run a protocol or can manually select one which will open up a file path dialog box for them to select the trial they want to inspect. Automatically create the figures for the trial and display them in the main frame
         # On the side bar also have a mannual upload box, save all figures button. Add a button if the slider is currently modified that says download cropped data. If slider is not modified, then the button will be greyed out. This button will trigger a popup that will have the default new file name as the folder name but with _cropped appended to the end. The user can change the name if they want. The .csv should be saved to the trial folder
