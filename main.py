@@ -236,11 +236,19 @@ class App(ctk.CTk):
         )
         self.logo_button.pack(side="left", padx=10)
 
+        high_res_mesh_logo_dark = Image.open("./img/meshlogo_dark.png")
+        high_res_mesh_logo = Image.open("./img/meshlogo.png")
+
+        # Resize it to the target dimensions using a high-quality filter
+        high_res_mesh_logo_dark = high_res_mesh_logo_dark.resize((80, 60), Image.LANCZOS)
+        resized_mesh_logo = high_res_mesh_logo.resize((80, 60), Image.LANCZOS)
+
+
         # Create CTkImage for the second logo (mesh logo)
         mesh_logo_image = ctk.CTkImage(
-            light_image=Image.open("./img/meshlogo_dark.png"),  # Use same image for both modes, or adjust if needed
-            dark_image=Image.open("./img/meshlogo.png"),
-            size=(60, 60)
+            light_image=high_res_mesh_logo_dark,  # Use same image for both modes, or adjust if needed
+            dark_image=resized_mesh_logo,
+            size=(80, 60)
         )
 
         # Create a second CTkButton with the mesh logo
