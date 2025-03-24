@@ -1,4 +1,4 @@
-# --- New CalibratePage class (updated with 7.25 psi increments) ---
+# --- New CalibratePage class (with continuous sensor recording every 0.01s) ---
 import customtkinter as ctk
 import shutil
 import multiprocessing.shared_memory as sm
@@ -32,11 +32,12 @@ import board
 import busio
 import adafruit_lps2x
 
+
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
         """
-        master: the parent frame (self.content_frame)
-        app: a reference to the App instance so that we can access valves, sensor_data, etc.
+        master: parent frame (self.content_frame)
+        app: reference to the App instance (provides access to valves, sensor_data, etc.)
         """
         super().__init__(master, *args, **kwargs)
         self.app = app  # reference to main App instance
@@ -111,6 +112,32 @@ class CalibratePage(ctk.CTkFrame):
         self.canvas.draw()
         self.after(1000, self.update_graph)
 
+    def prompt_measured_pressure_before(self, target_pressure):
+        """
+        Displays a popup prompting the user to input a measured pressure value
+        for the given target pressure BEFORE the air supply is activated.
+        """
+        result = []
+        popup = ctk.CTkToplevel(self)
+        popup.title("Enter Measured Pressure")
+        tk.Label(popup, text=f"Set value of pressure close to ~{target_pressure} psi:").pack(padx=10, pady=5)
+        entry = ctk.CTkEntry(popup)
+        entry.pack(padx=10, pady=5)
+
+        def on_submit():
+            try:
+                val = float(entry.get())
+            except ValueError:
+                tk.Label(popup, text="Invalid input. Please enter a number.", fg="red").pack()
+                return
+            result.append(val)
+            popup.destroy()
+
+        submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
+        submit_btn.pack(padx=10, pady=10)
+        popup.wait_window()
+        return result[0] if result else 0
+
     def start_check_calibration(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Check Calibration")
@@ -119,9 +146,9 @@ class CalibratePage(ctk.CTkFrame):
         ref_entry.pack(padx=10, pady=5)
         tk.Label(popup, text="Select sensors experiencing the reference pressure:").pack(padx=10, pady=5)
         sensor_vars = [tk.BooleanVar(), tk.BooleanVar(), tk.BooleanVar()]
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 1", variable=sensor_vars[0]).pack(padx=10, pady=2)
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 2", variable=sensor_vars[1]).pack(padx=10, pady=2)
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 3", variable=sensor_vars[2]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 1 (Pressure0)", variable=sensor_vars[0]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 2 (Pressure1)", variable=sensor_vars[1]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 3 (Pressure2)", variable=sensor_vars[2]).pack(padx=10, pady=2)
 
         def on_submit():
             try:
@@ -144,8 +171,34 @@ class CalibratePage(ctk.CTkFrame):
         if self.sensor_selected[0] and not any(self.sensor_selected[1:]):
             self.app.valve1.supply()
             self.app.valve2.supply()
-        print("Check Calibration: Valves activated. Waiting 10 seconds...")
-        time.sleep(10)
+        print("Check Calibration: Valves activated. Recording sensor data for 10 seconds...")
+        start_time = time.time()
+        while time.time() - start_time < 10:
+            time_diff = time.time() - start_time
+            LPS_pressure = self.app.lps.pressure
+            LPS_temperature = self.app.lps.temperature
+            valve1_state = self.app.valve1.get_state()
+            valve2_state = self.app.valve2.get_state()
+            self.app.sensor_data.append({
+                'time': time_diff,
+                'LPS_pressure': LPS_pressure,
+                'LPS_temperature': LPS_temperature,
+                'pressure0': self.app.pressure0,
+                'pressure0_convert': self.app.pressure0_convert,
+                'pressure1': self.app.pressure1,
+                'pressure1_convert': self.app.pressure1_convert,
+                'pressure2': self.app.pressure2,
+                'pressure2_convert': self.app.pressure2_convert,
+                'pressure3': self.app.pressure3,
+                'pressure3_convert': self.app.pressure3_convert,
+                'valve1_state': valve1_state,
+                'valve2_state': valve2_state,
+                'self_target_pressure': self.app.target_pressure,
+                'self_target_time': self.app.target_time,
+                'clamp_state': self.app.clamp_state,
+                'self_protocol_step': self.app.protocol_step
+            })
+            time.sleep(0.01)
         self.app.valve1.neutral()
         self.app.valve2.neutral()
         print("Check Calibration: Valves set to neutral.")
@@ -166,15 +219,6 @@ class CalibratePage(ctk.CTkFrame):
         print(f"Check Calibration: Sensor readings: {avg_values}. Success flags: {success}")
 
     def start_sensor_calibration(self):
-        """
-        Sensor calibration process:
-         - Prompt the user for a reference pressure (should be 0 psi) once.
-         - For each target pressure (0 to 145 psi in 7.25 psi increments):
-             * Prompt the user to enter the measured pressure for that target (before supplying air).
-             * Activate both valves for 10 seconds.
-             * Call the neutral methods to stop the air supply.
-             * Save a separate CSV file (for that target pressure) under the base folder 'calibration_data'.
-        """
         popup = ctk.CTkToplevel(self)
         popup.title("Calibrate Sensors (0 psi)")
         desired_pressures = [round(i * 7.25, 2) for i in range(int(145 / 7.25) + 1)]
@@ -200,33 +244,6 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
         submit_btn.pack(padx=10, pady=10)
 
-    def prompt_measured_pressure_before(self, target_pressure):
-        """
-        Displays a popup prompting the user to input the measured pressure
-        for the given target pressure before the air supply is activated.
-        Returns the entered value as a float.
-        """
-        result = []
-        popup = ctk.CTkToplevel(self)
-        popup.title("Enter Measured Pressure")
-        tk.Label(popup, text=f"Set value of pressure close to ~{target_pressure} psi:").pack(padx=10, pady=5)
-        entry = ctk.CTkEntry(popup)
-        entry.pack(padx=10, pady=5)
-
-        def on_submit():
-            try:
-                val = float(entry.get())
-            except ValueError:
-                tk.Label(popup, text="Invalid input. Please enter a number.", fg="red").pack()
-                return
-            result.append(val)
-            popup.destroy()
-
-        submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
-        submit_btn.pack(padx=10, pady=10)
-        popup.wait_window()  # Wait until the popup is closed.
-        return result[0] if result else 0
-
     def perform_sensor_calibration(self, ref_pressure):
         current_pressure = 0
         increment = 7.25
@@ -238,20 +255,44 @@ class CalibratePage(ctk.CTkFrame):
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
             print(f"Created calibration folder: {calibration_folder}")
-
         print("Starting full sensor calibration...")
         while current_pressure <= 145:
             print(f"Calibrating at target {current_pressure} psi...")
-            # Prompt the user for the measured pressure for the current target BEFORE supplying air.
+            # Prompt for measured pressure BEFORE supplying air
             measured_pressure = self.prompt_measured_pressure_before(current_pressure)
             print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
 
-            # Supply air for 10 seconds.
+            # Supply air and record sensor data every 0.01 seconds for 10 seconds.
             self.app.valve1.supply()
             self.app.valve2.supply()
-            print("Valves activated for 10 seconds...")
-            time.sleep(10)
-            # Stop air supply.
+            print("Valves activated for 10 seconds. Recording sensor data...")
+            start_time = time.time()
+            while time.time() - start_time < 10:
+                time_diff = time.time() - start_time
+                LPS_pressure = self.app.lps.pressure
+                LPS_temperature = self.app.lps.temperature
+                valve1_state = self.app.valve1.get_state()
+                valve2_state = self.app.valve2.get_state()
+                self.app.sensor_data.append({
+                    'time': time_diff,
+                    'LPS_pressure': LPS_pressure,
+                    'LPS_temperature': LPS_temperature,
+                    'pressure0': self.app.pressure0,
+                    'pressure0_convert': self.app.pressure0_convert,
+                    'pressure1': self.app.pressure1,
+                    'pressure1_convert': self.app.pressure1_convert,
+                    'pressure2': self.app.pressure2,
+                    'pressure2_convert': self.app.pressure2_convert,
+                    'pressure3': self.app.pressure3,
+                    'pressure3_convert': self.app.pressure3_convert,
+                    'valve1_state': valve1_state,
+                    'valve2_state': valve2_state,
+                    'self_target_pressure': self.app.target_pressure,
+                    'self_target_time': self.app.target_time,
+                    'clamp_state': self.app.clamp_state,
+                    'self_protocol_step': self.app.protocol_step
+                })
+                time.sleep(0.01)
             self.app.valve1.neutral()
             self.app.valve2.neutral()
             print("Valves set to neutral after 10 seconds.")
