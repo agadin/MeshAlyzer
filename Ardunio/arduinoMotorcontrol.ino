@@ -3,6 +3,7 @@
 //   Two-token: "forward,10" or "backward,5" (defaults to both sides)
 //   Three-token: "forward,right,10", "backward,left,5", "forward,both,3"
 // Additional command: "stop" to immediately stop motors
+// This version supports fractional seconds (e.g., "forward,2.5")
 
 #define DEFAULT_DUTY 128  // PWM duty (50% of 255)
 
@@ -20,7 +21,7 @@ const int FR_IN3 = A0;  // Direction control pin
 const int FR_IN4 = 12;  // Direction control pin
 const int RR_ENA = 10;  // PWM pin for rear right enable
 const int RR_IN1 = 11;  // Direction control pin (using analog pin as digital)
-const int RR_IN2 = 9;  // Direction control pin (using analog pin as digital)
+const int RR_IN2 = 9;   // Direction control pin (using analog pin as digital)
 
 String inputString = "";      // a String to hold incoming data
 bool stringComplete = false;  // whether the string is complete
@@ -91,24 +92,24 @@ void stopMotors() {
   stopRightMotors();
 }
 
-// Run left motors for a specified duration.
-void runLeftMotorsForSeconds(bool forward, unsigned long seconds) {
+// Run left motors for a specified duration (supports fractional seconds).
+void runLeftMotorsForSeconds(bool forward, float seconds) {
   driveLeftMotors(forward);
-  delay(seconds * 1000UL);
+  delay((unsigned long)(seconds * 1000));
   stopLeftMotors();
 }
 
-// Run right motors for a specified duration.
-void runRightMotorsForSeconds(bool forward, unsigned long seconds) {
+// Run right motors for a specified duration (supports fractional seconds).
+void runRightMotorsForSeconds(bool forward, float seconds) {
   driveRightMotors(forward);
-  delay(seconds * 1000UL);
+  delay((unsigned long)(seconds * 1000));
   stopRightMotors();
 }
 
-// Run both motors for a specified duration.
-void runMotorsForSeconds(bool forward, unsigned long seconds) {
+// Run both motors for a specified duration (supports fractional seconds).
+void runMotorsForSeconds(bool forward, float seconds) {
   driveMotors(forward);
-  delay(seconds * 1000UL);
+  delay((unsigned long)(seconds * 1000));
   stopMotors();
 }
 
@@ -123,6 +124,7 @@ void setup() {
   Serial.println("  forward,left,10          -> Run left motors forward for 10 seconds");
   Serial.println("  backward,right,5         -> Run right motors backward for 5 seconds");
   Serial.println("  forward,both,3           -> Run both motors forward for 3 seconds");
+  Serial.println("  You can also use fractional seconds, e.g., forward,2.5");
   Serial.println("  stop                     -> Stop motors immediately");
 }
 
@@ -141,7 +143,7 @@ void loop() {
       String direction;
       String side;
       String timeString;
-      unsigned long duration = 0;
+      float duration = 0.0;
       bool valid = true;
 
       // If two commas are found, we have three tokens.
@@ -170,8 +172,8 @@ void loop() {
       }
 
       if (valid) {
-        duration = timeString.toInt();
-        if (duration == 0) {
+        duration = timeString.toFloat();
+        if (duration == 0.0) {
           Serial.println("Invalid duration.");
           valid = false;
         }
