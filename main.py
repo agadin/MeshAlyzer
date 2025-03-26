@@ -192,7 +192,7 @@ class App(ctk.CTk):
         # input/output init
         # --------------------------
 
-        self.valve1 = ValveController(supply_pins=[5], vent_pins=[27])
+        self.valve1 = ValveController(supply_pins=[20], vent_pins=[27])
         self.valve2 = ValveController(supply_pins=[12], vent_pins=[24])
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.lps = adafruit_lps2x.LPS22(self.i2c)
