@@ -1,6 +1,7 @@
 # valve_control_dropdown.py
 import customtkinter as ctk
 
+
 class ValveControlDropdown(ctk.CTkFrame):
     def __init__(self, master, get_pressures_func, on_vent, on_neutral, on_supply, *args, **kwargs):
         """
@@ -8,9 +9,9 @@ class ValveControlDropdown(ctk.CTkFrame):
          - master: parent widget.
          - get_pressures_func: a callable that returns a dict with keys:
                "pressure0", "pressure1", and "pressure2".
-         - on_vent: callable to execute when slider is set to vent.
-         - on_neutral: callable to execute when slider is set to neutral.
-         - on_supply: callable to execute when slider is set to supply.
+         - on_vent: callable to execute when button is set to Vent.
+         - on_neutral: callable to execute when button is set to Neutral.
+         - on_supply: callable to execute when button is set to Supply.
         """
         super().__init__(master, *args, **kwargs)
         self.get_pressures = get_pressures_func
@@ -27,19 +28,17 @@ class ValveControlDropdown(ctk.CTkFrame):
 
         # Dropdown frame (initially hidden)
         self.dropdown_frame = ctk.CTkFrame(self)
-        # Slider: set from 0 to 2 with two steps so that we have three discrete values.
-        # We start at 1 (neutral).
-        self.slider = ctk.CTkSlider(
-            self.dropdown_frame,
-            from_=0,
-            to=2,
-            number_of_steps=2,
-            command=self.slider_changed
-        )
-        self.slider.set(1)
-        self.slider.pack(pady=5, padx=5)
 
-        # Warning label below the slider
+        # Segmented button with three options. Starts at "Neutral".
+        self.segmented_button = ctk.CTkSegmentedButton(
+            self.dropdown_frame,
+            values=["Vent", "Neutral", "Supply"],
+            command=self.segmented_button_changed
+        )
+        self.segmented_button.set("Neutral")
+        self.segmented_button.pack(pady=5, padx=5)
+
+        # Warning label below the segmented button
         self.warning_label = ctk.CTkLabel(self.dropdown_frame, text="", text_color="red")
         self.warning_label.pack(pady=5)
 
@@ -57,10 +56,10 @@ class ValveControlDropdown(ctk.CTkFrame):
         """Show the dropdown and start the inactivity timer."""
         pressures = self.get_pressures()
         if pressures.get("pressure0", 0) < 15:
-            self.slider.configure(state="disabled")
+            self.segmented_button.configure(state="disabled")
             self.warning_label.configure(text="Minimum input pressure is 15psi")
         else:
-            self.slider.configure(state="normal")
+            self.segmented_button.configure(state="normal")
             self.warning_label.configure(text="")
 
         self.dropdown_frame.pack(pady=5)
@@ -81,39 +80,35 @@ class ValveControlDropdown(ctk.CTkFrame):
             self.after_cancel(self.inactivity_timer_id)
         self.inactivity_timer_id = self.after(30000, self.hide_dropdown)
 
-    def slider_changed(self, value):
-        """Called when the slider is moved. Resets timer and calls the appropriate valve function."""
+    def segmented_button_changed(self, selected_value):
+        """Called when the segmented button selection changes.
+           Resets the timer and calls the appropriate valve function."""
         self.reset_inactivity_timer()
-        try:
-            # Ensure we get an integer (0, 1, or 2) from the slider value.
-            pos = round(float(value))
-        except Exception:
-            pos = 1
 
-        if pos == 0:
+        if selected_value == "Vent":
             self.on_vent()
-        elif pos == 1:
+        elif selected_value == "Neutral":
             self.on_neutral()
-        elif pos == 2:
+        elif selected_value == "Supply":
             self.on_supply()
 
     def update_pressures(self):
         """
-        Periodically check pressures.
-          - Disables slider if pressure0 is below 15.
-          - Displays a warning if pressure1 or pressure2 exceeds 80.
-          - If either exceeds 100, resets slider to neutral and displays a new warning.
+        Periodically check pressures:
+         - Disables segmented button if pressure0 is below 15.
+         - Displays a warning if pressure1 or pressure2 exceeds 80.
+         - If either exceeds 100, resets segmented button to Neutral and displays a warning.
         """
         pressures = self.get_pressures()
 
         if self.dropdown_visible:
             # Check minimum pressure condition
             if pressures.get("pressure0", 0) < 15:
-                self.slider.configure(state="disabled")
+                self.segmented_button.configure(state="disabled")
                 self.warning_label.configure(text="Minimum input pressure is 15psi")
             else:
-                self.slider.configure(state="normal")
-                # Only clear warning if no high-pressure warning applies below.
+                self.segmented_button.configure(state="normal")
+                # Clear warning if no high-pressure condition exists
                 if pressures.get("pressure1", 0) < 80 and pressures.get("pressure2", 0) < 80:
                     self.warning_label.configure(text="")
 
@@ -122,8 +117,8 @@ class ValveControlDropdown(ctk.CTkFrame):
             p2 = pressures.get("pressure2", 0)
             max_balloon = max(p1, p2)
             if max_balloon > 100:
-                # Reset slider to neutral and warn that limits are exceeded.
-                self.slider.set(1)
+                # Reset segmented button to "Neutral" and warn that limits are exceeded.
+                self.segmented_button.set("Neutral")
                 self.warning_label.configure(text="Supply is exceeding its limits")
                 self.on_neutral()
             elif max_balloon > 80:
