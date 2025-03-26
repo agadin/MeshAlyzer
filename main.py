@@ -298,7 +298,7 @@ class App(ctk.CTk):
         self.settings_button = ctk.CTkButton(
             self.nav_right_frame,
             text="Settings",
-            text_color="black" if ctk.get_appearance_mode() == "Dark" else "white",
+            text_color="white",
             image=settings_icon,
             compound="left",
             fg_color="transparent",
@@ -310,7 +310,7 @@ class App(ctk.CTk):
         self.inspector_button = ctk.CTkButton(
             self.nav_right_frame,
             text="Calibrate",
-            text_color="black" if ctk.get_appearance_mode() == "Dark" else "white",
+            text_color="white",
             image=calibrate_icon,
             compound="left",
             fg_color="transparent",
@@ -323,7 +323,7 @@ class App(ctk.CTk):
             self.nav_right_frame,
             text="Protocol Builder",
             image=protocol_icon,
-            text_color="black" if ctk.get_appearance_mode() == "Dark" else "white",
+            text_color="white",
             compound="left",
             fg_color="transparent",
             hover_color="gray",
@@ -335,7 +335,7 @@ class App(ctk.CTk):
             self.nav_right_frame,
             text="Home",
             image=home_icon,
-            text_color="black" if ctk.get_appearance_mode() == "Dark" else "white",
+            text_color="white",
             compound="left",
             fg_color="transparent",
             hover_color="gray",
@@ -519,13 +519,13 @@ class App(ctk.CTk):
         motor_button_frame.pack(pady=15)
 
         # Forward motor button
-        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor")
+        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent",)
         self.motor_forward_button.pack(side="left", padx=5)
         self.motor_forward_button.bind("<ButtonPress-1>", self.start_motor_forward)
         self.motor_forward_button.bind("<ButtonRelease-1>", self.stop_motor_forward)
 
         # Reverse motor button
-        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor")
+        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor", fg_color="transparent",)
         self.motor_reverse_button.pack(side="left", padx=5)
         self.motor_reverse_button.bind("<ButtonPress-1>", self.start_motor_reverse)
         self.motor_reverse_button.bind("<ButtonRelease-1>", self.stop_motor_reverse)
@@ -687,6 +687,16 @@ class App(ctk.CTk):
     def toggle_mode(self):
         mode = "Light" if ctk.get_appearance_mode() == "Dark" else "Dark"
         ctk.set_appearance_mode(mode)
+        if mode == "Light":
+            self.inspector_button.configure(text_color="black")
+            self.settings_button.configure(text_color="black")
+            self.home_button.configure(text_color="black")
+            self.protocol_builder_button.configure(text_color="black")
+        else:
+            self.inspector_button.configure(text_color="white")
+            self.settings_button.configure(text_color="white")
+            self.home_button.configure(text_color="white")
+            self.protocol_builder_button.configure(text_color="white")
 
     def show_calibrate(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
