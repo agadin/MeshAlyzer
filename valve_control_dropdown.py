@@ -27,7 +27,7 @@ class ValveControlDropdown(ctk.CTkFrame):
         self.toggle_button.pack(pady=5)
 
         # Dropdown frame (initially hidden)
-        self.dropdown_frame = ctk.CTkFrame(self)
+        self.dropdown_frame = ctk.CTkFrame(self, fg_color="transparent")
 
         # Segmented button with three options. Starts at "Neutral".
         self.segmented_button = ctk.CTkSegmentedButton(
