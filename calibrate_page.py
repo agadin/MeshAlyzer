@@ -324,7 +324,8 @@ class CalibratePage(ctk.CTkFrame):
                     'self_target_pressure': self.app.target_pressure,
                     'self_target_time': self.app.target_time,
                     'clamp_state': self.app.clamp_state,
-                    'self_protocol_step': self.app.protocol_step
+                    'self_protocol_step': self.app.protocol_step,
+                    'Measured_pressure': measured_pressure
                 }
                 readings.append(reading)
                 time.sleep(0.01)
@@ -335,9 +336,9 @@ class CalibratePage(ctk.CTkFrame):
             # Save all readings to a CSV file for this target pressure.
             csv_filename = os.path.join(
                 calibration_folder,
-                f"calibration_{current_pressure}_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
+                f"calibration_{measured_pressure}_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
             )
-            print(f"Saving calibration data for target {current_pressure} psi to file: {csv_filename}")
+            print(f"Saving calibration data for target {measured_pressure} psi to file: {csv_filename}")
             import csv
             with open(csv_filename, "w", newline="") as csvfile:
                 fieldnames = list(readings[0].keys())
