@@ -11,7 +11,9 @@ def combine_csv_files(folder_path, output_file):
             file_path = os.path.join(folder_path, filename)
             # Read the CSV file into a dataframe
             df = pd.read_csv(file_path)
-            dataframes.append(df)
+            # Filter rows where 'time' column is greater than 0.5
+            df_filtered = df[df['time'] > 0.5]
+            dataframes.append(df_filtered)
 
     # Concatenate all dataframes
     combined_df = pd.concat(dataframes, ignore_index=True)
