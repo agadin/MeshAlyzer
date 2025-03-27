@@ -24,7 +24,7 @@ for filename in os.listdir(folder_path):
             continue
 
         # Verify that all required columns are present
-        required_cols = ['Target_pressure', 'pressure0', 'pressure1', 'pressure2',
+        required_cols = ['Measured_pressure', 'pressure0', 'pressure1', 'pressure2',
                          'LPS_pressure', 'LPS_temperature']
         for col in required_cols:
             if col not in df.columns:
