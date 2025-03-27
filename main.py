@@ -40,6 +40,7 @@ from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
 from clamp_motor import MotorController
 from calibrate_page import CalibratePage
+from valve_control_dropdown import ValveControlDropdown
 
 
 redis_client = {}
@@ -191,7 +192,7 @@ class App(ctk.CTk):
         # input/output init
         # --------------------------
 
-        self.valve1 = ValveController(supply_pins=[5], vent_pins=[27])
+        self.valve1 = ValveController(supply_pins=[20], vent_pins=[27])
         self.valve2 = ValveController(supply_pins=[12], vent_pins=[24])
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.lps = adafruit_lps2x.LPS22(self.i2c)
@@ -218,27 +219,49 @@ class App(ctk.CTk):
         # Create a white icon from the SVG file
         icon_size = (20, 20)
 
-        image_path = "./img/lakelogo.png"
-        pil_image = Image.open(image_path)
-
-        # Create a CTkImage object
+        # Create CTkImage for the first logo (lake logo)
         logo_image = ctk.CTkImage(
-            light_image=Image.open("./img/lakelogo_dark.png"),  # Used when Light mode is active
-            dark_image=Image.open("./img/lakelogo.png"),  # Used when Dark mode is active
+            light_image=Image.open("./img/lakelogo_dark.png"),  # For light mode
+            dark_image=Image.open("./img/lakelogo.png"),  # For dark mode
             size=(60, 60)
         )
 
-
-        # Use the white icon in a CTkButton
+        # Create the first CTkButton with the lake logo
         self.logo_button = ctk.CTkButton(
             self.nav_left_frame,
             image=logo_image,
             text="",
             fg_color="transparent",
-            hover_color="gray" , # or another valid 6-digit hex or named color
+            hover_color="gray",
             command=self.show_home
         )
-        self.logo_button.pack()
+        self.logo_button.pack(side="left", padx=1)
+
+        high_res_mesh_logo_dark = Image.open("./img/meshlogo_dark.png")
+        high_res_mesh_logo = Image.open("./img/meshlogo.png")
+
+        # Resize it to the target dimensions using a high-quality filter
+        high_res_mesh_logo_dark = high_res_mesh_logo_dark.resize((80, 60), Image.LANCZOS)
+        resized_mesh_logo = high_res_mesh_logo.resize((80, 60), Image.LANCZOS)
+
+
+        # Create CTkImage for the second logo (mesh logo)
+        mesh_logo_image = ctk.CTkImage(
+            light_image=high_res_mesh_logo_dark,  # Use same image for both modes, or adjust if needed
+            dark_image=resized_mesh_logo,
+            size=(80, 60)
+        )
+
+        # Create a second CTkButton with the mesh logo
+        self.mesh_logo_button = ctk.CTkButton(
+            self.nav_left_frame,
+            image=mesh_logo_image,
+            text="",
+            hover_color="gray",
+            fg_color="transparent",
+            command=self.show_home  # Replace with the desired command
+        )
+        self.mesh_logo_button.pack(side="left", padx=1)
 
         # Load the PNG images
         home_icon_image = Image.open("./img/fa-home.png")
@@ -357,9 +380,11 @@ class App(ctk.CTk):
         except Exception as e:
             print(f"Failed to initialize MotorController: {e}")
 
-            # Variables to track button hold state
+        # Variables to track button hold state
         self.motor_forward_pressed = False
         self.motor_forward_active = False
+        self.motor_reverse_pressed = False
+        self.motor_reverse_active = False
 
         # Initialize the home display
         self.show_home()
@@ -486,15 +511,24 @@ class App(ctk.CTk):
         self.run_button.pack(pady=15)
 
         # Light/Dark mode toggle
-        self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Light/Dark Mode", command=self.toggle_mode)
+        self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Dark/Light Mode", command=self.toggle_mode)
         self.mode_toggle.pack(pady=15)
 
-        # Add the new motor control button
-        self.motor_forward_button = ctk.CTkButton(self.sidebar_frame, text="Advance Motor")
-        self.motor_forward_button.pack(pady=15)
-        # Bind mouse press and release events
+        # Create a new frame to hold the two motor buttons side by side.
+        motor_button_frame = ctk.CTkFrame(self.sidebar_frame)
+        motor_button_frame.pack(pady=15)
+
+        # Forward motor button
+        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent",)
+        self.motor_forward_button.pack(side="left", padx=5)
         self.motor_forward_button.bind("<ButtonPress-1>", self.start_motor_forward)
         self.motor_forward_button.bind("<ButtonRelease-1>", self.stop_motor_forward)
+
+        # Reverse motor button
+        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor", fg_color="transparent",)
+        self.motor_reverse_button.pack(side="left", padx=5)
+        self.motor_reverse_button.bind("<ButtonPress-1>", self.start_motor_reverse)
+        self.motor_reverse_button.bind("<ButtonRelease-1>", self.stop_motor_reverse)
 
         self.lps_info_label = ctk.CTkLabel(
             self.sidebar_frame,
@@ -504,6 +538,19 @@ class App(ctk.CTk):
         )
         self.lps_info_label.pack(side="bottom", pady=10, padx=10)
 
+        # Create the valve control dropdown in your sidebar.
+        self.valve_control = ValveControlDropdown(
+            self.sidebar_frame,
+            get_pressures_func=lambda: {
+                "pressure0": self.pressure0_convert,
+                "pressure1": self.pressure1_convert,
+                "pressure2": self.pressure2_convert,
+            },
+            on_vent=lambda: (self.valve1.vent(), self.valve2.vent()),
+            on_neutral=lambda: (self.valve1.neutral(), self.valve2.neutral()),
+            on_supply=lambda: (self.valve1.supply(), self.valve2.supply())
+        )
+        self.valve_control.pack(pady=10)
 
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
@@ -545,32 +592,33 @@ class App(ctk.CTk):
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
 
-        # New: create a frame that will hold two labels
-        self.force_display_frame = ctk.CTkFrame(
-            display_frame,
-            width=250,
-            height=100,
-            corner_radius=20,
-            fg_color="lightblue"
-        )
+        # Extract the frame-specific styling from display_style
+        frame_style = {
+            "width": display_style["width"],
+            "height": display_style["height"],
+            "corner_radius": display_style["corner_radius"],
+            "fg_color": display_style["fg_color"],
+        }
+
+        # Create a frame for the force display using the same rounded box style
+        self.force_display_frame = ctk.CTkFrame(display_frame, **frame_style)
         self.force_display_frame.grid(row=0, column=3, padx=10, pady=5)
 
-        # Create the top label for the average force (large and unbold)
+        # Inside the frame, create the two labels for force display.
+        # Their appearance (font, text_color) remains the same.
         self.force_display_top = ctk.CTkLabel(
             self.force_display_frame,
             text="N/A",
             font=("Arial", 50, "bold"),
-            fg_color="transparent",  # so the frame's background shows
+            fg_color="transparent",  # Let the frame's bg show through
             text_color="black"
         )
-        # Center the top label within the frame
         self.force_display_top.pack(expand=True, fill="x")
 
-        # Create the bottom label for the individual pressures (smaller and unbold)
         self.force_display_bottom = ctk.CTkLabel(
             self.force_display_frame,
             text="N/A",
-            font=("Arial", 30),  # smaller font size, unbold
+            font=("Arial", 30),
             fg_color="transparent",
             text_color="black"
         )
@@ -639,6 +687,16 @@ class App(ctk.CTk):
     def toggle_mode(self):
         mode = "Light" if ctk.get_appearance_mode() == "Dark" else "Dark"
         ctk.set_appearance_mode(mode)
+        if mode == "Light":
+            self.inspector_button.configure(text_color="black")
+            self.settings_button.configure(text_color="black")
+            self.home_button.configure(text_color="black")
+            self.protocol_builder_button.configure(text_color="black")
+        else:
+            self.inspector_button.configure(text_color="white")
+            self.settings_button.configure(text_color="white")
+            self.home_button.configure(text_color="white")
+            self.protocol_builder_button.configure(text_color="white")
 
     def show_calibrate(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -708,6 +766,33 @@ class App(ctk.CTk):
         # Send a stop command to the motor controller.
         self.motor_controller.send_command("stop")
 
+    def start_motor_reverse(self, event):
+        # When the button is pressed, record the time and set the flag.
+        self.motor_reverse_pressed = True
+        self.motor_reverse_press_time = time.time()
+        # After 300ms, check if the button is still pressed.
+        self.after(300, self.check_motor_reverse_hold)
+
+    def check_motor_reverse_hold(self):
+        # If still pressed after 0.3s, start the reverse motor command.
+        if self.motor_reverse_pressed and (time.time() - self.motor_reverse_press_time >= 0.3):
+            self.motor_reverse_active = True
+            self.send_motor_reverse_command()
+
+    def send_motor_reverse_command(self):
+        if self.motor_reverse_active:
+            # Send the reverse command.
+            # Adjust the command string ("reverse,both,0.1") as needed for your setup.
+            self.motor_controller.send_command("reverse,both,0.1")
+            # Repeat the command every 100ms while the button is held down.
+            self.after(100, self.send_motor_reverse_command)
+
+    def stop_motor_reverse(self, event):
+        # On button release, stop the reverse motor activity.
+        self.motor_reverse_pressed = False
+        self.motor_reverse_active = False
+        # Send a stop command to the motor controller.
+        self.motor_controller.send_command("stop")
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
