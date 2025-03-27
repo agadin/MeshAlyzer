@@ -324,7 +324,8 @@ class CalibratePage(ctk.CTkFrame):
                     'self_target_pressure': self.app.target_pressure,
                     'self_target_time': self.app.target_time,
                     'clamp_state': self.app.clamp_state,
-                    'self_protocol_step': self.app.protocol_step
+                    'self_protocol_step': self.app.protocol_step,
+                    'Measured_pressure': measured_pressure
                 }
                 readings.append(reading)
                 time.sleep(0.01)
