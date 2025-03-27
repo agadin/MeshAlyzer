@@ -552,6 +552,7 @@ class App(ctk.CTk):
         )
         self.valve_control.pack(pady=10)
 
+
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.main_frame.pack(side="left", expand=True, fill="both", padx=10)
@@ -592,37 +593,9 @@ class App(ctk.CTk):
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
 
-        # Extract the frame-specific styling from display_style
-        frame_style = {
-            "width": display_style["width"],
-            "height": display_style["height"],
-            "corner_radius": display_style["corner_radius"],
-            "fg_color": display_style["fg_color"],
-        }
+        self.force_display_frame = ctk.CTkFrame(display_frame, text="N/A\nN/A | N/A", **display_style)
+        self.force_display_frame.grid(row=0, column=3, padx=10, pady=10)
 
-        # Create a frame for the force display using the same rounded box style
-        self.force_display_frame = ctk.CTkFrame(display_frame, **frame_style)
-        self.force_display_frame.grid(row=0, column=3, padx=10, pady=5)
-
-        # Inside the frame, create the two labels for force display.
-        # Their appearance (font, text_color) remains the same.
-        self.force_display_top = ctk.CTkLabel(
-            self.force_display_frame,
-            text="N/A",
-            font=("Arial", 50, "bold"),
-            fg_color="transparent",  # Let the frame's bg show through
-            text_color="black"
-        )
-        self.force_display_top.pack(expand=True, fill="x")
-
-        self.force_display_bottom = ctk.CTkLabel(
-            self.force_display_frame,
-            text="N/A",
-            font=("Arial", 30),
-            fg_color="transparent",
-            text_color="black"
-        )
-        self.force_display_bottom.pack(expand=True, fill="x")
 
         self.segmented_button = ctk.CTkSegmentedButton(self.main_frame, values=["Angle v Force", "Simple", "All"],
                                                        command=self.update_graph_view)
@@ -807,8 +780,8 @@ class App(ctk.CTk):
 
             # Calculate average force and update both labels with units (e.g., "N")
             avg_force = (current_pressure1 + current_pressure2) / 2
-            self.force_display_top.configure(text=f"{avg_force:.2f} N")
-            self.force_display_bottom.configure(text=f"{current_pressure1:.2f} N | {current_pressure2:.2f} N")
+            self.force_display_frame.configure(text=f"{avg_force:.2f} N")
+            self.force_display_bottom.configure(text=f"{avg_force:.2f} N\n{current_pressure1:.2f} N | {current_pressure2:.2f} N")
 
         if self.protocol_step is None:
                 protocol_step = 0
@@ -963,6 +936,8 @@ class App(ctk.CTk):
 
     def process_protocol(self, protocol_path):
         protocol_filename = os.path.basename(protocol_path)
+        # turn protocol_path to the full path including file name
+        protocol_path = os.path.join(self.protocol_folder, protocol_path)
         with open(protocol_path, 'r') as file:
             commands = file.readlines()
             step_number = 0
