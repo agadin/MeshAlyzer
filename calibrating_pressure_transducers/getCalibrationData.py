@@ -8,7 +8,7 @@ import pandas as pd
 import os
 
 # Folder containing the CSV files
-folder_path = 'path/to/your/folder'
+folder_path = '/Users/colehanan/Desktop/combined_csv_files'
 
 # List to hold dataframes
 dataframes = []
@@ -40,9 +40,9 @@ for filename in os.listdir(folder_path):
 # Concatenate all dataframes
 combined_df = pd.concat(dataframes, ignore_index=True)
 
-# Extract features (X) and target (y)
+# Extract features (X) and Measured (y)
 X = combined_df[['pressure0', 'pressure1', 'pressure2', 'LPS_pressure', 'LPS_temperature']]
-y = combined_df['Target_pressure']
+y = combined_df['Measured_pressure']
 
 print("Data shape:", X.shape, "Features:", list(X.columns))
 # Data is now loaded and cleaned, ready for model training.
@@ -78,7 +78,7 @@ print(f"Test R^2: {r2:.3f}")
 
 # Save actual vs predicted pressures to a CSV for review
 results_df = pd.DataFrame({
-    'Target_pressure': y_test.values,
+    'Measured_pressure': y_test.values,
     'Predicted_pressure': y_pred
 })
 results_df.to_csv('calibrated_predictions.csv', index=False)
@@ -89,7 +89,7 @@ import matplotlib.pyplot as plt
 plt.figure(figsize=(6,5))
 plt.scatter(y_test, y_pred, color='blue', alpha=0.6, label='Predicted')
 plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', label='Ideal fit')
-plt.xlabel('Actual Target Pressure')
+plt.xlabel('Actual Measured Pressure')
 plt.ylabel('Predicted Pressure')
 plt.title('Predicted vs Actual Pressure')
 plt.legend()
@@ -112,3 +112,18 @@ plt.title('ROC Curve for High Pressure Detection')
 plt.legend(loc='lower right')
 plt.tight_layout()
 plt.show()
+
+# Access the trained MLP regressor from the pipeline
+mlp_regressor = mlp_model.named_steps['regressor']
+
+# Extract weights and biases
+W1 = mlp_regressor.coefs_[0]
+b1 = mlp_regressor.intercepts_[0]
+w2 = mlp_regressor.coefs_[1]
+b2 = mlp_regressor.intercepts_[1]
+
+# For a given input vector x (after applying the same scaler), the output is:
+# h = tanh(np.dot(W1.T, x) + b1)
+# calibrated_pressure = np.dot(w2.T, h) + b2
+
+
