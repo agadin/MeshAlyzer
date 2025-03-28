@@ -515,18 +515,16 @@ class App(ctk.CTk):
         self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Dark/Light Mode", command=self.toggle_mode)
         self.mode_toggle.pack(pady=15)
 
-        # Create a new frame to hold the two motor buttons side by side.
+        # Motor buttons frame
         motor_button_frame = ctk.CTkFrame(self.sidebar_frame)
         motor_button_frame.pack(pady=15)
 
-        # Forward motor button
-        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent", )
+        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent")
         self.motor_forward_button.pack(side="left", padx=5)
         self.motor_forward_button.bind("<ButtonPress-1>", self.start_motor_forward)
         self.motor_forward_button.bind("<ButtonRelease-1>", self.stop_motor_forward)
 
-        # Reverse motor button
-        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor", fg_color="transparent", )
+        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor", fg_color="transparent")
         self.motor_reverse_button.pack(side="left", padx=5)
         self.motor_reverse_button.bind("<ButtonPress-1>", self.start_motor_reverse)
         self.motor_reverse_button.bind("<ButtonRelease-1>", self.stop_motor_reverse)
@@ -534,12 +532,12 @@ class App(ctk.CTk):
         self.lps_info_label = ctk.CTkLabel(
             self.sidebar_frame,
             text="LPS: N/A | N/A",
-            text_color="darkgrey",  # Dark grey text
+            text_color="darkgrey",
             font=("Arial", 10)
         )
         self.lps_info_label.pack(side="bottom", pady=10, padx=10)
 
-        # Create the valve control dropdown in your sidebar.
+        # Valve control dropdown
         self.valve_control = ValveControlDropdown(
             self.sidebar_frame,
             get_pressures_func=lambda: {
@@ -561,10 +559,10 @@ class App(ctk.CTk):
                                                 font=("Arial", 35, "bold"))
         self.protocol_name_label.pack(pady=10, padx=20, anchor="w")
 
+        # Create display frame with updated layout for the metrics
         display_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         display_frame.pack(pady=5)
 
-        # In show_home(), where you create the display labels
         display_style = {
             "width": 250,
             "height": 100,
@@ -574,42 +572,23 @@ class App(ctk.CTk):
             "font": ("Arial", 50, "bold"),
         }
 
-        # Create and pack the time, step, and angle displays as before
+        # Row 0: Time, Steps, Angle, and Force display
         self.time_display = ctk.CTkLabel(display_frame, text="Time: N/A", **display_style)
         self.time_display.grid(row=0, column=0, padx=10, pady=10)
-        self.time_display.bind("<Button-1>", lambda e: setattr(self, 'clock_values', False))
-
         self.step_display = ctk.CTkLabel(display_frame, text="Steps: N/A", **display_style)
         self.step_display.grid(row=0, column=1, padx=10, pady=10)
-
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
-
-        # Create and pack two force display labels
-        self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A", **display_style)
+        self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A\nN/A | N/A", **display_style)
         self.force_display_frame.grid(row=0, column=3, padx=10, pady=10)
 
-        self.force_display_bottom = ctk.CTkLabel(display_frame, text="N/A", **display_style)
-        self.force_display_bottom.grid(row=1, column=3, padx=10, pady=10)
+        # Row 1: Protocol step counter and Valve display
+        self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
+        self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10)
+        self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
+        self.valve_display.grid(row=1, column=1, padx=10, pady=10)
 
-        self.segmented_button = ctk.CTkSegmentedButton(self.main_frame, values=["Angle v Force", "Simple", "All"],
-                                                       command=self.update_graph_view)
-        self.segmented_button.set("Angle v Force")  # Set default selection
-        self.segmented_button.pack(pady=10)
-
-        # Placeholder for graphs
-        self.graph_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.graph_frame.pack(expand=True, fill="both", pady=10)
-
-        self.clear_button = ctk.CTkButton(self.main_frame, text="Clear", command=self.clear_graphs)
-        self.clear_button.pack(pady=10)
-
-        # Start background threads
-
-        self.update_graph_view("Angle v Force")  # Initialize with default view
-
-        print("protocol: ", self.protocol_var.get())
-
+        # Initialize ProtocolViewer and start queue processing
         self.initialize_protocol_viewer()
         self.process_queue()
 
@@ -763,27 +742,25 @@ class App(ctk.CTk):
         # Send a stop command to the motor controller.
         self.motor_controller.send_command("stop")
 
-    def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes,
-                        seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
+    def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
+                        minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
             self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
             self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
             self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
+            # If one of the pressures is None, use the other
             if current_pressure2 is None:
                 current_pressure2 = current_pressure1
             if current_pressure1 is None:
                 current_pressure1 = current_pressure2
 
-            # Calculate average force and update both labels
+            # Calculate average force and update force display
             avg_force = (current_pressure1 + current_pressure2) / 2
             self.force_display_frame.configure(text=f"{avg_force:.2f} N")
-            self.force_display_bottom.configure(
-                text=f"{avg_force:.2f} N\n{current_pressure1:.2f} N | {current_pressure2:.2f} N")
 
-        if self.protocol_step is None:
-                protocol_step = 0
+        # Set protocol_step to 0 if None
+        protocol_step = self.protocol_step if self.protocol_step is not None else 0
         self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
-
         self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
         try:
