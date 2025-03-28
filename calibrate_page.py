@@ -104,11 +104,10 @@ class CalibratePage(ctk.CTkFrame):
             p1 = [data['pressure1'] for data in self.app.sensor_data if data['time'] >= 0]
             p2 = [data['pressure2'] for data in self.app.sensor_data if data['time'] >= 0]
             p3 = [data['pressure3'] for data in self.app.sensor_data if data['time'] >= 0]
-            self.ax.plot(times, p0, label="Pressure0")
-            self.ax.plot(times, p1, label="Pressure1")
-            self.ax.plot(times, p2, label="Pressure2")
-            self.ax.plot(times, p3, label="Pressure3")
-            self.ax.legend()
+            self.ax.plot(times, p0, label="Raw Pressure0")
+            self.ax.plot(times, p1, label="Raw Pressure1")
+            self.ax.plot(times, p2, label="Raw Pressure2")
+            self.ax.legend(loc='upper right')
         self.canvas.draw()
         self.after(1000, self.update_graph)
 
