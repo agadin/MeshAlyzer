@@ -564,7 +564,7 @@ class App(ctk.CTk):
         display_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         display_frame.pack(pady=5)
 
-        # Style for all three displays
+        # In show_home(), where you create the display labels
         display_style = {
             "width": 250,
             "height": 100,
@@ -574,27 +574,23 @@ class App(ctk.CTk):
             "font": ("Arial", 50, "bold"),
         }
 
-        # Create and pack time display
+        # Create and pack the time, step, and angle displays as before
         self.time_display = ctk.CTkLabel(display_frame, text="Time: N/A", **display_style)
         self.time_display.grid(row=0, column=0, padx=10, pady=10)
         self.time_display.bind("<Button-1>", lambda e: setattr(self, 'clock_values', False))
 
-        self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
-        self.protocol_step_counter.grid(row=0, column=4, padx=10, pady=5)
-
-        # Create and pack step count display
         self.step_display = ctk.CTkLabel(display_frame, text="Steps: N/A", **display_style)
         self.step_display.grid(row=0, column=1, padx=10, pady=10)
 
-        self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
-        self.valve_display.grid(row=0, column=4, padx=10, pady=10)
-
-        # Create and pack angle display
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
 
-        self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A\nN/A | N/A", **display_style)
+        # Create and pack two force display labels
+        self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A", **display_style)
         self.force_display_frame.grid(row=0, column=3, padx=10, pady=10)
+
+        self.force_display_bottom = ctk.CTkLabel(display_frame, text="N/A", **display_style)
+        self.force_display_bottom.grid(row=1, column=3, padx=10, pady=10)
 
         self.segmented_button = ctk.CTkSegmentedButton(self.main_frame, values=["Angle v Force", "Simple", "All"],
                                                        command=self.update_graph_view)
@@ -767,21 +763,22 @@ class App(ctk.CTk):
         # Send a stop command to the motor controller.
         self.motor_controller.send_command("stop")
 
-    def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
+    def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2, minutes,
+                        seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
             self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
             self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
             self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
-            # If current_pressure2 is not provided, default to current_pressure1
             if current_pressure2 is None:
                 current_pressure2 = current_pressure1
             if current_pressure1 is None:
                 current_pressure1 = current_pressure2
 
-            # Calculate average force and update both labels with units (e.g., "N")
+            # Calculate average force and update both labels
             avg_force = (current_pressure1 + current_pressure2) / 2
             self.force_display_frame.configure(text=f"{avg_force:.2f} N")
-            self.force_display_bottom.configure(text=f"{avg_force:.2f} N\n{current_pressure1:.2f} N | {current_pressure2:.2f} N")
+            self.force_display_bottom.configure(
+                text=f"{avg_force:.2f} N\n{current_pressure1:.2f} N | {current_pressure2:.2f} N")
 
         if self.protocol_step is None:
                 protocol_step = 0
