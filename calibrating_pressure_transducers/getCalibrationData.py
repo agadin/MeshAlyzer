@@ -8,7 +8,7 @@ import pandas as pd
 import os
 
 # Folder containing the CSV files
-folder_path = '/Users/colehanan/Desktop/combined_csv_files'
+folder_path = '/Users/colehanan/Desktop/scaled_combined_csv_files'
 
 # List to hold dataframes
 dataframes = []
@@ -56,8 +56,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 # Define a pipeline with feature scaling and MLP regressor
 mlp_model = Pipeline([
     ('scaler', StandardScaler()),  # feature scaling
-    ('regressor', MLPRegressor(hidden_layer_sizes=(10,), activation='tanh',
-                                solver='lbfgs', max_iter=1000,
+    ('regressor', MLPRegressor(hidden_layer_sizes=(100,), activation='tanh',
+                                solver='lbfgs', max_iter=1000000000000000000000000000000000000000000000000,
                                 random_state=42))
 ])
 
