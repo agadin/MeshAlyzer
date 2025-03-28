@@ -482,6 +482,7 @@ class App(ctk.CTk):
             self.pressure1 = pressure1
             self.pressure2 = pressure2
             self.pressure3 = pressure3
+
     def show_home(self):
         self.clear_content_frame()
         self.home_displayed = True
@@ -519,13 +520,13 @@ class App(ctk.CTk):
         motor_button_frame.pack(pady=15)
 
         # Forward motor button
-        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent",)
+        self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent", )
         self.motor_forward_button.pack(side="left", padx=5)
         self.motor_forward_button.bind("<ButtonPress-1>", self.start_motor_forward)
         self.motor_forward_button.bind("<ButtonRelease-1>", self.stop_motor_forward)
 
         # Reverse motor button
-        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor", fg_color="transparent",)
+        self.motor_reverse_button = ctk.CTkButton(motor_button_frame, text="Reverse Motor", fg_color="transparent", )
         self.motor_reverse_button.pack(side="left", padx=5)
         self.motor_reverse_button.bind("<ButtonPress-1>", self.start_motor_reverse)
         self.motor_reverse_button.bind("<ButtonRelease-1>", self.stop_motor_reverse)
@@ -551,7 +552,6 @@ class App(ctk.CTk):
             on_supply=lambda: (self.valve1.supply(), self.valve2.supply())
         )
         self.valve_control.pack(pady=10)
-
 
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
@@ -593,9 +593,8 @@ class App(ctk.CTk):
         self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
         self.angle_display.grid(row=0, column=2, padx=10, pady=10)
 
-        self.force_display_frame = ctk.CTkFrame(display_frame, text="N/A\nN/A | N/A", **display_style)
+        self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A\nN/A | N/A", **display_style)
         self.force_display_frame.grid(row=0, column=3, padx=10, pady=10)
-
 
         self.segmented_button = ctk.CTkSegmentedButton(self.main_frame, values=["Angle v Force", "Simple", "All"],
                                                        command=self.update_graph_view)
@@ -617,6 +616,7 @@ class App(ctk.CTk):
 
         self.initialize_protocol_viewer()
         self.process_queue()
+
 
     def run_protocol(self):
         if self.protocol_running:
