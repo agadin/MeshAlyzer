@@ -42,8 +42,7 @@ class PressureReceiver:
                 p0 = sensors.get("channel_0", 0.0)
                 p1 = sensors.get("channel_1", 0.0)
                 p2 = sensors.get("channel_2", 0.0)
-                p3 = sensors.get("channel_3", 0.0)
-                PressureReceiver._latest_pressures = [p0, p1, p2, p3]
+                PressureReceiver._latest_pressures = [p0, p1, p2]
             else:
                 print("[SERVER] Invalid data: missing 'sensors'")
         except json.JSONDecodeError as e:
@@ -61,8 +60,8 @@ if __name__ == "__main__":
 
     try:
         while True:
-            pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
-            print(f"[MAIN] Latest Pressures: {pressure0:.2f}, {pressure1:.2f}, {pressure2:.2f}, {pressure3:.2f}")
+            pressure0, pressure1, pressure2 = PressureReceiver.getpressures()
+            print(f"[MAIN] Latest Pressures: {pressure0:.2f}, {pressure1:.2f}, {pressure2:.2f}")
             time.sleep(1)
     except KeyboardInterrupt:
         print("[MAIN] Stopping...")
