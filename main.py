@@ -138,6 +138,7 @@ class ProtocolViewer(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.sampleID = None
         self.running = True  # Initialize the running attribute
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
         ctk.set_default_color_theme("blue")
@@ -548,7 +549,12 @@ class App(ctk.CTk):
             on_supply=lambda: (self.valve1.supply(), self.valve2.supply())
         )
         self.valve_control.pack(pady=10)
-
+        
+        # add a input box in the side frame that says sample ID and have that set to self.sampleID
+        self.sample_id_entry = ctk.CTkEntry(self.sidebar_frame, placeholder_text="Sample ID")
+        self.sample_id_entry.pack(pady=15, padx=15)
+        self.sample_id_entry.bind("<FocusOut>", self.update_sample_id)
+        
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.main_frame.pack(side="left", expand=True, fill="both", padx=10)
@@ -606,6 +612,9 @@ class App(ctk.CTk):
 
         print(f"Running Protocol: {protocol_name}")
 
+    def update_sample_id(self, event):
+        self.sampleID = self.sample_id_entry.get()
+        
     def initialize_protocol_viewer(self):
         # Initialize ProtocolViewer directly
         self.protocol_viewer = ProtocolViewer(
