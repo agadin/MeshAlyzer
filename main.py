@@ -42,7 +42,7 @@ from clamp_motor import MotorController
 from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
 from joblib import load
-
+from calibrating_pressure_transducers.scale_data import PressureCalibrator
 
 class ProtocolViewer(ctk.CTkFrame):
     def __init__(self, master, protocol_folder, protocol_var, app, *args, **kwargs):
@@ -363,6 +363,8 @@ class App(ctk.CTk):
 
         #set up readvalues
         self.sensor_data = []
+        self.calibrator = PressureCalibrator()
+        self.calibrator.models = load('calibrating_pressure_transducers/trained_pressure_calibrators.joblib')
 
         # Start the sensor reading in a separate daemon thread
         self.update_queue = queue.Queue()
@@ -1251,7 +1253,7 @@ class App(ctk.CTk):
             headers = [
                 'time', 'LPS_pressure', 'LPS_temperature', 'pressure0', 'pressure0_convert',
                 'pressure1', 'pressure1_convert', 'pressure2', 'pressure2_convert',
-                'pressure3', 'pressure3_convert', 'valve1_state', 'valve2_state',
+                'pressure3', 'valve1_state', 'valve2_state',
                 'self_target_pressure', 'self_target_time', 'clamp_state', 'self_protocol_step'
             ]
             writer.writerow(headers)
@@ -1262,7 +1264,7 @@ class App(ctk.CTk):
                     data['time'], data['LPS_pressure'], data['LPS_temperature'], data['pressure0'],
                     data['pressure0_convert'],
                     data['pressure1'], data['pressure1_convert'], data['pressure2'], data['pressure2_convert'],
-                    data['pressure3'], data['pressure3_convert'], data['valve1_state'], data['valve2_state'],
+                    data['pressure3'], data['valve1_state'], data['valve2_state'],
                     data['self_target_pressure'], data['self_target_time'], data['clamp_state'],
                     data['self_protocol_step']
                 ]
@@ -1288,7 +1290,7 @@ class App(ctk.CTk):
                 # Convert pressure and temperature values using the converter function
                 self.update_pressure_values()
 
-                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert, self.pressure3_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
 
                 #get valve state
                 valve1_state= self.valve1.get_state()
@@ -1307,7 +1309,6 @@ class App(ctk.CTk):
                     'pressure2': self.pressure2,
                     'pressure2_convert': self.pressure2_convert,
                     'pressure3': self.pressure3,
-                    'pressure3_convert': self.pressure3_convert,
                     'valve1_state': valve1_state,
                     'valve2_state': valve2_state,
                     'self_target_pressure': self.target_pressure,
@@ -1320,7 +1321,7 @@ class App(ctk.CTk):
                 self.update_queue.put({
                     'step_count': self.protocol_step,
                     'current_input_pressure': self.pressure0_convert,
-                    'current_pressure1': self.pressure3_convert,
+                    'current_pressure1': self.pressure1_convert,
                     'minutes': int(time_diff // 60),
                     'seconds': int(time_diff % 60),
                     'milliseconds': int((time_diff * 1000) % 1000)
@@ -1337,8 +1338,8 @@ class App(ctk.CTk):
                 # Convert pressure and temperature values using the converter function
                 self.update_pressure_values()
 
-                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert, self.pressure3_convert = self.pressure_sensor_converter(
-                    self.pressure0, self.pressure1, self.pressure2, self.pressure3, LPS_pressure, LPS_temperature)
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
+                    self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
 
                 # get valve state
                 valve1_state = self.valve1.get_state()
@@ -1356,7 +1357,6 @@ class App(ctk.CTk):
                     'pressure2': self.pressure2,
                     'pressure2_convert': self.pressure2_convert,
                     'pressure3': self.pressure3,
-                    'pressure3_convert': self.pressure3_convert,
                     'valve1_state': valve1_state,
                     'valve2_state': valve2_state,
                     'self_target_pressure': self.target_pressure,
@@ -1382,16 +1382,13 @@ class App(ctk.CTk):
             # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
 
-    def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
-        """Convert the pressure sensor value to a desired unit."""
-        # cole add logic here
-        #temp logic: (pressure0 / 5) *100
+    def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
+        # Convert raw sensor values to calibrated pressures for each sensor.
+        conv_pressure0, conv_pressure1, conv_pressure2 = self.calibrator.pressure_sensor_converter_main(
+            pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
+        )
 
-        conv_pressure0 = mlp_model.predict(pressure0)
-        conv_pressure1 = mlp_model.predict(pressure1)
-        conv_pressure2 = mlp_model.predict(pressure2)
-        conv_pressure3 = mlp_model.predict(pressure3)
-        return conv_pressure0 , conv_pressure1, conv_pressure2, conv_pressure3
+        return conv_pressure0, conv_pressure1, conv_pressure2
 
     def process_queue(self):
         try:
@@ -1550,7 +1547,7 @@ class App(ctk.CTk):
         calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
 if __name__ == "__main__":
-    mlp_model = load('calibrating_pressure_transducers/trained_mlp.pkl')
+    # Load the pre-trained models from the saved joblib file.
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
