@@ -116,7 +116,7 @@ class PressureCalibrator:
         dump(self.models, 'trained_pressure_calibrators.joblib')
         print("Models saved to 'trained_pressure_calibrators.joblib'.")
 
-    def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
+    def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         """
         Convert raw sensor readings from each sensor into calibrated pressure values.
 
