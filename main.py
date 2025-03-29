@@ -1246,10 +1246,7 @@ class App(ctk.CTk):
             pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
         )
 
-        print("Calibrated Pressure Sensor Outputs:")
-        print("Sensor0:", conv_pressure0)
-        print("Sensor1:", conv_pressure1)
-        print("Sensor2:", conv_pressure2)
+        return conv_pressure0, conv_pressure1, conv_pressure2
 
     def process_queue(self):
         try:
