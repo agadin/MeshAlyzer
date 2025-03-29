@@ -568,12 +568,12 @@ class App(ctk.CTk):
         display_frame.pack(pady=5)
 
         display_style = {
-            "width": 250,
+            "width": 200,
             "height": 100,
             "corner_radius": 20,
             "fg_color": "lightblue",
             "text_color": "black",
-            "font": ("Arial", 50, "bold"),
+            "font": ("Arial", 45, "bold"),
         }
 
         # Row 0: Time, Steps, Angle, and Force display
