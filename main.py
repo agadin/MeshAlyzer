@@ -42,6 +42,8 @@ from clamp_motor import MotorController
 from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
 from joblib import load
+from calibrating_pressure_transducers/scale_data import PressureCalibrator
+
 
 
 class ProtocolViewer(ctk.CTkFrame):
@@ -1245,16 +1247,16 @@ class App(ctk.CTk):
             # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
 
-    def pressure_sensor_converter(self, pressure0 , pressure1, pressure2, pressure3, LPS_pressure, LPS_temperature):
-        """Convert the pressure sensor value to a desired unit."""
-        # cole add logic here
-        #temp logic: (pressure0 / 5) *100
+    def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
+        # Convert raw sensor values to calibrated pressures for each sensor.
+        conv_pressure0, conv_pressure1, conv_pressure2 = calibrator.pressure_sensor_converter(
+            pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
+        )
 
-        conv_pressure0 = mlp_model.predict(pressure0)
-        conv_pressure1 = mlp_model.predict(pressure1)
-        conv_pressure2 = mlp_model.predict(pressure2)
-        conv_pressure3 = mlp_model.predict(pressure3)
-        return conv_pressure0 , conv_pressure1, conv_pressure2, conv_pressure3
+        print("Calibrated Pressure Sensor Outputs:")
+        print("Sensor0:", conv_pressure0)
+        print("Sensor1:", conv_pressure1)
+        print("Sensor2:", conv_pressure2)
 
     def process_queue(self):
         try:
@@ -1413,7 +1415,9 @@ class App(ctk.CTk):
         calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
 if __name__ == "__main__":
-    mlp_model = load('calibrating_pressure_transducers/trained_pressure_calibrator.joblib')
+    calibrator = PressureCalibrator()
+    # Load the pre-trained models from the saved joblib file.
+    calibrator.models = load('trained_pressure_calibrators.joblib')
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
