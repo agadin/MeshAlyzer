@@ -43,10 +43,9 @@ from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
 
 
-redis_client = {}
 
 class ProtocolViewer(ctk.CTkFrame):
-    def __init__(self, master, protocol_folder, protocol_var, redis_client, *args, **kwargs):
+    def __init__(self, master, protocol_folder, protocol_var, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
 
         self.protocol_folder = protocol_folder
@@ -110,9 +109,9 @@ class ProtocolViewer(ctk.CTkFrame):
         checkbox = ctk.CTkCheckBox(
             frame,
             text="",
-            variable=checkbox_var,
-            command=lambda: redis_client.set(f"checkedbox_{step_num}", int(checkbox_var.get()))
+            variable=checkbox_var
         )
+        # TODO: Add a command for there to be an effect with the check box
         checkbox.grid(row=0, column=2, padx=5, pady=5)
 
         self.step_widgets.append((frame, step_num))
@@ -120,7 +119,7 @@ class ProtocolViewer(ctk.CTkFrame):
     def update_current_step(self):
         """Update opacity dynamically based on the current step."""
         try:
-            current_step = redis_client.get("current_step")
+            current_step = self.app.protocol_step
             current_step = int(current_step) if current_step else None
         except (ValueError, TypeError):
             current_step = None
@@ -504,8 +503,7 @@ class App(ctk.CTk):
                                os.path.isfile(os.path.join(self.protocol_folder, f))]
         self.protocol_var = ctk.StringVar(value=self.protocol_files[0])
 
-        self.protocol_dropdown = ctk.CTkComboBox(self.sidebar_frame, values=self.protocol_files,
-                                                 variable=self.protocol_var)
+        self.protocol_dropdown = ctk.CTkComboBox(self.sidebar_frame, values=self.protocol_files, variable=self.protocol_var)
         self.protocol_dropdown.pack(pady=15)
 
         self.run_button = ctk.CTkButton(self.sidebar_frame, text="Run Protocol", command=self.run_protocol)
@@ -555,8 +553,7 @@ class App(ctk.CTk):
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.main_frame.pack(side="left", expand=True, fill="both", padx=10)
 
-        self.protocol_name_label = ctk.CTkLabel(self.main_frame, text="Current Protocol: None", anchor="w",
-                                                font=("Arial", 35, "bold"))
+        self.protocol_name_label = ctk.CTkLabel(self.main_frame, text="Current Protocol: None", anchor="w",font=("Arial", 35, "bold"))
         self.protocol_name_label.pack(pady=10, padx=20, anchor="w")
 
         # Create display frame with updated layout for the metrics
@@ -601,6 +598,7 @@ class App(ctk.CTk):
         self.protocol_name_label.configure(text=f"Current Protocol: {protocol_name}")
         print(f"Running Protocol: {protocol_name}")
 
+        self.protocol_name_current = protocol_name
         # Start the protocol in a separate thread
         self.protocol_thread = threading.Thread(target=self.process_protocol, args=(protocol_name,))
         self.protocol_thread.start()
@@ -613,8 +611,7 @@ class App(ctk.CTk):
         self.protocol_viewer = ProtocolViewer(
             self.main_frame,
             protocol_folder=self.protocol_folder,
-            protocol_var=self.protocol_var,
-            redis_client= redis_client
+            protocol_var=self.protocol_var
         )
         self.protocol_viewer.pack(fill="both", expand=True, pady=10)
 
@@ -1015,7 +1012,7 @@ class App(ctk.CTk):
                     raise ValueError("Invalid response type")
 
                 self.save_to_dict('set_vars', variable_name, user_input)
-                redis_client.set("user_input", "")  # Clear the user input after processing
+                # replace this with save_to_dict
                 self.variable_saver(variable_name, user_input)
                 popup.destroy()
             except ValueError:
@@ -1301,7 +1298,7 @@ class App(ctk.CTk):
             os.makedirs(folder_name)
         else:
             print(f"Error: Folder '{folder_name}' already exists.")
-            redis_client.set("Error_code", "10")
+            # TODO: Handle this error
         # Copy and rename `calibrate.txt`
         # copy everything into folder
         print(f"Copying files to {folder_name}")
@@ -1313,7 +1310,7 @@ class App(ctk.CTk):
             print("Error: `calibration.txt` not found.")
 
         # copy current protocol into folder check redis current_protocol_out for base name and add ./protocols/
-        current_protocol_out = redis_client.get("current_protocol_out")
+        current_protocol_out = self.protocol_name_current
         if current_protocol_out is not None:
             protocol_path = os.path.join('protocols', current_protocol_out)
             if os.path.exists(protocol_path):
@@ -1338,7 +1335,7 @@ class App(ctk.CTk):
             print("Error: `data.csv` not found.")
 
         # check redis for selected_arm
-        selected_arm = redis_client.get("selected_arm")
+        selected_arm = None
         if selected_arm is None:
             selected_arm = "Unknown"
 
@@ -1354,7 +1351,16 @@ class App(ctk.CTk):
 
         # variables.txt
         current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        set_vars = redis_client.hgetall('set_vars')
+        # get all from  def get_from_dict(self, dict_key, variable_name):
+        #         # Retrieve the dictionary from the class attribute
+        #         data_dict = self.data_dict.get(dict_key, {})
+        #
+        #         # Check if the variable name exists in the dictionary
+        #         if variable_name in data_dict:
+        #             return data_dict[variable_name]
+        #         else:
+        #             return None
+        set_vars = self.data_dict.get('set_vars', {})
         with open('variables.txt', 'a') as file:
             for key, value in set_vars.items():
                 file.write(f"{current_date}, {key}, {value}\n")
@@ -1363,8 +1369,6 @@ class App(ctk.CTk):
         else:
             print("Error: `variables.txt` not found.")
         self.verify_and_wipe_data_csv('variables.txt', os.path.join(folder_name, 'variables.txt'))
-
-        redis_client.set("data_saved", "1")
 
         return True
 
