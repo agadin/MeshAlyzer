@@ -762,7 +762,7 @@ class App(ctk.CTk):
 
             # Calculate average force and update force display
             avg_force = (current_pressure1 + current_pressure2) / 2
-            self.force_display_frame.configure(text=f"{avg_force:.2f} N")
+            self.force_display_frame.configure(text=f"{avg_force:.2f} N\n{current_pressure1:.2f} N | {current_pressure2:.2f} N")
 
         # Set protocol_step to 0 if None
         protocol_step = self.protocol_step if self.protocol_step is not None else 0
