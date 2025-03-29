@@ -41,7 +41,7 @@ from ValveController import ValveController
 from clamp_motor import MotorController
 from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
-
+from joblib import load
 
 redis_client = {}
 
@@ -1241,10 +1241,11 @@ class App(ctk.CTk):
         """Convert the pressure sensor value to a desired unit."""
         # cole add logic here
         #temp logic: (pressure0 / 5) *100
-        conv_pressure0 = (pressure0 / 5) * 100
-        conv_pressure1 = (pressure1 / 5) * 100
-        conv_pressure2 = (pressure2 / 5) * 100
-        conv_pressure3 = (pressure3 / 5) * 100
+
+        conv_pressure0 = mlp_model.predict(pressure0)
+        conv_pressure1 = mlp_model.predict(pressure1)
+        conv_pressure2 = mlp_model.predict(pressure2)
+        conv_pressure3 = mlp_model.predict(pressure3)
         return conv_pressure0 , conv_pressure1, conv_pressure2, conv_pressure3
 
     def process_queue(self):
@@ -1397,6 +1398,8 @@ class App(ctk.CTk):
         calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
 if __name__ == "__main__":
+    mlp_model = load('calibrating_pressure_transducers/trained_mlp.pkl')
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
+
