@@ -42,9 +42,7 @@ from clamp_motor import MotorController
 from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
 from joblib import load
-from calibrating_pressure_transducers/scale_data import PressureCalibrator
-
-
+from calibrating_pressure_transducers.scale_data import PressureCalibrator
 
 class ProtocolViewer(ctk.CTkFrame):
     def __init__(self, master, protocol_folder, protocol_var, app, *args, **kwargs):
