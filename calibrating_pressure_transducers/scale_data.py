@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import mean_squared_error, r2_score, roc_curve, auc
+from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 from joblib import dump
 
@@ -14,11 +14,6 @@ class PressureCalibrator:
     def __init__(self, data_folder=None, max_iter=100000000000000000000000000000000000000000, random_state=42):
         """
         Initialize the PressureCalibrator.
-
-        Parameters:
-            data_folder (str): Path to folder containing CSV files for training.
-            max_iter (int): Maximum number of iterations for the neural network.
-            random_state (int): Random state for reproducibility.
         """
         self.data_folder = data_folder
         self.max_iter = max_iter
@@ -28,10 +23,9 @@ class PressureCalibrator:
     def load_data(self):
         """
         Load and concatenate CSV files from the provided folder.
-        Each CSV must contain the following columns:
-            'Measured_pressure', 'pressure0', 'pressure1', 'pressure2',
-            'LPS_pressure', 'LPS_temperature'
-
+        Each CSV must contain at least the following columns:
+            'Measured_pressure', 'LPS_pressure', 'LPS_temperature'
+        Sensor columns (pressure0, pressure1, pressure2) are kept even if missing.
         Returns:
             combined_df (DataFrame): Combined data from all CSV files.
         """
@@ -48,16 +42,15 @@ class PressureCalibrator:
                     print(f"Error reading CSV file {file_path}: {e}")
                     continue
 
-                # Verify that all required columns are present
-                required_cols = ['Measured_pressure', 'pressure0', 'pressure1', 'pressure2',
-                                 'LPS_pressure', 'LPS_temperature']
+                # Always required columns
+                required_cols = ['Measured_pressure', 'LPS_pressure', 'LPS_temperature']
                 for col in required_cols:
                     if col not in df.columns:
                         raise ValueError(f"Required column '{col}' not found in file {file_path}.")
 
-                # Drop rows with missing data in required columns
+                # Drop rows with missing values in always required columns
                 if df[required_cols].isnull().any().any():
-                    print(f"Warning: Missing values in file {file_path}. Dropping rows with missing data.")
+                    print(f"Warning: Missing values in {required_cols} in file {file_path}. Dropping those rows.")
                     df = df.dropna(subset=required_cols).reset_index(drop=True)
 
                 dataframes.append(df)
@@ -74,14 +67,17 @@ class PressureCalibrator:
         For each sensor, the features used are:
             [sensor, LPS_pressure, LPS_temperature]
         and the target is Measured_pressure.
+        Only rows with non-missing data for the sensor being trained are used.
         """
         combined_df = self.load_data()
         sensors = ['pressure0', 'pressure1', 'pressure2']
 
         for sensor in sensors:
             features = [sensor, 'LPS_pressure', 'LPS_temperature']
-            X = combined_df[features]
-            y = combined_df['Measured_pressure']
+            # Drop rows only if the sensor reading is missing
+            df_sensor = combined_df.dropna(subset=[sensor])
+            X = df_sensor[features]
+            y = df_sensor['Measured_pressure']
             print(f"Training model for {sensor} with features: {features} (Data shape: {X.shape})")
 
             # Split data into train (70%) and test (30%) sets.
@@ -119,14 +115,6 @@ class PressureCalibrator:
     def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         """
         Convert raw sensor readings from each sensor into calibrated pressure values.
-
-        Parameters:
-            pressure0, pressure1, pressure2 (float): Raw sensor readings.
-            LPS_pressure (float): Environmental pressure.
-            LPS_temperature (float): Environmental temperature.
-
-        Returns:
-            Tuple containing calibrated pressures for sensor0, sensor1, and sensor2.
         """
         if not self.models:
             raise ValueError("Models are not trained. Call the train() method first.")
@@ -145,12 +133,6 @@ class PressureCalibrator:
     def get_neural_network_parameters(self, sensor):
         """
         Extract the neural network parameters (weights and biases) from the model for a given sensor.
-
-        Parameters:
-            sensor (str): One of 'pressure0', 'pressure1', or 'pressure2'.
-
-        Returns:
-            Dictionary with keys: 'W1', 'b1', 'w2', 'b2'
         """
         if sensor not in self.models:
             raise ValueError(f"Model for sensor {sensor} is not trained.")
