@@ -1415,7 +1415,7 @@ class App(ctk.CTk):
 if __name__ == "__main__":
     calibrator = PressureCalibrator()
     # Load the pre-trained models from the saved joblib file.
-    calibrator.models = load('trained_pressure_calibrators.joblib')
+    calibrator.models = load('calibrating_pressure_transducers/trained_pressure_calibrators.joblib')
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
