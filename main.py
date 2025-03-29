@@ -1413,7 +1413,7 @@ class App(ctk.CTk):
         calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
 if __name__ == "__main__":
-    mlp_model = load('calibrating_pressure_transducers/trained_mlp.pkl')
+    mlp_model = load('calibrating_pressure_transducers/trained_pressure_calibrator.joblib')
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
