@@ -11,6 +11,7 @@ class PressureReceiver:
         self.host = host
         self.port = port
         self.client_socket = None
+        self.connected = False
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
@@ -21,6 +22,7 @@ class PressureReceiver:
 
             self.client_socket, addr = server_socket.accept()
             print(f"[SERVER] Connection from {addr}")
+            self.connected = True
 
             with self.client_socket:
                 buffer = ""
@@ -28,6 +30,7 @@ class PressureReceiver:
                     data = self.client_socket.recv(1024).decode("utf-8")
                     if not data:
                         print("[SERVER] Connection closed.")
+                        self.connected = False  # Update connection status when client disconnects
                         break
                     buffer += data
                     while "\n" in buffer:
@@ -52,6 +55,15 @@ class PressureReceiver:
     @classmethod
     def getpressures(cls):
         return tuple(cls._latest_pressures)
+
+    def status(self):
+        """
+        Returns a string indicating the status of the connection.
+        """
+        if self.connected:
+            return True
+        else:
+            return False
 
 # Run server in a thread (so you can call getpressures from elsewhere)
 if __name__ == "__main__":
