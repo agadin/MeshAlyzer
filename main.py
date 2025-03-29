@@ -135,6 +135,14 @@ class ProtocolViewer(ctk.CTkFrame):
         self.after(500, self.update_current_step)  # Check every 500ms
 
 
+def pressure_sensor_converter(pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
+    # Convert raw sensor values to calibrated pressures for each sensor.
+    conv_pressure0, conv_pressure1, conv_pressure2 = calibrator.pressure_sensor_converter_main(
+        pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
+    )
+
+    return conv_pressure0, conv_pressure1, conv_pressure2
+
 
 class App(ctk.CTk):
     def __init__(self):
@@ -1151,7 +1159,7 @@ class App(ctk.CTk):
                 # Convert pressure and temperature values using the converter function
                 self.update_pressure_values()
 
-                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert= pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
 
                 #get valve state
                 valve1_state= self.valve1.get_state()
@@ -1199,7 +1207,7 @@ class App(ctk.CTk):
                 # Convert pressure and temperature values using the converter function
                 self.update_pressure_values()
 
-                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = pressure_sensor_converter(
                     self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
 
                 # get valve state
@@ -1242,14 +1250,6 @@ class App(ctk.CTk):
                 })
             # print(f"Recorded data: {self.sensor_data[-1]}")
             time.sleep(0.01)
-
-    def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
-        # Convert raw sensor values to calibrated pressures for each sensor.
-        conv_pressure0, conv_pressure1, conv_pressure2 = calibrator.pressure_sensor_converter_main(
-            pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
-        )
-
-        return conv_pressure0, conv_pressure1, conv_pressure2
 
     def process_queue(self):
         try:
