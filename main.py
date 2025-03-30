@@ -880,10 +880,11 @@ class App(ctk.CTk):
                 else:
                     app_bg_color = "#FFFFFF"
 
-                # Create a new Matplotlib figure
+                plt.close('all')  # Close all previous figures
+
                 self.fig, self.ax = plt.subplots()
-                self.fig.patch.set_facecolor(app_bg_color)  # Set figure background color to gray
-                self.ax.set_facecolor(app_bg_color)  # Set axes background color to gray
+                self.fig.patch.set_facecolor(app_bg_color)
+                self.ax.set_facecolor(app_bg_color)
                 self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
                 self.canvas_widget = self.canvas.get_tk_widget()
                 self.canvas_widget.pack(expand=True, fill="both")
