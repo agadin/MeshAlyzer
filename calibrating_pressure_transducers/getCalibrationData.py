@@ -7,9 +7,14 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
 from joblib import dump
+
 import warnings
-from sklearn.exceptions import DataConversionWarning
-warnings.filterwarnings("ignore", category=DataConversionWarning)
+warnings.filterwarnings(
+    "ignore",
+    message="X does not have valid feature names, but StandardScaler was fitted with feature names",
+    category=UserWarning
+)
+
 
 
 class PressureCalibrator:

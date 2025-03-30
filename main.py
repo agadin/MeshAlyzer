@@ -35,8 +35,12 @@ import board
 import busio
 import adafruit_lps2x
 import warnings
-from sklearn.exceptions import DataConversionWarning
-warnings.filterwarnings("ignore", category=DataConversionWarning)
+warnings.filterwarnings(
+    "ignore",
+    message="X does not have valid feature names, but StandardScaler was fitted with feature names",
+    category=UserWarning
+)
+
 
 
 # Sensor import
