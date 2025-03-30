@@ -894,7 +894,6 @@ class App(ctk.CTk):
                         self.ax.set_ylabel("PSI")
                         self.ax.legend()
                         self.canvas.draw_idle()
-                        print("Canvas redrawn with updated plot.")
                     else:
                         print("No data in graph_times to plot!")
 
