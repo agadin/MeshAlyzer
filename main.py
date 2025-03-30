@@ -828,6 +828,10 @@ class App(ctk.CTk):
                 self.force_display_frame.configure(
                     text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
 
+                # Debug: show sensor values received
+                print(f"Sensor update - Time: {minutes * 60 + seconds + milliseconds / 1000.0:.2f}, "
+                      f"Input: {current_input_pressure}, P1: {current_pressure1}, P2: {current_pressure2}")
+
                 # For the dummy BLK box, you can keep it constant or later add a condition
                 blk_status = True
 
@@ -866,12 +870,21 @@ class App(ctk.CTk):
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
 
-                #debug print of graph data
+                # Debug: check lengths and sample data of graph lists
+                print(
+                    f"Graph data lengths: times={len(self.graph_times)}, input_pressures={len(self.graph_input_pressures)}")
+                if self.graph_times:
+                    print(
+                        f"Latest time: {self.graph_times[-1]}, Latest input pressure: {self.graph_input_pressures[-1]}")
 
+                self.ax.clear()
+                # Set background colors based on theme
                 if ctk.get_appearance_mode() == "Dark":
                     app_bg_color = "#1F1F1F"
                 else:
                     app_bg_color = "#FFFFFF"
+                self.fig.patch.set_facecolor(app_bg_color)
+                self.ax.set_facecolor(app_bg_color)
 
                 if True:
                     # Remove or comment out the following line:
@@ -880,24 +893,21 @@ class App(ctk.CTk):
                     # Remove any plt.close() calls
                     self.ax.clear()
 
-                    # Check if there is data to plot
+                    # Only plot if there's data
                     if self.graph_times:
-                        self.fig.patch.set_facecolor(app_bg_color)
-                        self.ax.set_facecolor(app_bg_color)
-
                         self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                         self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                         self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
                         if self.target_pressure is not None:
                             self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
-
                         self.ax.set_ylim(0, 100)
                         self.ax.set_xlabel("Time (s)")
                         self.ax.set_ylabel("PSI")
                         self.ax.legend()
                         self.canvas.draw_idle()
+                        print("Canvas redrawn with updated plot.")
                     else:
-                        print("No data in graph_times!")
+                        print("No data in graph_times to plot!")
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
