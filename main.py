@@ -1273,7 +1273,7 @@ class App(ctk.CTk):
     def read_sensors(self):
         try:
             while True:
-                print("Reading sensors...")
+
                 if (self.protocol_step is not None and self.protocol_step > 0):
                     # Record the time difference between the protocol start time and the current time
                     if self.init is not None:
@@ -1397,6 +1397,7 @@ class App(ctk.CTk):
     def process_queue(self):
         try:
             while True:
+                print("Processing Que")
                 data = self.update_queue.get_nowait()
                 self.update_displays(
                     step_count=data['step_count'],
