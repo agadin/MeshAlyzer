@@ -1,39 +1,29 @@
-import io
 import customtkinter as ctk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
-from PIL import Image
-# If you're using customtkinter v5.0 or higher, CTkImage is built in.
-# Otherwise, you might need to adapt the image handling as needed.
 
-# Set up the customtkinter window
-root = ctk.CTk()
-root.geometry("600x400")
-root.title("Transparent Graph Demo")
+# Create the customtkinter window
+app = ctk.CTk()
+app.geometry("600x400")
+app.configure(bg="#242424")  # Use a hex code for consistency
+
+# Retrieve the background color from the app
+app_bg_color = app.cget("bg")
 
 # Create a matplotlib figure and axis
 fig, ax = plt.subplots()
+fig.patch.set_facecolor(app_bg_color)  # Set figure background to match the app
+ax.set_facecolor(app_bg_color)           # Set axis background to match the app
 
-# Plot example data
-ax.plot([0, 1, 2, 3, 4], [0, 1, 4, 9, 16], marker="o", label="Square Numbers")
-ax.legend()
+# Plot a simple graph
+ax.plot([1, 2, 3, 4], [10, 20, 25, 30], marker='o', color='cyan')
+ax.set_title("Sample Plot", color='white')  # Set title color to ensure visibility
+ax.tick_params(colors='white')              # Change tick colors for visibility
 
-# Set both the figure and axes backgrounds to be transparent
-fig.patch.set_alpha(0.0)
-ax.set_facecolor((0, 0, 0, 0))
+# Embed the matplotlib figure in the customtkinter app
+canvas = FigureCanvasTkAgg(fig, master=app)
+canvas.draw()  # Force a draw of the canvas
+canvas.get_tk_widget().pack(fill="both", expand=True)
 
-# Save the figure to a bytes buffer as a PNG with transparency
-buf = io.BytesIO()
-fig.savefig(buf, format='png', transparent=True)
-buf.seek(0)
-
-# Load the image using PIL
-image = Image.open(buf)
-
-# Create a CTkImage (this will be used in both light and dark modes)
-ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(600, 400))
-
-# Display the image in a label
-label = ctk.CTkLabel(root, image=ctk_image, text="")  # text is empty so only the image is shown
-label.pack(fill="both", expand=True)
-
-root.mainloop()
+# Start the customtkinter main loop
+app.mainloop()
