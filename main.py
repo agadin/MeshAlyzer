@@ -30,7 +30,7 @@ import threading
 import cairosvg
 import xml.etree.ElementTree as ET
 
-#lps22
+# lps22
 import board
 import busio
 import adafruit_lps2x
@@ -44,6 +44,7 @@ from valve_control_dropdown import ValveControlDropdown
 from joblib import load
 from calibrating_pressure_transducers.scale_data import PressureCalibrator
 
+
 class ProtocolViewer(ctk.CTkFrame):
     def __init__(self, master, protocol_folder, protocol_var, app, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -55,7 +56,6 @@ class ProtocolViewer(ctk.CTkFrame):
         self.protocol_steps = []  # List of parsed protocol steps
         self.step_widgets = []  # References to step widgets for updating
         # opacity
-
 
         self.scrollable_frame = ctk.CTkScrollableFrame(self, width=400, height=800)
         self.scrollable_frame.pack(fill="both", expand=True)
@@ -135,7 +135,6 @@ class ProtocolViewer(ctk.CTkFrame):
         self.after(500, self.update_current_step)  # Check every 500ms
 
 
-
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
@@ -184,7 +183,6 @@ class App(ctk.CTk):
         self.graph_pressure1s = []
         self.graph_pressure2s = []
 
-
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
         self.pressure_thread = threading.Thread(target=self.pressure_receiver.run, daemon=True)
@@ -193,7 +191,6 @@ class App(ctk.CTk):
         ## clamp state
         self.clamp_state = None
         self.clamp_state = False  # or True, depending on your system
-
 
         # --------------------------
         # input/output init
@@ -209,7 +206,6 @@ class App(ctk.CTk):
         # --------------------------
         # Top Navigation Bar Section
         # --------------------------
-
 
         self.nav_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
@@ -250,7 +246,6 @@ class App(ctk.CTk):
         # Resize it to the target dimensions using a high-quality filter
         high_res_mesh_logo_dark = high_res_mesh_logo_dark.resize((80, 60), Image.LANCZOS)
         resized_mesh_logo = high_res_mesh_logo.resize((80, 60), Image.LANCZOS)
-
 
         # Create CTkImage for the second logo (mesh logo)
         mesh_logo_image = ctk.CTkImage(
@@ -361,7 +356,7 @@ class App(ctk.CTk):
         self.inspector_frame = None
         self.settings_frame = None
 
-        #set up readvalues
+        # set up readvalues
         self.sensor_data = []
         self.calibrator = PressureCalibrator()
         self.calibrator.models = load('calibrating_pressure_transducers/trained_pressure_calibrator_multioutput.joblib')
@@ -383,7 +378,7 @@ class App(ctk.CTk):
         else:
             ctk.set_appearance_mode("Dark")
 
-        #clampmotor setup
+        # clampmotor setup
         try:
             self.motor_controller = MotorController(port="/dev/ttyACM0", baudrate=9600)
         except Exception as e:
@@ -486,11 +481,11 @@ class App(ctk.CTk):
             widget.destroy()
 
     def update_pressure_values(self):
-            pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
-            self.pressure0 = pressure0
-            self.pressure1 = pressure1
-            self.pressure2 = pressure2
-            self.pressure3 = pressure3
+        pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
+        self.pressure0 = pressure0
+        self.pressure1 = pressure1
+        self.pressure2 = pressure2
+        self.pressure3 = pressure3
 
     def show_home(self):
         self.clear_content_frame()
@@ -513,7 +508,8 @@ class App(ctk.CTk):
                                os.path.isfile(os.path.join(self.protocol_folder, f))]
         self.protocol_var = ctk.StringVar(value=self.protocol_files[0])
 
-        self.protocol_dropdown = ctk.CTkComboBox(self.sidebar_frame, values=self.protocol_files, variable=self.protocol_var)
+        self.protocol_dropdown = ctk.CTkComboBox(self.sidebar_frame, values=self.protocol_files,
+                                                 variable=self.protocol_var)
         self.protocol_dropdown.pack(pady=15)
 
         self.run_button = ctk.CTkButton(self.sidebar_frame, text="Run Protocol", command=self.run_protocol)
@@ -581,17 +577,18 @@ class App(ctk.CTk):
             on_supply=lambda: (self.valve1.supply(), self.valve2.supply())
         )
         self.valve_control.pack(pady=10)
-        
+
         # add a input box in the side frame that says sample ID and have that set to self.sampleID
         self.sample_id_entry = ctk.CTkEntry(self.sidebar_frame, placeholder_text="Sample ID")
         self.sample_id_entry.pack(pady=15, padx=15)
         self.sample_id_entry.bind("<FocusOut>", self.update_sample_id)
-        
+
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
         self.main_frame.pack(side="left", expand=True, fill="both", padx=10)
 
-        self.protocol_name_label = ctk.CTkLabel(self.main_frame, text="Current Protocol: None", anchor="w",font=("Arial", 35, "bold"))
+        self.protocol_name_label = ctk.CTkLabel(self.main_frame, text="Current Protocol: None", anchor="w",
+                                                font=("Arial", 35, "bold"))
         self.protocol_name_label.pack(pady=10, padx=20, anchor="w")
 
         # Create display frame with updated layout for the metrics
@@ -647,11 +644,9 @@ class App(ctk.CTk):
         )
         self.clear_graph_button.pack(pady=(0, 10))
 
-
         # Initialize ProtocolViewer and start queue processing
         self.initialize_protocol_viewer()
         self.process_queue()
-
 
     def run_protocol(self):
         if self.protocol_running:
@@ -671,14 +666,14 @@ class App(ctk.CTk):
 
     def update_sample_id(self, event):
         self.sampleID = self.sample_id_entry.get()
-        
+
     def initialize_protocol_viewer(self):
         # Initialize ProtocolViewer directly
         self.protocol_viewer = ProtocolViewer(
             self.main_frame,
             protocol_folder=self.protocol_folder,
             protocol_var=self.protocol_var,
-            app= self
+            app=self
         )
         self.protocol_viewer.pack(fill="both", expand=True, pady=10)
 
@@ -718,7 +713,6 @@ class App(ctk.CTk):
         # once a trial has been selected, open the .csv file and read the data. See logic below on what figures to produce and how to handle the data. At the top of the main frame parse date, animal_ID, trial #, and provided_name (if there). The folder name format will either be f"{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}" or f"./data/{timestamp}_{provided_name}_{animal_id}_{trial_number:02d}". Neatly display this information. Below that Neatly format the figures on the main frame, place a save figure button for each graph (which saves the figure to the current folder selected in ./data). At the bottom of the main frame make a dragable slider that allows the user to set the start and end data displayed. Have this update everything automtaically. In the data the final column is the step column and each step nin the slider should corespond to a step. Make sure to plot an axis for this slider.
         # Get available trials
         self.clear_content_frame()  # Clear existing content in the frame
-
 
     def show_settings(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -823,7 +817,8 @@ class App(ctk.CTk):
 
                 # Calculate average force and update force display
                 avg_force = (current_pressure1 + current_pressure2) / 2
-                self.force_display_frame.configure(text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
+                self.force_display_frame.configure(
+                    text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
 
                 # For the dummy BLK box, you can keep it constant or later add a condition
                 blk_status = True
@@ -856,13 +851,8 @@ class App(ctk.CTk):
             except Exception as e:
                 print(f"Error updating displays: {e}")
 
-
-
-
-
-
         try:
-            calibration_level = 0 #Cole change later
+            calibration_level = 0  # Cole change later
             if calibration_level == 0:
                 self.calibrate_button.configure(fg_color="red")
             elif calibration_level == 1:
@@ -899,7 +889,6 @@ class App(ctk.CTk):
         self.force_data = []
 
         self.update_graph_view(self.segmented_button.get())
-
 
     def update_graph_view(self, mode):
         # Clear the current graph frame
@@ -1039,9 +1028,9 @@ class App(ctk.CTk):
             if not command:
                 continue
             step_number += 1
-            self.protocol_command= command
-            self.protocol_step= step_number
-            stop_flag= self.stop_flag
+            self.protocol_command = command
+            self.protocol_step = step_number
+            stop_flag = self.stop_flag
             if stop_flag == "1":
                 print("Protocol stopped.")
                 break
@@ -1106,7 +1095,7 @@ class App(ctk.CTk):
 
     # Add save as file name ability
 
-    def wait_for_user_input(self,command):
+    def wait_for_user_input(self, command):
         parts = command.split(":")[1].split(",")
         popup_name = parts[0].strip()
         variable_name = parts[1].strip()
@@ -1148,13 +1137,13 @@ class App(ctk.CTk):
 
         popup.mainloop()
 
-
     def end_all_commands(self):
         self.protocol_step = None
 
     def inflate(self, time_or_pressure, value, valve):
         # Placeholder for the actual inflation logic
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
+
     def deflate(self, time_or_pressure, value, valve):
         # Placeholder for the actual inflation logic
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
@@ -1255,12 +1244,12 @@ class App(ctk.CTk):
                     # Convert pressure and temperature values using the converter function
                     self.update_pressure_values()
 
-                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
+                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
+                        self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
 
-                    #get valve state
-                    valve1_state= self.valve1.get_state()
-                    valve2_state= self.valve2.get_state()
-
+                    # get valve state
+                    valve1_state = self.valve1.get_state()
+                    valve2_state = self.valve2.get_state()
 
                     # Add new values to the list
                     self.sensor_data.append({
@@ -1352,8 +1341,7 @@ class App(ctk.CTk):
     def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         # Convert raw sensor values to calibrated pressures for each sensor.
         conv_pressure0, conv_pressure1, conv_pressure2 = self.calibrator.pressure_sensor_converter_main(
-            pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
-        )
+            pressure0, pressure1, pressure2)
 
         return conv_pressure0, conv_pressure1, conv_pressure2
 
@@ -1383,7 +1371,7 @@ class App(ctk.CTk):
         self.write_sensor_data_to_csv()
         animal_id = self.get_from_dict('set_vars', 'animal_id')
         if animal_id is None:
-                animal_id = "0000"
+            animal_id = "0000"
 
         timestamp = datetime.now().strftime("%Y%m%d")
         trial_number = 1
@@ -1513,9 +1501,9 @@ class App(ctk.CTk):
         calibrate_frame = CalibratePage(self.content_frame, app=self)
         calibrate_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
+
 if __name__ == "__main__":
     # Load the pre-trained models from the saved joblib file.
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
-
