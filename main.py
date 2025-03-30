@@ -1401,8 +1401,6 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
-                print(f"Queue data received: {data}")  # Debug: show raw data from the queue
-
                 self.update_displays(
                     step_count=data['step_count'],
                     current_input_pressure=data['current_input_pressure'],
