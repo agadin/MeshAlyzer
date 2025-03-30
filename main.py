@@ -808,9 +808,15 @@ class App(ctk.CTk):
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
+        print("update_displays called")
+        print(
+            f"step_count: {step_count}, current_input_pressure: {current_input_pressure}, current_pressure1: {current_pressure1}, current_pressure2: {current_pressure2}")
+        print(
+            f"minutes: {minutes}, seconds: {seconds}, milliseconds: {milliseconds}, lps_temp: {lps_temp}, lps_pressure: {lps_pressure}")
+        print(f"valve1_state: {valve1_state}, valve2_state: {valve2_state}")
+
         if self.home_displayed:
             try:
-                print(current_input_pressure)
                 self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
                 self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
@@ -882,8 +888,7 @@ class App(ctk.CTk):
                 self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color="green")
                 # Plot self.target_pressure as a constant line (defaulting to 0 if not set)
                 target_val = self.target_pressure if self.target_pressure is not None else 0
-                self.ax.plot(self.graph_times, [target_val] * len(self.graph_times), label="Target Pressure",
-                             color="orange")
+                self.ax.plot(self.graph_times, [target_val] * len(self.graph_times), label="Target Pressure", color="orange")
 
                 self.ax.set_xlabel("Time (s)")
                 self.ax.set_ylabel("Pressure")
