@@ -808,12 +808,6 @@ class App(ctk.CTk):
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
-        print("update_displays called")
-        print(
-            f"step_count: {step_count}, current_input_pressure: {current_input_pressure}, current_pressure1: {current_pressure1}, current_pressure2: {current_pressure2}")
-        print(
-            f"minutes: {minutes}, seconds: {seconds}, milliseconds: {milliseconds}, lps_temp: {lps_temp}, lps_pressure: {lps_pressure}")
-        print(f"valve1_state: {valve1_state}, valve2_state: {valve2_state}")
 
         if self.home_displayed:
             try:
