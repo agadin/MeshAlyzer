@@ -871,7 +871,8 @@ class App(ctk.CTk):
                 print("Graph Times (after append):", self.graph_times)
 
                 self.ax.clear()
-                # Set background colors based on theme
+
+                # Set background colors based on appearance mode
                 if ctk.get_appearance_mode() == "Dark":
                     app_bg_color = "#1F1F1F"
                 else:
@@ -879,33 +880,27 @@ class App(ctk.CTk):
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
 
-                if True:
-                    # Remove or comment out the following line:
-                    # plt.close('all')  # This is causing your figure to be destroyed!
+                # Debug prints for all data lists
+                print("Graph Times:", self.graph_times)
+                print("Graph Input Pressures:", self.graph_input_pressures)
+                print("Graph Pressure1s:", self.graph_pressure1s)
+                print("Graph Pressure2s:", self.graph_pressure2s)
 
-                    # Remove any plt.close() calls
-                    self.ax.clear()
-
-                    # Only plot if there's data
-                    try:
-                        self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                        self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                        self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                    except Exception as plot_e:
-                        print("Plotting error:", plot_e)
-                        print("graph_times type and sample:", type(self.graph_times), self.graph_times[:5])
-                        print("graph_pressure1s type and sample:", type(self.graph_pressure1s),
-                              self.graph_pressure1s[:5])
-
+                # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
+                if len(self.graph_times) > 0:
+                    self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                    self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                    self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
                     if self.target_pressure is not None:
                         self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
-                        self.ax.set_ylim(0, 100)
-                        self.ax.set_xlabel("Time (s)")
-                        self.ax.set_ylabel("PSI")
-                        self.ax.legend()
-                        self.canvas.draw_idle()
-                    else:
-                        print("No data in graph_times to plot!")
+                    self.ax.set_ylim(0, 100)
+                    self.ax.set_xlabel("Time (s)")
+                    self.ax.set_ylabel("PSI")
+                    self.ax.legend()
+                    self.canvas.draw_idle()
+                    print("Canvas redrawn with updated plot.")
+                else:
+                    print("No data in graph_times to plot!")
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
