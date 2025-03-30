@@ -1289,8 +1289,8 @@ class App(ctk.CTk):
                     continue  # Skip this iteration if data is insufficient
                 pressure0, pressure1, pressure2, pressure3 = pressures
 
-                # Calculate time_diff: use protocol branch or non-protocol branch
-                if self.protocol_step is not None and self.protocol_step > 0:
+                if (self.protocol_step is not None and self.protocol_step > 0):
+                    # Record the time difference between the protocol start time and the current time
                     if self.init is not None:
                         self.protocol_start_time = time.time()
                         time_diff = 0
@@ -1299,12 +1299,6 @@ class App(ctk.CTk):
                     else:
                         current_time = time.time()
                         time_diff = current_time - self.protocol_start_time
-                else:
-                    if not hasattr(self, 'non_protocol_start'):
-                        self.non_protocol_start = time.time()
-                    time_diff = time.time() - self.non_protocol_start
-
-                print(f"[read_sensors] time_diff: {time_diff:.2f}")
 
                     # Read sensor values
                     LPS_pressure = self.lps.pressure
