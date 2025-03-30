@@ -887,7 +887,7 @@ class App(ctk.CTk):
                 else:
                     app_bg_color = "#FFFFFF"
 
-                if False:
+                if True:
                     plt.close('all')  # Close all previous figures
                     self.ax.clear()
 
