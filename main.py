@@ -1319,6 +1319,7 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
+                    print(f"[read_sensors] (Protocol Running) Time diff: {time_diff:.2f}")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1329,7 +1330,7 @@ class App(ctk.CTk):
                         'seconds': int(time_diff % 60),
                         'milliseconds': int((time_diff * 1000) % 1000)
                     })
-                    print(f"Data queued: {time_diff:.2f} sec, Pressure: {self.pressure0_convert}")
+                    print("[read_sensors] (Protocol Running) Data put in queue")
 
                 else:
                     # Record the time difference between the protocol start time and the current time
@@ -1369,6 +1370,7 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
+                    print("[read_sensors] (Protocol Not Running) Data appended")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1384,6 +1386,8 @@ class App(ctk.CTk):
                         'valve1_state': valve1_state,
                         'valve2_state': valve2_state
                     })
+
+                    print("[read_sensors] (Protocol Not Running) Data put in queue")
                 # print(f"Recorded data: {self.sensor_data[-1]}")
                 time.sleep(0.01)
         except Exception as e:
