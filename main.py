@@ -631,6 +631,9 @@ class App(ctk.CTk):
 
         # make transparent graph here
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
+        if self.graph_frame is not None:
+            for widget in self.graph_frame.winfo_children():
+                widget.destroy()
         self.graph_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.graph_frame.pack(pady=10, padx=20, fill="both", expand=True)
         self.fig, self.ax = plt.subplots(figsize=(6, 4))  # Adjust the figure size as needed
@@ -875,8 +878,6 @@ class App(ctk.CTk):
                 else:
                     self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = [], [], [], []
 
-                for widget in self.graph_frame.winfo_children():
-                    widget.destroy()
 
                 #debug print of graph data
 
