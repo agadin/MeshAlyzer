@@ -1279,33 +1279,30 @@ class App(ctk.CTk):
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
                     print("[read_sensors] Pressure data not available (got: {})".format(pressures))
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     continue  # Skip this iteration if data is missing
 
                 # Unpack pressures (now that we know we have enough items)
                 pressure0, pressure1, pressure2, pressure3 = pressures
 
-                # Compute time difference
+                # Calculate time_diff using appropriate branch
                 if self.protocol_step is not None and self.protocol_step > 0:
                     if self.init is not None:
                         self.protocol_start_time = time.time()
                         time_diff = 0
-                        self.sensor_data = []  # Reset sensor data for the new protocol
+                        self.sensor_data = []
                         self.init = None
                     else:
-                        current_time = time.time()
-                        time_diff = current_time - self.protocol_start_time
+                        time_diff = time.time() - self.protocol_start_time
                 else:
-                    # Ensure we have a reference time for non-protocol mode
                     if not hasattr(self, 'non_protocol_start'):
                         self.non_protocol_start = time.time()
                     time_diff = time.time() - self.non_protocol_start
 
+                print(f"[read_sensors] time_diff: {time_diff:.2f}")
 
-                # Read additional sensor values and process them
                 LPS_pressure = self.lps.pressure
                 LPS_temperature = self.lps.temperature
-
                 self.update_pressure_values()
                 self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
                     self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature
@@ -1500,9 +1497,10 @@ class App(ctk.CTk):
             print("Verification failed: The copied file does not match the original.")
 
     def on_closing(self):
+        print("Shutting down sensor thread...")
         self.running = False
-        if hasattr(self, 'update_thread'):
-            self.update_thread.join()
+        self.sensor_thread.join(timeout=1)
+        print("Sensor thread shut down.")
         self.destroy()
 
     def update_output_window(self):
