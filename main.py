@@ -849,14 +849,14 @@ class App(ctk.CTk):
                 self.rpi_box.configure(fg_color=rpi_color)
                 self.uno_box.configure(fg_color=uno_color)
                 self.blk_box.configure(fg_color=blk_color)
+                # Set protocol_step to 0 if None
+                protocol_step = self.protocol_step if self.protocol_step is not None else 0
+                self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
+                self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
             except Exception as e:
                 print(f"Error updating displays: {e}")
 
 
-        # Set protocol_step to 0 if None
-        protocol_step = self.protocol_step if self.protocol_step is not None else 0
-        self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
-        self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
 
 
