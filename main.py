@@ -1273,6 +1273,7 @@ class App(ctk.CTk):
     def read_sensors(self):
         try:
             while True:
+                print("Reading sensors...")
                 if (self.protocol_step is not None and self.protocol_step > 0):
                     # Record the time difference between the protocol start time and the current time
                     if self.init is not None:
