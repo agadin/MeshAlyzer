@@ -23,6 +23,6 @@ def combine_csv_files(folder_path, output_file):
     print(f"Combined CSV file saved as {output_file}")
 
 # Example usage
-folder_path = '/Users/colehanan/Desktop/calibration_20250328'
-output_file = '/Users/colehanan/Desktop/combined_csv_files/combined_output3.csv'
+folder_path = '/Users/colehanan/Desktop/calibration_20250329'
+output_file = '/Users/colehanan/Desktop/combined_csv_files/combined_output4.csv'
 combine_csv_files(folder_path, output_file)

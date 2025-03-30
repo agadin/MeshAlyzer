@@ -6,15 +6,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
-import matplotlib.pyplot as plt
 from joblib import dump
 
-
 class PressureCalibrator:
-    def __init__(self, data_folder=None, max_iter=10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, random_state=50):
-        """
-        Initialize the PressureCalibrator.
-        """
+    def __init__(self, data_folder=None, max_iter=100000000000000000000000000000000000000000, random_state=42):
         self.data_folder = data_folder
         self.max_iter = max_iter
         self.random_state = random_state
@@ -25,8 +20,7 @@ class PressureCalibrator:
         Load and concatenate CSV files from the provided folder.
         Each CSV must contain at least the following columns:
             'Measured_pressure', 'LPS_pressure', 'LPS_temperature'
-        Sensor columns (pressure0, pressure1, pressure2) are retained even if missing.
-
+        Sensor columns (pressure0, pressure1, pressure2) are also expected but are allowed to have missing values.
         Returns:
             combined_df (DataFrame): Combined data from all CSV files.
         """
@@ -49,7 +43,7 @@ class PressureCalibrator:
                     if col not in df.columns:
                         raise ValueError(f"Required column '{col}' not found in file {file_path}.")
 
-                # Drop rows with missing values in always-required columns only.
+                # Drop rows with missing values in always required columns
                 if df[required_cols].isnull().any().any():
                     print(f"Warning: Missing values in {required_cols} in file {file_path}. Dropping those rows.")
                     df = df.dropna(subset=required_cols).reset_index(drop=True)
@@ -65,18 +59,16 @@ class PressureCalibrator:
     def train(self):
         """
         Train separate models for each sensor (pressure0, pressure1, pressure2).
-        For each sensor, the features used are:
-            [sensor, LPS_pressure, LPS_temperature]
-        and the target is Measured_pressure.
+        For each sensor, the feature used is the sensor reading only and the target is Measured_pressure.
         Only rows with non-missing data for the sensor being trained are used.
-        The scaling of features is performed via a pipeline that includes a StandardScaler.
         """
         combined_df = self.load_data()
         sensors = ['pressure0', 'pressure1', 'pressure2']
 
         for sensor in sensors:
-            features = [sensor, 'LPS_pressure', 'LPS_temperature']
-            # Drop rows only if the sensor reading (the one being trained) is missing.
+            # Now only using the sensor value as the feature
+            features = [sensor]
+            # Drop rows only if the sensor reading is missing
             df_sensor = combined_df.dropna(subset=[sensor])
             X = df_sensor[features]
             y = df_sensor['Measured_pressure']
@@ -87,7 +79,7 @@ class PressureCalibrator:
                 X, y, test_size=0.30, random_state=self.random_state
             )
 
-            # Pipeline: First scale the features, then train the MLP regressor.
+            # Create a pipeline that scales the data and trains an MLP regressor.
             model = Pipeline([
                 ('scaler', StandardScaler()),
                 ('regressor', MLPRegressor(hidden_layer_sizes=(10,),
@@ -107,24 +99,25 @@ class PressureCalibrator:
             r2 = r2_score(y_test, y_pred)
             print(f"{sensor}: Test RMSE: {rmse:.3f}, Test R^2: {r2:.3f}")
 
-            # Store the model for this sensor.
+            # Store the model for this sensor
             self.models[sensor] = model
 
-        # Optionally, save all models to a file.
-        dump(self.models, 'trained_pressure_calibrators.joblib')
-        print("Models saved to 'trained_pressure_calibrators.joblib'.")
+        # Optionally, save all models to a file
+        dump(self.models, 'trained_pressure_calibrator_multioutput.joblib')
+        print("Models saved")
 
-    def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
+    def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure=None, LPS_temperature=None):
         """
         Convert raw sensor readings from each sensor into calibrated pressure values.
+        Since the models are trained only on the sensor readings, LPS_pressure and LPS_temperature are not used.
         """
         if not self.models:
             raise ValueError("Models are not trained. Call the train() method first.")
 
-        # Construct feature vectors for each sensor.
-        input0 = [[pressure0, LPS_pressure, LPS_temperature]]
-        input1 = [[pressure1, LPS_pressure, LPS_temperature]]
-        input2 = [[pressure2, LPS_pressure, LPS_temperature]]
+        # Each model now expects a single feature: the sensor reading.
+        input0 = [[pressure0]]
+        input1 = [[pressure1]]
+        input2 = [[pressure2]]
 
         conv_pressure0 = self.models['pressure0'].predict(input0)[0]
         conv_pressure1 = self.models['pressure1'].predict(input1)[0]
@@ -148,8 +141,7 @@ class PressureCalibrator:
         }
         return params
 
-
-# Example usage in another file:
+# Example usage:
 if __name__ == "__main__":
     # Initialize the calibrator with the folder containing your training CSV files.
     calibrator = PressureCalibrator(data_folder='/Users/colehanan/Desktop/combined_csv_files')
