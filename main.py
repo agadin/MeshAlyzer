@@ -857,17 +857,18 @@ class App(ctk.CTk):
                 self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
                 self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
+
+                print("Graph Times (before append):", self.graph_times)
                 # Convert minutes, seconds, and milliseconds to a single seconds value.
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
 
-                print("Graph Times:", self.graph_times)
-                print("Graph Pressure1s:", self.graph_pressure1s)
-
+                print("Graph Times (before append):", self.graph_times)
                 # Append the new data point to each parallel list.
                 self.graph_times.append(current_time_val)
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
+                print("Graph Times (after append):", self.graph_times)
 
                 self.ax.clear()
                 # Set background colors based on theme
@@ -1309,6 +1310,11 @@ class App(ctk.CTk):
                     valve1_state = self.valve1.get_state()
                     valve2_state = self.valve2.get_state()
 
+                    if self.sensor_data:
+                        last_value = self.sensor_data[-1]
+                    else:
+                        print("[read_sensors] sensor_data is empty!")
+
                     # Add new values to the list
                     self.sensor_data.append({
                         'time': time_diff,
@@ -1328,6 +1334,7 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
+                    print(f"[read_sensors] Appended sensor data at time {time_diff:.2f}")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1338,7 +1345,7 @@ class App(ctk.CTk):
                         'seconds': int(time_diff % 60),
                         'milliseconds': int((time_diff * 1000) % 1000)
                     })
-                    print(f"Data queued: {time_diff:.2f} sec, Pressure: {self.pressure0_convert}")
+                    print("[read_sensors] Data put in queue (protocol running branch)")
 
                     print("[read_sensors] Latest time: ", self.graph_times[-1])
                     print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
@@ -1363,6 +1370,11 @@ class App(ctk.CTk):
                     valve1_state = self.valve1.get_state()
                     valve2_state = self.valve2.get_state()
 
+                    if self.sensor_data:
+                        last_value = self.sensor_data[-1]
+                    else:
+                        print("[read_sensors] sensor_data is empty!")
+
                     # Add new values to the list
                     self.sensor_data.append({
                         'time': -1,
@@ -1382,6 +1394,7 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
+                    print("[read_sensors] Appended sensor data (protocol not running branch)")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1397,6 +1410,7 @@ class App(ctk.CTk):
                         'valve1_state': valve1_state,
                         'valve2_state': valve2_state
                     })
+                    print("[read_sensors] Data put in queue (protocol not running branch)")
 
                     print("[read_sensors] Latest time: ", self.graph_times[-1])
                     print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
