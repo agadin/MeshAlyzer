@@ -858,10 +858,6 @@ class App(ctk.CTk):
                 self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
                 self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
-
-                # Convert minutes, seconds, and milliseconds to a single seconds value.
-                current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
-
                 # Append the new data point to each parallel list.
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
                 self.graph_times.append(current_time_val)
@@ -1377,7 +1373,7 @@ class App(ctk.CTk):
 
         except queue.Empty:
             pass
-        self.after(500, self.process_queue)
+        self.after(100, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
