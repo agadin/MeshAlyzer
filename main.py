@@ -817,6 +817,7 @@ class App(ctk.CTk):
 
         if self.home_displayed:
             try:
+
                 self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
                 self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
@@ -829,6 +830,7 @@ class App(ctk.CTk):
                 # Calculate average force and update force display
                 avg_force = (current_pressure1 + current_pressure2) / 2
                 self.force_display_frame.configure(text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
+                print("Displays updated successfully.")
 
                 # For the dummy BLK box, you can keep it constant or later add a condition
                 blk_status = True
