@@ -22,6 +22,7 @@ import datetime
 import tkinter as tk
 import subprocess
 import queue
+import traceback
 import threading
 import sys
 import os
@@ -890,7 +891,9 @@ class App(ctk.CTk):
                 print("Graph Pressure2s:", self.graph_pressure2s)
 
                 # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
-                if self.graph_times:
+                if len(self.graph_times) < 2:
+                    print("Not enough data to plot a line yet.")
+                else:
                     print("Plotting with data. Times:", self.graph_times)
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
@@ -908,6 +911,7 @@ class App(ctk.CTk):
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
+                traceback.print_exc()
 
         try:
             calibration_level = 0  # Cole change later
