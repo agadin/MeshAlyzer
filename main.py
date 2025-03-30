@@ -881,7 +881,9 @@ class App(ctk.CTk):
 
                 # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
                 if len(self.graph_times) < 2:
-                    print("Not enough data to plot a line yet.")
+                    # Optionally, plot just a marker for the single point:
+                    self.ax.plot(self.graph_times, self.graph_input_pressures, 'o', label="Input Pressure")
+                    print("Plotting single point.")
                 else:
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
