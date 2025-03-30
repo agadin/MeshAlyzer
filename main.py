@@ -810,6 +810,7 @@ class App(ctk.CTk):
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
         if self.home_displayed:
             try:
+                print(current_input_pressure)
                 self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
                 self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
