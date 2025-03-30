@@ -857,46 +857,6 @@ class App(ctk.CTk):
                 self.uno_box.configure(fg_color=uno_color)
                 self.blk_box.configure(fg_color=blk_color)
 
-                # === GRAPH UPDATE USING THE UPDATE PARAMETERS ===
-                # Convert the provided time components into a single seconds value.
-                current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
-
-                # Append the new data point to each list.
-                self.graph_times.append(current_time_val)
-                self.graph_input_pressures.append(current_input_pressure)
-                self.graph_pressure1s.append(current_pressure1)
-                self.graph_pressure2s.append(current_pressure2)
-
-                # Filter out any data points that are outside the current time window.
-                filtered_data = [
-                    (t, p0, p1, p2)
-                    for t, p0, p1, p2 in zip(self.graph_times, self.graph_input_pressures,
-                                             self.graph_pressure1s, self.graph_pressure2s)
-                    if t >= current_time_val - self.graph_time_range
-                ]
-                if filtered_data:
-                    self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = map(list,
-                                                                                                                     zip(*filtered_data))
-                else:
-                    # If there are no valid data points, clear the lists.
-                    self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = [], [], [], []
-
-                # Plot the data ensuring that all lists have the same number of points.
-                self.ax.cla()  # Clear previous plot
-                self.ax.set_facecolor("none")
-                self.fig.patch.set_facecolor("none")
-                self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure", color="blue")
-                self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1", color="red")
-                self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color="green")
-                # Plot self.target_pressure as a constant line (defaulting to 0 if not set)
-                target_val = self.target_pressure if self.target_pressure is not None else 0
-                self.ax.plot(self.graph_times, [target_val] * len(self.graph_times), label="Target Pressure", color="orange")
-
-                self.ax.set_xlabel("Time (s)")
-                self.ax.set_ylabel("Pressure")
-                self.ax.legend(loc="upper right", fontsize="small")
-                self.canvas.draw()
-                # === END GRAPH UPDATE ===
                 print("Displays updated successfully.")
             except Exception as e:
                 print(f"Error updating displays: {e}")
