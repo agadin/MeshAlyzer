@@ -929,7 +929,6 @@ class App(ctk.CTk):
         else:
             self.lps_info_label.configure(text="LPS: N/A")
 
-        )
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
