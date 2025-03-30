@@ -7,6 +7,10 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
 from joblib import dump
+import warnings
+from sklearn.exceptions import DataConversionWarning
+warnings.filterwarnings("ignore", category=DataConversionWarning)
+
 
 class PressureCalibrator:
     def __init__(self, data_folder=None, max_iter=100000000000000000000000000000000000000000, random_state=42):

@@ -34,6 +34,10 @@ import xml.etree.ElementTree as ET
 import board
 import busio
 import adafruit_lps2x
+import warnings
+from sklearn.exceptions import DataConversionWarning
+warnings.filterwarnings("ignore", category=DataConversionWarning)
+
 
 # Sensor import
 from PressureSensorReader import PressureReceiver
