@@ -1329,6 +1329,8 @@ class App(ctk.CTk):
                         'seconds': int(time_diff % 60),
                         'milliseconds': int((time_diff * 1000) % 1000)
                     })
+                    print(f"Data queued: {time_diff:.2f} sec, Pressure: {self.pressure0_convert}")
+
                 else:
                     # Record the time difference between the protocol start time and the current time
                     current_time = time.time()
@@ -1399,6 +1401,8 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
+                print(f"Queue data received: {data}")  # Debug: show raw data from the queue
+
                 self.update_displays(
                     step_count=data['step_count'],
                     current_input_pressure=data['current_input_pressure'],
