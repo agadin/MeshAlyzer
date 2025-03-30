@@ -864,7 +864,10 @@ class App(ctk.CTk):
 
                 print("Graph Times (before append):", self.graph_times)
                 # Append the new data point to each parallel list.
+                print("graph_times id before append:", id(self.graph_times), "Contents:", self.graph_times)
+                current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
                 self.graph_times.append(current_time_val)
+                print("graph_times id after append:", id(self.graph_times), "Contents:", self.graph_times)
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
@@ -887,7 +890,8 @@ class App(ctk.CTk):
                 print("Graph Pressure2s:", self.graph_pressure2s)
 
                 # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
-                if len(self.graph_times) > 0:
+                if self.graph_times:
+                    print("Plotting with data. Times:", self.graph_times)
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                     self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
@@ -897,10 +901,10 @@ class App(ctk.CTk):
                     self.ax.set_xlabel("Time (s)")
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
-                    self.canvas.draw_idle()
+                    self.canvas.draw()
                     print("Canvas redrawn with updated plot.")
                 else:
-                    print("No data in graph_times to plot!")
+                    print("No data in graph_times to plot! self.graph_times =", self.graph_times)
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
