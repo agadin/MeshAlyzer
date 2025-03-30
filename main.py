@@ -877,21 +877,27 @@ class App(ctk.CTk):
                     # Remove or comment out the following line:
                     # plt.close('all')  # This is causing your figure to be destroyed!
 
+                    # Remove any plt.close() calls
                     self.ax.clear()
-                    self.fig.patch.set_facecolor(app_bg_color)
-                    self.ax.set_facecolor(app_bg_color)
 
-                    self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                    self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                    self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                    if self.target_pressure is not None:
-                        self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
-                    self.ax.set_ylim(0, 100)
-                    self.ax.set_xlabel("Time (s)")
-                    self.ax.set_ylabel("PSI")
-                    self.ax.legend()
-                    self.canvas.draw()
+                    # Check if there is data to plot
+                    if self.graph_times:
+                        self.fig.patch.set_facecolor(app_bg_color)
+                        self.ax.set_facecolor(app_bg_color)
 
+                        self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                        self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                        self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                        if self.target_pressure is not None:
+                            self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
+
+                        self.ax.set_ylim(0, 100)
+                        self.ax.set_xlabel("Time (s)")
+                        self.ax.set_ylabel("PSI")
+                        self.ax.legend()
+                        self.canvas.draw_idle()
+                    else:
+                        print("No data in graph_times!")
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
