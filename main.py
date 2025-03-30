@@ -619,9 +619,9 @@ class App(ctk.CTk):
 
         # Row 1: Protocol step counter and Valve display
         self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
-        self.protocol_step_counter.grid(row=0, column=0, padx=10, pady=10)
+        self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10)
         self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
-        self.valve_display.grid(row=0, column=1, padx=10, pady=10)
+        self.valve_display.grid(row=1, column=1, padx=10, pady=10)
 
         # make transparent graph here
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
