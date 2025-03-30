@@ -364,7 +364,7 @@ class App(ctk.CTk):
         #set up readvalues
         self.sensor_data = []
         self.calibrator = PressureCalibrator()
-        self.calibrator.models = load('calibrating_pressure_transducers/trained_pressure_calibrators.joblib')
+        self.calibrator.models = load('calibrating_pressure_transducers/trained_pressure_calibrator_multioutput.joblib')
 
         # Start the sensor reading in a separate daemon thread
         self.update_queue = queue.Queue()
