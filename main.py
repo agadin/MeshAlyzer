@@ -1357,7 +1357,6 @@ class App(ctk.CTk):
                     'milliseconds': int((time_diff * 1000) % 1000)
                 }
                 self.update_queue.put(queue_data)
-                print("[read_sensors] Data put in queue:", queue_data)
             except Exception as e:
                 print("Error in read_sensors:", e)
                 # Optionally, sleep briefly to avoid a tight error loop
