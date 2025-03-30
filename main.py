@@ -824,7 +824,6 @@ class App(ctk.CTk):
                 # Calculate average force and update force display
                 avg_force = (current_pressure1 + current_pressure2) / 2
                 self.force_display_frame.configure(text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
-                print("Displays updated successfully.")
 
                 # For the dummy BLK box, you can keep it constant or later add a condition
                 blk_status = True
@@ -850,16 +849,14 @@ class App(ctk.CTk):
                 self.rpi_box.configure(fg_color=rpi_color)
                 self.uno_box.configure(fg_color=uno_color)
                 self.blk_box.configure(fg_color=blk_color)
-
-                print("Displays updated successfully.")
+                # Set protocol_step to 0 if None
+                protocol_step = self.protocol_step if self.protocol_step is not None else 0
+                self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
+                self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
             except Exception as e:
                 print(f"Error updating displays: {e}")
 
 
-        # Set protocol_step to 0 if None
-        protocol_step = self.protocol_step if self.protocol_step is not None else 0
-        self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
-        self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
 
 
@@ -1363,7 +1360,6 @@ class App(ctk.CTk):
     def process_queue(self):
         try:
             while True:
-                print("Processing Que")
                 data = self.update_queue.get_nowait()
                 self.update_displays(
                     step_count=data['step_count'],

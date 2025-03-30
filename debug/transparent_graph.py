@@ -1,39 +1,32 @@
-import io
 import customtkinter as ctk
-import matplotlib.pyplot as plt
-from PIL import Image
-# If you're using customtkinter v5.0 or higher, CTkImage is built in.
-# Otherwise, you might need to adapt the image handling as needed.
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-# Set up the customtkinter window
-root = ctk.CTk()
-root.geometry("600x400")
-root.title("Transparent Graph Demo")
+# Set appearance and theme
+ctk.set_appearance_mode("System")  # Options: "System", "Light", "Dark"
+ctk.set_default_color_theme("blue")  # Options: "blue", "dark-blue", "green"
 
-# Create a matplotlib figure and axis
-fig, ax = plt.subplots()
+# Create main application window
+app = ctk.CTk()
+app.geometry("800x600")
+app.title("CustomTkinter Graph Plot")
 
-# Plot example data
-ax.plot([0, 1, 2, 3, 4], [0, 1, 4, 9, 16], marker="o", label="Square Numbers")
-ax.legend()
+# Create a frame to hold the plot
+plot_frame = ctk.CTkFrame(master=app)
+plot_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-# Set both the figure and axes backgrounds to be transparent
-fig.patch.set_alpha(0.0)
-ax.set_facecolor((0, 0, 0, 0))
+# Create a matplotlib figure and add a subplot
+fig = Figure(figsize=(5, 4), dpi=100)
+ax = fig.add_subplot(111)
+ax.plot([0, 1, 2, 3, 4], [0, 1, 4, 9, 16], marker="o")  # A simple quadratic plot
+ax.set_title("Quadratic Plot")
+ax.set_xlabel("X-axis")
+ax.set_ylabel("Y-axis")
 
-# Save the figure to a bytes buffer as a PNG with transparency
-buf = io.BytesIO()
-fig.savefig(buf, format='png', transparent=True)
-buf.seek(0)
+# Embed the matplotlib figure in the Tkinter frame using FigureCanvasTkAgg
+canvas = FigureCanvasTkAgg(fig, master=plot_frame)
+canvas.draw()
+canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
 
-# Load the image using PIL
-image = Image.open(buf)
-
-# Create a CTkImage (this will be used in both light and dark modes)
-ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(600, 400))
-
-# Display the image in a label
-label = ctk.CTkLabel(root, image=ctk_image, text="")  # text is empty so only the image is shown
-label.pack(fill="both", expand=True)
-
-root.mainloop()
+# Start the customtkinter event loop
+app.mainloop()
