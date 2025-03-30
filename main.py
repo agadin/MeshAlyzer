@@ -633,6 +633,11 @@ class App(ctk.CTk):
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
         self.graph_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.graph_frame.pack(pady=10, padx=20, fill="both", expand=True)
+        self.fig, self.ax = plt.subplots(figsize=(6, 4))  # Adjust the figure size as needed
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(expand=True, fill="both")
+
 
         # === END GRAPH SETUP ===
         # Add a "Clear Graph" button underneath the graph
@@ -881,13 +886,10 @@ class App(ctk.CTk):
                     app_bg_color = "#FFFFFF"
 
                 plt.close('all')  # Close all previous figures
+                self.ax.clear()
 
-                self.fig, self.ax = plt.subplots()
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
-                self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
-                self.canvas_widget = self.canvas.get_tk_widget()
-                self.canvas_widget.pack(expand=True, fill="both")
 
                 self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                 self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
