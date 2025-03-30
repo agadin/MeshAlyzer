@@ -889,6 +889,7 @@ class App(ctk.CTk):
                 self.ax.legend(loc="upper right", fontsize="small")
                 self.canvas.draw()
                 # === END GRAPH UPDATE ===
+                print("Displays updated successfully.")
             except Exception as e:
                 print(f"Error updating displays: {e}")
 
