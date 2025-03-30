@@ -873,7 +873,7 @@ class App(ctk.CTk):
                 else:
                     app_bg_color = "#FFFFFF"
 
-                if False:
+                if True:
                     # Remove plt.close('all') – this is destroying your figure!
                     self.ax.clear()
 
@@ -889,7 +889,7 @@ class App(ctk.CTk):
                     self.ax.set_xlabel("Time (s)")
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
-                    self.canvas.draw_idle()
+                    self.canvas.draw()
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
