@@ -906,8 +906,6 @@ class App(ctk.CTk):
                     self.ax.legend()
                     self.canvas.draw()
                     print("Canvas redrawn with updated plot.")
-                else:
-                    print("No data in graph_times to plot! self.graph_times =", self.graph_times)
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
