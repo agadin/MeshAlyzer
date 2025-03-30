@@ -1378,7 +1378,6 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
-                print("Queue data received:", data)  # This should show up if data is queued
 
                 self.update_displays(
                     step_count=data['step_count'],
