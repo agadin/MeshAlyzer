@@ -8,6 +8,15 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
 from joblib import dump
 
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="X does not have valid feature names, but StandardScaler was fitted with feature names",
+    category=UserWarning
+)
+
+
+
 class PressureCalibrator:
     def __init__(self, data_folder=None, max_iter=100000000000000000000000000000000000000000, random_state=42):
         self.data_folder = data_folder

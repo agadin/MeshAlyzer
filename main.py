@@ -34,6 +34,14 @@ import xml.etree.ElementTree as ET
 import board
 import busio
 import adafruit_lps2x
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="X does not have valid feature names, but StandardScaler was fitted with feature names",
+    category=UserWarning
+)
+
+
 
 # Sensor import
 from PressureSensorReader import PressureReceiver
