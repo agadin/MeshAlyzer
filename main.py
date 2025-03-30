@@ -874,9 +874,10 @@ class App(ctk.CTk):
                     app_bg_color = "#FFFFFF"
 
                 if True:
-                    # Remove plt.close('all') – this is destroying your figure!
-                    self.ax.clear()
+                    # Remove or comment out the following line:
+                    # plt.close('all')  # This is causing your figure to be destroyed!
 
+                    self.ax.clear()
                     self.fig.patch.set_facecolor(app_bg_color)
                     self.ax.set_facecolor(app_bg_color)
 
@@ -890,6 +891,7 @@ class App(ctk.CTk):
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
                     self.canvas.draw()
+
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
