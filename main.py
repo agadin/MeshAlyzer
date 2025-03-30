@@ -859,20 +859,15 @@ class App(ctk.CTk):
                 self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
 
-                print("Graph Times (before append):", self.graph_times)
                 # Convert minutes, seconds, and milliseconds to a single seconds value.
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
 
-                print("Graph Times (before append):", self.graph_times)
                 # Append the new data point to each parallel list.
-                print("graph_times id before append:", id(self.graph_times), "Contents:", self.graph_times)
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
                 self.graph_times.append(current_time_val)
-                print("graph_times id after append:", id(self.graph_times), "Contents:", self.graph_times)
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
-                print("Graph Times (after append):", self.graph_times)
 
                 self.ax.clear()
 
@@ -888,7 +883,6 @@ class App(ctk.CTk):
                 if len(self.graph_times) < 2:
                     print("Not enough data to plot a line yet.")
                 else:
-                    print("Plotting with data. Times:", self.graph_times)
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                     self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
@@ -899,7 +893,6 @@ class App(ctk.CTk):
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
                     self.canvas.draw()
-                    print("Canvas redrawn with updated plot.")
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
@@ -1308,7 +1301,6 @@ class App(ctk.CTk):
                         self.non_protocol_start = time.time()
                     time_diff = time.time() - self.non_protocol_start
 
-                print(f"[read_sensors] time_diff: {time_diff:.2f}")
 
                 # Read additional sensor values and process them
                 LPS_pressure = self.lps.pressure
@@ -1340,7 +1332,6 @@ class App(ctk.CTk):
                     'clamp_state': self.clamp_state,
                     'self_protocol_step': self.protocol_step
                 })
-                print(f"[read_sensors] Appended sensor data: time {time_diff:.2f}")
 
                 # Queue the update for the main thread
                 queue_data = {
