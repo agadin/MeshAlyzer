@@ -1278,19 +1278,20 @@ class App(ctk.CTk):
 
     def read_sensors(self):
         print("[read_sensors] Sensor thread started.")
-
-        try:
-            while True:
-
+        while True:
+            try:
+                # Try to get sensor data
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
                     print("[read_sensors] Pressure data not available (got: {})".format(pressures))
                     time.sleep(0.1)
-                    continue  # Skip this iteration if data is insufficient
+                    continue  # Skip this iteration if data is missing
+
+                # Unpack pressures (now that we know we have enough items)
                 pressure0, pressure1, pressure2, pressure3 = pressures
 
-                if (self.protocol_step is not None and self.protocol_step > 0):
-                    # Record the time difference between the protocol start time and the current time
+                # Compute time difference
+                if self.protocol_step is not None and self.protocol_step > 0:
                     if self.init is not None:
                         self.protocol_start_time = time.time()
                         time_diff = 0
@@ -1299,134 +1300,64 @@ class App(ctk.CTk):
                     else:
                         current_time = time.time()
                         time_diff = current_time - self.protocol_start_time
-
-                    # Read sensor values
-                    LPS_pressure = self.lps.pressure
-                    LPS_temperature = self.lps.temperature
-
-                    # Convert pressure and temperature values using the converter function
-                    self.update_pressure_values()
-
-                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
-                        self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
-
-                    # get valve state
-                    valve1_state = self.valve1.get_state()
-                    valve2_state = self.valve2.get_state()
-
-                    if self.sensor_data:
-                        last_value = self.sensor_data[-1]
-                    else:
-                        print("[read_sensors] sensor_data is empty!")
-
-                    # Add new values to the list
-                    self.sensor_data.append({
-                        'time': time_diff,
-                        'LPS_pressure': LPS_pressure,
-                        'LPS_temperature': LPS_temperature,
-                        'pressure0': self.pressure0,
-                        'pressure0_convert': self.pressure0_convert,
-                        'pressure1': self.pressure1,
-                        'pressure1_convert': self.pressure1_convert,
-                        'pressure2': self.pressure2,
-                        'pressure2_convert': self.pressure2_convert,
-                        'pressure3': self.pressure3,
-                        'valve1_state': valve1_state,
-                        'valve2_state': valve2_state,
-                        'self_target_pressure': self.target_pressure,
-                        'self_target_time': self.target_time,
-                        'clamp_state': self.clamp_state,
-                        'self_protocol_step': self.protocol_step
-                    })
-                    print(f"[read_sensors] Appended sensor data at time {time_diff:.2f}")
-
-                    # Update displays with the new sensor data
-                    self.update_queue.put({
-                        'step_count': self.protocol_step,
-                        'current_input_pressure': self.pressure0_convert,
-                        'current_pressure1': self.pressure1_convert,
-                        'minutes': int(time_diff // 60),
-                        'seconds': int(time_diff % 60),
-                        'milliseconds': int((time_diff * 1000) % 1000)
-                    })
-                    print("[read_sensors] Data put in queue (protocol running branch)")
-
-                    print("[read_sensors] Latest time: ", self.graph_times[-1])
-                    print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
-
-
                 else:
-                    # Record the time difference between the protocol start time and the current time
-                    current_time = time.time()
-                    time_diff = current_time
-
-                    # Read sensor values
-                    LPS_pressure = self.lps.pressure
-                    LPS_temperature = self.lps.temperature
-
-                    # Convert pressure and temperature values using the converter function
-                    self.update_pressure_values()
-
-                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
-                        self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
-
-                    # get valve state
-                    valve1_state = self.valve1.get_state()
-                    valve2_state = self.valve2.get_state()
-
-                    if self.sensor_data:
-                        last_value = self.sensor_data[-1]
-                    else:
-                        print("[read_sensors] sensor_data is empty!")
-
-                    # Add new values to the list
-                    self.sensor_data.append({
-                        'time': -1,
-                        'LPS_pressure': LPS_pressure,
-                        'LPS_temperature': LPS_temperature,
-                        'pressure0': self.pressure0,
-                        'pressure0_convert': self.pressure0_convert,
-                        'pressure1': self.pressure1,
-                        'pressure1_convert': self.pressure1_convert,
-                        'pressure2': self.pressure2,
-                        'pressure2_convert': self.pressure2_convert,
-                        'pressure3': self.pressure3,
-                        'valve1_state': valve1_state,
-                        'valve2_state': valve2_state,
-                        'self_target_pressure': self.target_pressure,
-                        'self_target_time': self.target_time,
-                        'clamp_state': self.clamp_state,
-                        'self_protocol_step': self.protocol_step
-                    })
-                    print("[read_sensors] Appended sensor data (protocol not running branch)")
-
-                    # Update displays with the new sensor data
-                    self.update_queue.put({
-                        'step_count': self.protocol_step,
-                        'current_input_pressure': self.pressure0_convert,
-                        'current_pressure1': self.pressure1_convert,
-                        'current_pressure2': self.pressure2_convert,
-                        'minutes': 0,
-                        'seconds': 0,
-                        'milliseconds': 0,
-                        'LPS_pressure': LPS_pressure,
-                        'LPS_temperature': LPS_temperature,
-                        'valve1_state': valve1_state,
-                        'valve2_state': valve2_state
-                    })
-                    print("[read_sensors] Data put in queue (protocol not running branch)")
-
-                    print("[read_sensors] Latest time: ", self.graph_times[-1])
-                    print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
-
+                    # Ensure we have a reference time for non-protocol mode
                     if not hasattr(self, 'non_protocol_start'):
                         self.non_protocol_start = time.time()
                     time_diff = time.time() - self.non_protocol_start
 
-                # print(f"Recorded data: {self.sensor_data[-1]}")
-                time.sleep(0.01)
-        except Exception as e:
-            print(f"Error in read_sensors: {e}")
+                print(f"[read_sensors] time_diff: {time_diff:.2f}")
+
+                # Read additional sensor values and process them
+                LPS_pressure = self.lps.pressure
+                LPS_temperature = self.lps.temperature
+
+                self.update_pressure_values()
+                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
+                    self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature
+                )
+                valve1_state = self.valve1.get_state()
+                valve2_state = self.valve2.get_state()
+
+                # Append sensor data (for logging, analysis, etc.)
+                self.sensor_data.append({
+                    'time': time_diff,
+                    'LPS_pressure': LPS_pressure,
+                    'LPS_temperature': LPS_temperature,
+                    'pressure0': self.pressure0,
+                    'pressure0_convert': self.pressure0_convert,
+                    'pressure1': self.pressure1,
+                    'pressure1_convert': self.pressure1_convert,
+                    'pressure2': self.pressure2,
+                    'pressure2_convert': self.pressure2_convert,
+                    'pressure3': pressure3,
+                    'valve1_state': valve1_state,
+                    'valve2_state': valve2_state,
+                    'self_target_pressure': self.target_pressure,
+                    'self_target_time': self.target_time,
+                    'clamp_state': self.clamp_state,
+                    'self_protocol_step': self.protocol_step
+                })
+                print(f"[read_sensors] Appended sensor data: time {time_diff:.2f}")
+
+                # Queue the update for the main thread
+                queue_data = {
+                    'step_count': self.protocol_step,
+                    'current_input_pressure': self.pressure0_convert,
+                    'current_pressure1': self.pressure1_convert,
+                    'current_pressure2': self.pressure2_convert,
+                    'minutes': int(time_diff // 60),
+                    'seconds': int(time_diff % 60),
+                    'milliseconds': int((time_diff * 1000) % 1000)
+                }
+                self.update_queue.put(queue_data)
+                print("[read_sensors] Data put in queue:", queue_data)
+            except Exception as e:
+                print("Error in read_sensors:", e)
+                # Optionally, sleep briefly to avoid a tight error loop
+                time.sleep(0.1)
+                continue  # Continue running the loop even if an error occurs
+            time.sleep(0.01)
 
     def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         # Convert raw sensor values to calibrated pressures for each sensor.
