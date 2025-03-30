@@ -3,7 +3,6 @@ import customtkinter as ctk
 import multiprocessing.shared_memory as sm
 from tkinter import Canvas, Frame, Scrollbar, filedialog
 from PIL import Image, ImageTk, ImageOps
-import numpy as np
 
 from tkinter import Canvas, StringVar
 import cv2
@@ -1382,29 +1381,11 @@ class App(ctk.CTk):
         except Exception as e:
             print(f"Error in read_sensors: {e}")
 
-    def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure=None, LPS_temperature=None):
-        """
-        Convert raw sensor readings from each sensor into calibrated pressure values.
-        """
-        if not self.models:
-            raise ValueError("Models are not trained. Call the train() method first.")
-
-        # If the inputs are DataFrames or Series, extract the scalar value
-        if isinstance(pressure0, (pd.DataFrame, pd.Series)):
-            pressure0 = pressure0.to_numpy().flatten()[0]
-        if isinstance(pressure1, (pd.DataFrame, pd.Series)):
-            pressure1 = pressure1.to_numpy().flatten()[0]
-        if isinstance(pressure2, (pd.DataFrame, pd.Series)):
-            pressure2 = pressure2.to_numpy().flatten()[0]
-
-        # Convert to numpy array with shape (1, 1)
-        input0 = np.array([[pressure0]])
-        input1 = np.array([[pressure1]])
-        input2 = np.array([[pressure2]])
-
-        conv_pressure0 = self.models['pressure0'].predict(input0)[0]
-        conv_pressure1 = self.models['pressure1'].predict(input1)[0]
-        conv_pressure2 = self.models['pressure2'].predict(input2)[0]
+    def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
+        # Convert raw sensor values to calibrated pressures for each sensor.
+        conv_pressure0, conv_pressure1, conv_pressure2 = self.calibrator.pressure_sensor_converter_main(
+            pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
+        )
 
         return conv_pressure0, conv_pressure1, conv_pressure2
 
