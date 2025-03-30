@@ -858,12 +858,21 @@ class App(ctk.CTk):
                 self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
                 self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
 
+
+                print("Graph Times (before append):", self.graph_times)
+                # Convert minutes, seconds, and milliseconds to a single seconds value.
+                current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
+
+                print("Graph Times (before append):", self.graph_times)
                 # Append the new data point to each parallel list.
+                print("graph_times id before append:", id(self.graph_times), "Contents:", self.graph_times)
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
                 self.graph_times.append(current_time_val)
+                print("graph_times id after append:", id(self.graph_times), "Contents:", self.graph_times)
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
+                print("Graph Times (after append):", self.graph_times)
 
                 self.ax.clear()
 
@@ -875,12 +884,17 @@ class App(ctk.CTk):
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
 
+                # Debug prints for all data lists
+                print("Graph Times:", self.graph_times)
+                print("Graph Input Pressures:", self.graph_input_pressures)
+                print("Graph Pressure1s:", self.graph_pressure1s)
+                print("Graph Pressure2s:", self.graph_pressure2s)
+
                 # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
                 if len(self.graph_times) < 2:
-                    # Optionally, plot just a marker for the single point:
-                    self.ax.plot(self.graph_times, self.graph_input_pressures, 'o', label="Input Pressure")
-                    print("Plotting single point.")
+                    print("Not enough data to plot a line yet.")
                 else:
+                    print("Plotting with data. Times:", self.graph_times)
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                     self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
@@ -891,6 +905,7 @@ class App(ctk.CTk):
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
                     self.canvas.draw()
+                    print("Canvas redrawn with updated plot.")
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
@@ -1277,28 +1292,34 @@ class App(ctk.CTk):
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
                     print("[read_sensors] Pressure data not available (got: {})".format(pressures))
-                    time.sleep(0.01)
+                    time.sleep(0.1)
                     continue  # Skip this iteration if data is missing
 
                 # Unpack pressures (now that we know we have enough items)
                 pressure0, pressure1, pressure2, pressure3 = pressures
 
-                # Calculate time_diff using appropriate branch
+                # Compute time difference
                 if self.protocol_step is not None and self.protocol_step > 0:
                     if self.init is not None:
                         self.protocol_start_time = time.time()
                         time_diff = 0
-                        self.sensor_data = []
+                        self.sensor_data = []  # Reset sensor data for the new protocol
                         self.init = None
                     else:
-                        time_diff = time.time() - self.protocol_start_time
+                        current_time = time.time()
+                        time_diff = current_time - self.protocol_start_time
                 else:
+                    # Ensure we have a reference time for non-protocol mode
                     if not hasattr(self, 'non_protocol_start'):
                         self.non_protocol_start = time.time()
                     time_diff = time.time() - self.non_protocol_start
 
+                print(f"[read_sensors] time_diff: {time_diff:.2f}")
+
+                # Read additional sensor values and process them
                 LPS_pressure = self.lps.pressure
                 LPS_temperature = self.lps.temperature
+
                 self.update_pressure_values()
                 self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
                     self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature
@@ -1325,6 +1346,7 @@ class App(ctk.CTk):
                     'clamp_state': self.clamp_state,
                     'self_protocol_step': self.protocol_step
                 })
+                print(f"[read_sensors] Appended sensor data: time {time_diff:.2f}")
 
                 # Queue the update for the main thread
                 queue_data = {
@@ -1356,6 +1378,7 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
+                print("Queue data received:", data)  # This should show up if data is queued
 
                 self.update_displays(
                     step_count=data['step_count'],
@@ -1493,10 +1516,9 @@ class App(ctk.CTk):
             print("Verification failed: The copied file does not match the original.")
 
     def on_closing(self):
-        print("Shutting down sensor thread...")
         self.running = False
-        self.sensor_thread.join(timeout=1)
-        print("Sensor thread shut down.")
+        if hasattr(self, 'update_thread'):
+            self.update_thread.join()
         self.destroy()
 
     def update_output_window(self):
