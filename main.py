@@ -42,7 +42,7 @@ from clamp_motor import MotorController
 from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
 from joblib import load
-from calibrating_pressure_transducers.scale_data import PressureCalibrator
+from calibrating_pressure_transducers.getCalibrationData import PressureCalibrator
 
 
 class ProtocolViewer(ctk.CTkFrame):
@@ -1341,7 +1341,7 @@ class App(ctk.CTk):
     def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         # Convert raw sensor values to calibrated pressures for each sensor.
         conv_pressure0, conv_pressure1, conv_pressure2 = self.calibrator.pressure_sensor_converter_main(
-            pressure0, pressure1, pressure2
+            pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature
         )
 
         return conv_pressure0, conv_pressure1, conv_pressure2
