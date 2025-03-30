@@ -888,7 +888,7 @@ class App(ctk.CTk):
                     app_bg_color = "#FFFFFF"
 
                 if True:
-                    plt.close('all')  # Close all previous figures
+                    # Remove plt.close('all') – this is destroying your figure!
                     self.ax.clear()
 
                     self.fig.patch.set_facecolor(app_bg_color)
