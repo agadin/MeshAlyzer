@@ -860,6 +860,9 @@ class App(ctk.CTk):
                 # Convert minutes, seconds, and milliseconds to a single seconds value.
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
 
+                print("Graph Times:", self.graph_times)
+                print("Graph Pressure1s:", self.graph_pressure1s)
+
                 # Append the new data point to each parallel list.
                 self.graph_times.append(current_time_val)
                 self.graph_input_pressures.append(current_input_pressure)
@@ -883,12 +886,18 @@ class App(ctk.CTk):
                     self.ax.clear()
 
                     # Only plot if there's data
-                    if self.graph_times:
+                    try:
                         self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                         self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                         self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                        if self.target_pressure is not None:
-                            self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
+                    except Exception as plot_e:
+                        print("Plotting error:", plot_e)
+                        print("graph_times type and sample:", type(self.graph_times), self.graph_times[:5])
+                        print("graph_pressure1s type and sample:", type(self.graph_pressure1s),
+                              self.graph_pressure1s[:5])
+
+                    if self.target_pressure is not None:
+                        self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
                         self.ax.set_ylim(0, 100)
                         self.ax.set_xlabel("Time (s)")
                         self.ax.set_ylabel("PSI")
@@ -1319,7 +1328,6 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
-                    print(f"[read_sensors] (Protocol Running) Time diff: {time_diff:.2f}")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1330,7 +1338,11 @@ class App(ctk.CTk):
                         'seconds': int(time_diff % 60),
                         'milliseconds': int((time_diff * 1000) % 1000)
                     })
-                    print("[read_sensors] (Protocol Running) Data put in queue")
+                    print(f"Data queued: {time_diff:.2f} sec, Pressure: {self.pressure0_convert}")
+
+                    print("[read_sensors] Latest time: ", self.graph_times[-1])
+                    print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
+
 
                 else:
                     # Record the time difference between the protocol start time and the current time
@@ -1370,7 +1382,6 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
-                    print("[read_sensors] (Protocol Not Running) Data appended")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1387,7 +1398,9 @@ class App(ctk.CTk):
                         'valve2_state': valve2_state
                     })
 
-                    print("[read_sensors] (Protocol Not Running) Data put in queue")
+                    print("[read_sensors] Latest time: ", self.graph_times[-1])
+                    print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
+
                 # print(f"Recorded data: {self.sensor_data[-1]}")
                 time.sleep(0.01)
         except Exception as e:
@@ -1405,6 +1418,8 @@ class App(ctk.CTk):
         try:
             while True:
                 data = self.update_queue.get_nowait()
+                print("Queue data received:", data)  # This should show up if data is queued
+
                 self.update_displays(
                     step_count=data['step_count'],
                     current_input_pressure=data['current_input_pressure'],
