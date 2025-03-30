@@ -897,6 +897,7 @@ class App(ctk.CTk):
                 self.ax.set_ylim(0, 100)
                 self.ax.set_xlabel("Time (s)")
                 self.ax.set_ylabel("PSI")
+                self.canvas.draw()
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
