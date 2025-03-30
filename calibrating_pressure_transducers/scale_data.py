@@ -115,16 +115,14 @@ class PressureCalibrator:
         print("Models saved to 'trained_pressure_calibrators.joblib'.")
 
     def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
-        """
-        Convert raw sensor readings from each sensor into calibrated pressure values.
-        """
-        if not self.models:
-            raise ValueError("Models are not trained. Call the train() method first.")
-
-        # Construct feature vectors for each sensor.
-        input0 = [[pressure0, LPS_pressure, LPS_temperature]]
-        input1 = [[pressure1, LPS_pressure, LPS_temperature]]
-        input2 = [[pressure2, LPS_pressure, LPS_temperature]]
+        import pandas as pd
+        # Create DataFrames with proper column names for each sensor
+        input0 = pd.DataFrame([[pressure0, LPS_pressure, LPS_temperature]],
+                              columns=['pressure0', 'LPS_pressure', 'LPS_temperature'])
+        input1 = pd.DataFrame([[pressure1, LPS_pressure, LPS_temperature]],
+                              columns=['pressure1', 'LPS_pressure', 'LPS_temperature'])
+        input2 = pd.DataFrame([[pressure2, LPS_pressure, LPS_temperature]],
+                              columns=['pressure2', 'LPS_pressure', 'LPS_temperature'])
 
         conv_pressure0 = self.models['pressure0'].predict(input0)[0]
         conv_pressure1 = self.models['pressure1'].predict(input1)[0]
