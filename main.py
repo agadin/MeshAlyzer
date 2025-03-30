@@ -866,8 +866,6 @@ class App(ctk.CTk):
                     widget.destroy()
 
                 #debug print of graph data
-                print(f"Graph Data: Times: {self.graph_times}, Input Pressures: {self.graph_input_pressures}, " 
-                        f"Pressure 1s: {self.graph_pressure1s}, Pressure 2s: {self.graph_pressure2s}")
 
                 if ctk.get_appearance_mode() == "Dark":
                     app_bg_color = "#1F1F1F"
