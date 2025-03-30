@@ -628,16 +628,6 @@ class App(ctk.CTk):
         self.graph_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.graph_frame.pack(pady=10, padx=20, fill="both", expand=True)
 
-        # Create a Matplotlib figure with transparent background
-        self.fig, self.ax = plt.subplots(figsize=(6, 3))
-        self.fig.patch.set_facecolor("none")
-        self.ax.set_facecolor("none")
-        self.ax.set_title("")  # optional: remove title
-
-        # Embed the figure in the Tkinter frame
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.pack(fill="both", expand=True)
         # === END GRAPH SETUP ===
         # Add a "Clear Graph" button underneath the graph
         self.clear_graph_button = ctk.CTkButton(
@@ -853,14 +843,60 @@ class App(ctk.CTk):
                 protocol_step = self.protocol_step if self.protocol_step is not None else 0
                 self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
                 self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
+
+                # Convert minutes, seconds, and milliseconds to a single seconds value.
+                current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
+
+                # Append the new data point to each parallel list.
+                self.graph_times.append(current_time_val)
+                self.graph_input_pressures.append(current_input_pressure)
+                self.graph_pressure1s.append(current_pressure1)
+                self.graph_pressure2s.append(current_pressure2)
+
+                # Filter to only keep data points within the time window.
+                filtered_data = [
+                    (t, p0, p1, p2)
+                    for t, p0, p1, p2 in zip(self.graph_times, self.graph_input_pressures,
+                                             self.graph_pressure1s, self.graph_pressure2s)
+                    if t >= current_time_val - self.graph_time_range
+                ]
+                if filtered_data:
+                    self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = map(
+                        list, zip(*filtered_data))
+                else:
+                    self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = [], [], [], []
+
+                for widget in self.graph_frame.winfo_children():
+                    widget.destroy()
+
+                #debug print of graph data
+                print(f"Graph Data: Times: {self.graph_times}, Input Pressures: {self.graph_input_pressures}, " 
+                        f"Pressure 1s: {self.graph_pressure1s}, Pressure 2s: {self.graph_pressure2s}")
+
+                if ctk.get_appearance_mode() == "Dark":
+                    app_bg_color = "#1F1F1F"
+                else:
+                    app_bg_color = "#FFFFFF"
+
+                # Create a new Matplotlib figure
+                self.fig, self.ax = plt.subplots()
+                self.fig.patch.set_facecolor(app_bg_color)  # Set figure background color to gray
+                self.ax.set_facecolor(app_bg_color)  # Set axes background color to gray
+                self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
+                self.canvas_widget = self.canvas.get_tk_widget()
+                self.canvas_widget.pack(expand=True, fill="both")
+
+                self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                if self.target_pressure is not None:
+                    self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
+                self.ax.set_ylim(0, 100)
+                self.ax.set_xlabel("Time (s)")
+                self.ax.set_ylabel("PSI")
+
             except Exception as e:
                 print(f"Error updating displays: {e}")
-
-
-
-
-
-
         try:
             calibration_level = 0 #Cole change later
             if calibration_level == 0:
