@@ -884,12 +884,6 @@ class App(ctk.CTk):
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
 
-                # Debug prints for all data lists
-                print("Graph Times:", self.graph_times)
-                print("Graph Input Pressures:", self.graph_input_pressures)
-                print("Graph Pressure1s:", self.graph_pressure1s)
-                print("Graph Pressure2s:", self.graph_pressure2s)
-
                 # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
                 if len(self.graph_times) < 2:
                     print("Not enough data to plot a line yet.")
@@ -1395,7 +1389,7 @@ class App(ctk.CTk):
 
         except queue.Empty:
             pass
-        self.after(100, self.process_queue)
+        self.after(500, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
