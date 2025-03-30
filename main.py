@@ -619,9 +619,9 @@ class App(ctk.CTk):
 
         # Row 1: Protocol step counter and Valve display
         self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
-        self.protocol_step_counter.grid(row=0, column=0, padx=10, pady=10)
+        self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10)
         self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
-        self.valve_display.grid(row=0, column=1, padx=10, pady=10)
+        self.valve_display.grid(row=1, column=1, padx=10, pady=10)
 
         # make transparent graph here
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
@@ -808,86 +808,52 @@ class App(ctk.CTk):
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
+
         if self.home_displayed:
-            self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
-            self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
-            self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
-            # If one of the pressures is None, use the other
-            if current_pressure2 is None:
-                current_pressure2 = current_pressure1
-            if current_pressure1 is None:
-                current_pressure1 = current_pressure2
-
-            # Calculate average force and update force display
-            avg_force = (current_pressure1 + current_pressure2) / 2
-            self.force_display_frame.configure(text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
-
-            # For the dummy BLK box, you can keep it constant or later add a condition
-            blk_status = True
-
             try:
-                rpi_status = self.pressure_receiver.status()
+
+                self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
+                self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
+                self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
+                # If one of the pressures is None, use the other
+                if current_pressure2 is None:
+                    current_pressure2 = current_pressure1
+                if current_pressure1 is None:
+                    current_pressure1 = current_pressure2
+
+                # Calculate average force and update force display
+                avg_force = (current_pressure1 + current_pressure2) / 2
+                self.force_display_frame.configure(text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
+                print("Displays updated successfully.")
+
+                # For the dummy BLK box, you can keep it constant or later add a condition
+                blk_status = True
+
+                try:
+                    rpi_status = self.pressure_receiver.status()
+                except Exception as e:
+                    print(f"Error checking PressureReceiver status: {e}")
+                    rpi_status = False
+
+                    # Check the UNO status using the motor_controller's status method
+                try:
+                    uno_status = self.motor_controller.status()
+                except Exception as e:
+                    print(f"Error checking MotorController status: {e}")
+                    uno_status = False
+
+                # Set colors based on status (green for True, red for False)
+                rpi_color = "green" if rpi_status else "red"
+                uno_color = "green" if uno_status else "red"
+                blk_color = "green" if blk_status else "red"
+
+                self.rpi_box.configure(fg_color=rpi_color)
+                self.uno_box.configure(fg_color=uno_color)
+                self.blk_box.configure(fg_color=blk_color)
+
+                print("Displays updated successfully.")
             except Exception as e:
-                print(f"Error checking PressureReceiver status: {e}")
-                rpi_status = False
-
-                # Check the UNO status using the motor_controller's status method
-            try:
-                uno_status = self.motor_controller.status()
-            except Exception as e:
-                print(f"Error checking MotorController status: {e}")
-                uno_status = False
-
-            # Set colors based on status (green for True, red for False)
-            rpi_color = "green" if rpi_status else "red"
-            uno_color = "green" if uno_status else "red"
-            blk_color = "green" if blk_status else "red"
-
-            self.rpi_box.configure(fg_color=rpi_color)
-            self.uno_box.configure(fg_color=uno_color)
-            self.blk_box.configure(fg_color=blk_color)
-
-            # === GRAPH UPDATE USING THE UPDATE PARAMETERS ===
-            # Convert the provided time components into a single seconds value.
-            current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
-
-            # Append the new data point to each list.
-            self.graph_times.append(current_time_val)
-            self.graph_input_pressures.append(current_input_pressure)
-            self.graph_pressure1s.append(current_pressure1)
-            self.graph_pressure2s.append(current_pressure2)
-
-            # Filter out any data points that are outside the current time window.
-            filtered_data = [
-                (t, p0, p1, p2)
-                for t, p0, p1, p2 in zip(self.graph_times, self.graph_input_pressures,
-                                         self.graph_pressure1s, self.graph_pressure2s)
-                if t >= current_time_val - self.graph_time_range
-            ]
-            if filtered_data:
-                self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = map(list,
-                                                                                                                 zip(*filtered_data))
-            else:
-                # If there are no valid data points, clear the lists.
-                self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = [], [], [], []
-
-            # Plot the data ensuring that all lists have the same number of points.
-            self.ax.cla()  # Clear previous plot
-            self.ax.set_facecolor("none")
-            self.fig.patch.set_facecolor("none")
-            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure", color="blue")
-            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1", color="red")
-            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color="green")
-            # Plot self.target_pressure as a constant line (defaulting to 0 if not set)
-            target_val = self.target_pressure if self.target_pressure is not None else 0
-            self.ax.plot(self.graph_times, [target_val] * len(self.graph_times), label="Target Pressure",
-                         color="orange")
-
-            self.ax.set_xlabel("Time (s)")
-            self.ax.set_ylabel("Pressure")
-            self.ax.legend(loc="upper right", fontsize="small")
-            self.canvas.draw()
-            # === END GRAPH UPDATE ===
+                print(f"Error updating displays: {e}")
 
 
         # Set protocol_step to 0 if None
@@ -1271,116 +1237,120 @@ class App(ctk.CTk):
                 writer.writerow(row)
 
     def read_sensors(self):
-        while True:
-            if (self.protocol_step is not None and self.protocol_step > 0):
-                # Record the time difference between the protocol start time and the current time
-                if self.init is not None:
-                    self.protocol_start_time = time.time()
-                    time_diff = 0
-                    self.sensor_data = []  # Reset sensor data for the new protocol
-                    self.init = None
+        try:
+            while True:
+
+                if (self.protocol_step is not None and self.protocol_step > 0):
+                    # Record the time difference between the protocol start time and the current time
+                    if self.init is not None:
+                        self.protocol_start_time = time.time()
+                        time_diff = 0
+                        self.sensor_data = []  # Reset sensor data for the new protocol
+                        self.init = None
+                    else:
+                        current_time = time.time()
+                        time_diff = current_time - self.protocol_start_time
+
+                    # Read sensor values
+                    LPS_pressure = self.lps.pressure
+                    LPS_temperature = self.lps.temperature
+
+                    # Convert pressure and temperature values using the converter function
+                    self.update_pressure_values()
+
+                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
+
+                    #get valve state
+                    valve1_state= self.valve1.get_state()
+                    valve2_state= self.valve2.get_state()
+
+
+                    # Add new values to the list
+                    self.sensor_data.append({
+                        'time': time_diff,
+                        'LPS_pressure': LPS_pressure,
+                        'LPS_temperature': LPS_temperature,
+                        'pressure0': self.pressure0,
+                        'pressure0_convert': self.pressure0_convert,
+                        'pressure1': self.pressure1,
+                        'pressure1_convert': self.pressure1_convert,
+                        'pressure2': self.pressure2,
+                        'pressure2_convert': self.pressure2_convert,
+                        'pressure3': self.pressure3,
+                        'valve1_state': valve1_state,
+                        'valve2_state': valve2_state,
+                        'self_target_pressure': self.target_pressure,
+                        'self_target_time': self.target_time,
+                        'clamp_state': self.clamp_state,
+                        'self_protocol_step': self.protocol_step
+                    })
+
+                    # Update displays with the new sensor data
+                    self.update_queue.put({
+                        'step_count': self.protocol_step,
+                        'current_input_pressure': self.pressure0_convert,
+                        'current_pressure1': self.pressure1_convert,
+                        'minutes': int(time_diff // 60),
+                        'seconds': int(time_diff % 60),
+                        'milliseconds': int((time_diff * 1000) % 1000)
+                    })
                 else:
+                    # Record the time difference between the protocol start time and the current time
                     current_time = time.time()
-                    time_diff = current_time - self.protocol_start_time
+                    time_diff = current_time
 
-                # Read sensor values
-                LPS_pressure = self.lps.pressure
-                LPS_temperature = self.lps.temperature
+                    # Read sensor values
+                    LPS_pressure = self.lps.pressure
+                    LPS_temperature = self.lps.temperature
 
-                # Convert pressure and temperature values using the converter function
-                self.update_pressure_values()
+                    # Convert pressure and temperature values using the converter function
+                    self.update_pressure_values()
 
-                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert= self.pressure_sensor_converter(self.pressure0 , self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
+                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
+                        self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
 
-                #get valve state
-                valve1_state= self.valve1.get_state()
-                valve2_state= self.valve2.get_state()
+                    # get valve state
+                    valve1_state = self.valve1.get_state()
+                    valve2_state = self.valve2.get_state()
 
+                    # Add new values to the list
+                    self.sensor_data.append({
+                        'time': -1,
+                        'LPS_pressure': LPS_pressure,
+                        'LPS_temperature': LPS_temperature,
+                        'pressure0': self.pressure0,
+                        'pressure0_convert': self.pressure0_convert,
+                        'pressure1': self.pressure1,
+                        'pressure1_convert': self.pressure1_convert,
+                        'pressure2': self.pressure2,
+                        'pressure2_convert': self.pressure2_convert,
+                        'pressure3': self.pressure3,
+                        'valve1_state': valve1_state,
+                        'valve2_state': valve2_state,
+                        'self_target_pressure': self.target_pressure,
+                        'self_target_time': self.target_time,
+                        'clamp_state': self.clamp_state,
+                        'self_protocol_step': self.protocol_step
+                    })
 
-                # Add new values to the list
-                self.sensor_data.append({
-                    'time': time_diff,
-                    'LPS_pressure': LPS_pressure,
-                    'LPS_temperature': LPS_temperature,
-                    'pressure0': self.pressure0,
-                    'pressure0_convert': self.pressure0_convert,
-                    'pressure1': self.pressure1,
-                    'pressure1_convert': self.pressure1_convert,
-                    'pressure2': self.pressure2,
-                    'pressure2_convert': self.pressure2_convert,
-                    'pressure3': self.pressure3,
-                    'valve1_state': valve1_state,
-                    'valve2_state': valve2_state,
-                    'self_target_pressure': self.target_pressure,
-                    'self_target_time': self.target_time,
-                    'clamp_state': self.clamp_state,
-                    'self_protocol_step': self.protocol_step
-                })
-
-                # Update displays with the new sensor data
-                self.update_queue.put({
-                    'step_count': self.protocol_step,
-                    'current_input_pressure': self.pressure0_convert,
-                    'current_pressure1': self.pressure1_convert,
-                    'minutes': int(time_diff // 60),
-                    'seconds': int(time_diff % 60),
-                    'milliseconds': int((time_diff * 1000) % 1000)
-                })
-            else:
-                # Record the time difference between the protocol start time and the current time
-                current_time = time.time()
-                time_diff = current_time
-
-                # Read sensor values
-                LPS_pressure = self.lps.pressure
-                LPS_temperature = self.lps.temperature
-
-                # Convert pressure and temperature values using the converter function
-                self.update_pressure_values()
-
-                self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
-                    self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
-
-                # get valve state
-                valve1_state = self.valve1.get_state()
-                valve2_state = self.valve2.get_state()
-
-                # Add new values to the list
-                self.sensor_data.append({
-                    'time': -1,
-                    'LPS_pressure': LPS_pressure,
-                    'LPS_temperature': LPS_temperature,
-                    'pressure0': self.pressure0,
-                    'pressure0_convert': self.pressure0_convert,
-                    'pressure1': self.pressure1,
-                    'pressure1_convert': self.pressure1_convert,
-                    'pressure2': self.pressure2,
-                    'pressure2_convert': self.pressure2_convert,
-                    'pressure3': self.pressure3,
-                    'valve1_state': valve1_state,
-                    'valve2_state': valve2_state,
-                    'self_target_pressure': self.target_pressure,
-                    'self_target_time': self.target_time,
-                    'clamp_state': self.clamp_state,
-                    'self_protocol_step': self.protocol_step
-                })
-
-                # Update displays with the new sensor data
-                self.update_queue.put({
-                    'step_count': self.protocol_step,
-                    'current_input_pressure': self.pressure0_convert,
-                    'current_pressure1': self.pressure1_convert,
-                    'current_pressure2': self.pressure2_convert,
-                    'minutes': 0,
-                    'seconds': 0,
-                    'milliseconds': 0,
-                    'LPS_pressure': LPS_pressure,
-                    'LPS_temperature': LPS_temperature,
-                    'valve1_state': valve1_state,
-                    'valve2_state': valve2_state
-                })
-            # print(f"Recorded data: {self.sensor_data[-1]}")
-            time.sleep(0.01)
+                    # Update displays with the new sensor data
+                    self.update_queue.put({
+                        'step_count': self.protocol_step,
+                        'current_input_pressure': self.pressure0_convert,
+                        'current_pressure1': self.pressure1_convert,
+                        'current_pressure2': self.pressure2_convert,
+                        'minutes': 0,
+                        'seconds': 0,
+                        'milliseconds': 0,
+                        'LPS_pressure': LPS_pressure,
+                        'LPS_temperature': LPS_temperature,
+                        'valve1_state': valve1_state,
+                        'valve2_state': valve2_state
+                    })
+                # print(f"Recorded data: {self.sensor_data[-1]}")
+                time.sleep(0.01)
+        except Exception as e:
+            print(f"Error in read_sensors: {e}")
 
     def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         # Convert raw sensor values to calibrated pressures for each sensor.
@@ -1393,6 +1363,7 @@ class App(ctk.CTk):
     def process_queue(self):
         try:
             while True:
+                print("Processing Que")
                 data = self.update_queue.get_nowait()
                 self.update_displays(
                     step_count=data['step_count'],
