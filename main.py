@@ -1277,11 +1277,20 @@ class App(ctk.CTk):
                 writer.writerow(row)
 
     def read_sensors(self):
+        print("[read_sensors] Sensor thread started.")
+
         try:
             while True:
 
-                if (self.protocol_step is not None and self.protocol_step > 0):
-                    # Record the time difference between the protocol start time and the current time
+                pressures = PressureReceiver.getpressures()
+                if not pressures or len(pressures) < 4:
+                    print("[read_sensors] Pressure data not available (got: {})".format(pressures))
+                    time.sleep(0.1)
+                    continue  # Skip this iteration if data is insufficient
+                pressure0, pressure1, pressure2, pressure3 = pressures
+
+                # Calculate time_diff: use protocol branch or non-protocol branch
+                if self.protocol_step is not None and self.protocol_step > 0:
                     if self.init is not None:
                         self.protocol_start_time = time.time()
                         time_diff = 0
@@ -1290,6 +1299,12 @@ class App(ctk.CTk):
                     else:
                         current_time = time.time()
                         time_diff = current_time - self.protocol_start_time
+                else:
+                    if not hasattr(self, 'non_protocol_start'):
+                        self.non_protocol_start = time.time()
+                    time_diff = time.time() - self.non_protocol_start
+
+                print(f"[read_sensors] time_diff: {time_diff:.2f}")
 
                     # Read sensor values
                     LPS_pressure = self.lps.pressure
@@ -1409,6 +1424,10 @@ class App(ctk.CTk):
 
                     print("[read_sensors] Latest time: ", self.graph_times[-1])
                     print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
+
+                    if not hasattr(self, 'non_protocol_start'):
+                        self.non_protocol_start = time.time()
+                    time_diff = time.time() - self.non_protocol_start
 
                 # print(f"Recorded data: {self.sensor_data[-1]}")
                 time.sleep(0.01)
