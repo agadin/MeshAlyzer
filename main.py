@@ -885,21 +885,22 @@ class App(ctk.CTk):
                 else:
                     app_bg_color = "#FFFFFF"
 
-                plt.close('all')  # Close all previous figures
-                self.ax.clear()
+                if False:
+                    plt.close('all')  # Close all previous figures
+                    self.ax.clear()
 
-                self.fig.patch.set_facecolor(app_bg_color)
-                self.ax.set_facecolor(app_bg_color)
+                    self.fig.patch.set_facecolor(app_bg_color)
+                    self.ax.set_facecolor(app_bg_color)
 
-                self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                if self.target_pressure is not None:
-                    self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
-                self.ax.set_ylim(0, 100)
-                self.ax.set_xlabel("Time (s)")
-                self.ax.set_ylabel("PSI")
-                self.canvas.draw()
+                    self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                    self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                    self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                    if self.target_pressure is not None:
+                        self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
+                    self.ax.set_ylim(0, 100)
+                    self.ax.set_xlabel("Time (s)")
+                    self.ax.set_ylabel("PSI")
+                    self.canvas.draw()
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
