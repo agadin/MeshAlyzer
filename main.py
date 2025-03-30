@@ -866,20 +866,6 @@ class App(ctk.CTk):
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
 
-                # Filter to only keep data points within the time window.
-                filtered_data = [
-                    (t, p0, p1, p2)
-                    for t, p0, p1, p2 in zip(self.graph_times, self.graph_input_pressures,
-                                             self.graph_pressure1s, self.graph_pressure2s)
-                    if t >= current_time_val - self.graph_time_range
-                ]
-                if filtered_data:
-                    self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = map(
-                        list, zip(*filtered_data))
-                else:
-                    self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = [], [], [], []
-
-
                 #debug print of graph data
 
                 if ctk.get_appearance_mode() == "Dark":
