@@ -147,6 +147,7 @@ class ProtocolViewer(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.graph_frame = None
         self.sampleID = None
         self.running = True  # Initialize the running attribute
         self.graph_time_range = 30  # Default time range in seconds (can be set to 15 or 60 as needed)
