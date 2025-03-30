@@ -828,10 +828,6 @@ class App(ctk.CTk):
                 self.force_display_frame.configure(
                     text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
 
-                # Debug: show sensor values received
-                print(f"Sensor update - Time: {minutes * 60 + seconds + milliseconds / 1000.0:.2f}, "
-                      f"Input: {current_input_pressure}, P1: {current_pressure1}, P2: {current_pressure2}")
-
                 # For the dummy BLK box, you can keep it constant or later add a condition
                 blk_status = True
 
@@ -869,13 +865,6 @@ class App(ctk.CTk):
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
-
-                # Debug: check lengths and sample data of graph lists
-                print(
-                    f"Graph data lengths: times={len(self.graph_times)}, input_pressures={len(self.graph_input_pressures)}")
-                if self.graph_times:
-                    print(
-                        f"Latest time: {self.graph_times[-1]}, Latest input pressure: {self.graph_input_pressures[-1]}")
 
                 self.ax.clear()
                 # Set background colors based on theme
