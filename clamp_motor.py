@@ -37,6 +37,12 @@ class MotorController:
             self.ser.close()
             print("Serial connection closed.")
 
+    def status(self):
+        """
+        Returns the status of the serial connection.
+        """
+        return True if self.ser.is_open else False
+
 
 def main():
     # Use the default port /dev/ttyACM0 for the Raspberry Pi.

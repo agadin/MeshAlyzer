@@ -141,6 +141,7 @@ class App(ctk.CTk):
         super().__init__()  # Initialize the parent class
         self.sampleID = None
         self.running = True  # Initialize the running attribute
+        self.graph_time_range = 30  # Default time range in seconds (can be set to 15 or 60 as needed)
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
         ctk.set_default_color_theme("blue")
 
@@ -178,6 +179,11 @@ class App(ctk.CTk):
         self.protocol_running = False  # Flag to indicate if the protocol is running
         self.total_steps = 0
         self.moving_steps_total = 0
+        self.graph_times = []
+        self.graph_input_pressures = []
+        self.graph_pressure1s = []
+        self.graph_pressure2s = []
+
 
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
@@ -539,6 +545,29 @@ class App(ctk.CTk):
         )
         self.lps_info_label.pack(side="bottom", pady=10, padx=10)
 
+        # add status lights below lps_info_label
+        # Container frame for status boxes
+        self.status_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        self.status_frame.pack(pady=10, padx=10)
+
+        # RPI Box – will check PressureReceiver status
+        self.rpi_box = ctk.CTkFrame(self.status_frame, width=80, height=40, corner_radius=10, fg_color="gray")
+        self.rpi_box.grid(row=0, column=0, padx=5)
+        self.rpi_label = ctk.CTkLabel(self.rpi_box, text="RPI", font=("Arial", 10, "bold"))
+        self.rpi_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        # UNO Box – will check self.motor_controller status
+        self.uno_box = ctk.CTkFrame(self.status_frame, width=80, height=40, corner_radius=10, fg_color="gray")
+        self.uno_box.grid(row=0, column=1, padx=5)
+        self.uno_label = ctk.CTkLabel(self.uno_box, text="UNO", font=("Arial", 10, "bold"))
+        self.uno_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        # BLK Box – dummy for now
+        self.blk_box = ctk.CTkFrame(self.status_frame, width=80, height=40, corner_radius=10, fg_color="gray")
+        self.blk_box.grid(row=0, column=2, padx=5)
+        self.blk_label = ctk.CTkLabel(self.blk_box, text="BLK", font=("Arial", 10, "bold"))
+        self.blk_label.place(relx=0.5, rely=0.5, anchor="center")
+
         # Valve control dropdown
         self.valve_control = ValveControlDropdown(
             self.sidebar_frame,
@@ -590,9 +619,34 @@ class App(ctk.CTk):
 
         # Row 1: Protocol step counter and Valve display
         self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
-        self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10)
+        self.protocol_step_counter.grid(row=0, column=0, padx=10, pady=10)
         self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
-        self.valve_display.grid(row=1, column=1, padx=10, pady=10)
+        self.valve_display.grid(row=0, column=1, padx=10, pady=10)
+
+        # make transparent graph here
+        # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
+        self.graph_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.graph_frame.pack(pady=10, padx=20, fill="both", expand=True)
+
+        # Create a Matplotlib figure with transparent background
+        self.fig, self.ax = plt.subplots(figsize=(6, 3))
+        self.fig.patch.set_facecolor("none")
+        self.ax.set_facecolor("none")
+        self.ax.set_title("")  # optional: remove title
+
+        # Embed the figure in the Tkinter frame
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(fill="both", expand=True)
+        # === END GRAPH SETUP ===
+        # Add a "Clear Graph" button underneath the graph
+        self.clear_graph_button = ctk.CTkButton(
+            self.main_frame,
+            text="Clear Graph",
+            command=self.clear_graph_data
+        )
+        self.clear_graph_button.pack(pady=(0, 10))
+
 
         # Initialize ProtocolViewer and start queue processing
         self.initialize_protocol_viewer()
@@ -766,12 +820,83 @@ class App(ctk.CTk):
 
             # Calculate average force and update force display
             avg_force = (current_pressure1 + current_pressure2) / 2
-            self.force_display_frame.configure(text=f"{avg_force:.2f} N\n{current_pressure1:.2f} N | {current_pressure2:.2f} N")
+            self.force_display_frame.configure(text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
+
+            # For the dummy BLK box, you can keep it constant or later add a condition
+            blk_status = True
+
+            try:
+                rpi_status = self.pressure_receiver.status()
+            except Exception as e:
+                print(f"Error checking PressureReceiver status: {e}")
+                rpi_status = False
+
+                # Check the UNO status using the motor_controller's status method
+            try:
+                uno_status = self.motor_controller.status()
+            except Exception as e:
+                print(f"Error checking MotorController status: {e}")
+                uno_status = False
+
+            # Set colors based on status (green for True, red for False)
+            rpi_color = "green" if rpi_status else "red"
+            uno_color = "green" if uno_status else "red"
+            blk_color = "green" if blk_status else "red"
+
+            self.rpi_box.configure(fg_color=rpi_color)
+            self.uno_box.configure(fg_color=uno_color)
+            self.blk_box.configure(fg_color=blk_color)
+
+            # === GRAPH UPDATE USING THE UPDATE PARAMETERS ===
+            # Convert the provided time components into a single seconds value.
+            current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
+
+            # Append the new data point to each list.
+            self.graph_times.append(current_time_val)
+            self.graph_input_pressures.append(current_input_pressure)
+            self.graph_pressure1s.append(current_pressure1)
+            self.graph_pressure2s.append(current_pressure2)
+
+            # Filter out any data points that are outside the current time window.
+            filtered_data = [
+                (t, p0, p1, p2)
+                for t, p0, p1, p2 in zip(self.graph_times, self.graph_input_pressures,
+                                         self.graph_pressure1s, self.graph_pressure2s)
+                if t >= current_time_val - self.graph_time_range
+            ]
+            if filtered_data:
+                self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = map(list,
+                                                                                                                 zip(*filtered_data))
+            else:
+                # If there are no valid data points, clear the lists.
+                self.graph_times, self.graph_input_pressures, self.graph_pressure1s, self.graph_pressure2s = [], [], [], []
+
+            # Plot the data ensuring that all lists have the same number of points.
+            self.ax.cla()  # Clear previous plot
+            self.ax.set_facecolor("none")
+            self.fig.patch.set_facecolor("none")
+            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure", color="blue")
+            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1", color="red")
+            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color="green")
+            # Plot self.target_pressure as a constant line (defaulting to 0 if not set)
+            target_val = self.target_pressure if self.target_pressure is not None else 0
+            self.ax.plot(self.graph_times, [target_val] * len(self.graph_times), label="Target Pressure",
+                         color="orange")
+
+            self.ax.set_xlabel("Time (s)")
+            self.ax.set_ylabel("Pressure")
+            self.ax.legend(loc="upper right", fontsize="small")
+            self.canvas.draw()
+            # === END GRAPH UPDATE ===
+
 
         # Set protocol_step to 0 if None
         protocol_step = self.protocol_step if self.protocol_step is not None else 0
         self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
         self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
+
+
+
 
         try:
             calibration_level = 0 #Cole change later
@@ -789,6 +914,18 @@ class App(ctk.CTk):
         self.lps_info_label.configure(
             text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
         )
+
+    def clear_graph_data(self):
+        # Reset the lists holding the graph data
+        self.graph_times = []
+        self.graph_input_pressures = []
+        self.graph_pressure1s = []
+        self.graph_pressure2s = []
+        # Clear the current graph
+        self.ax.cla()
+        self.ax.set_facecolor("none")
+        self.fig.patch.set_facecolor("none")
+        self.canvas.draw()
 
     def clear_graphs(self):
         # Reset the data lists
