@@ -1270,7 +1270,6 @@ class App(ctk.CTk):
             while True:
                 iteration_count += 1
                 current_iter_time = time.time()
-                print(f"[read_sensors] Iteration {iteration_count}, Time: {current_iter_time:.2f}")
 
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
@@ -1278,7 +1277,6 @@ class App(ctk.CTk):
                     time.sleep(0.1)
                     continue
                 pressure0, pressure1, pressure2, pressure3 = pressures
-                print(f"[read_sensors] Raw pressures: {pressures}")
 
                 # Initialize data_packet so it's always defined
                 data_packet = None
@@ -1322,8 +1320,6 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
-                    print(f"[read_sensors] Appended sensor data. Total count: {len(self.sensor_data)}")
-                    print(f"[read_sensors] Latest sensor data: {self.sensor_data[-1]}")
 
                     data_packet = {
                         'step_count': self.protocol_step,
@@ -1377,8 +1373,6 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
-                    print(f"[read_sensors] (Non-protocol) Appended sensor data. Total count: {len(self.sensor_data)}")
-                    print(f"[read_sensors] (Non-protocol) Latest sensor data: {self.sensor_data[-1]}")
 
                     data_packet = {
                         'step_count': self.protocol_step,
@@ -1396,7 +1390,6 @@ class App(ctk.CTk):
                 # Queue the data packet
                 if data_packet is not None:
                     self.update_queue.put(data_packet)
-                    print(f"[read_sensors] Data packet queued. Queue size: {self.update_queue.qsize()}")
 
                 time.sleep(0.1)
         except Exception as e:
