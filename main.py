@@ -876,7 +876,6 @@ class App(ctk.CTk):
                     print("[update_displays] Not enough data to plot. Latest graph_times entries:",
                           self.graph_times[-5:] if self.graph_times else "No data")
                 else:
-                    print("[update_displays] Plotting graph with available data.")
                     self.ax.clear()
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
@@ -1405,9 +1404,7 @@ class App(ctk.CTk):
         try:
             while True:
                 q_size = self.update_queue.qsize()
-                print(f"[process_queue] Current queue size before get: {q_size}")
                 data = self.update_queue.get_nowait()
-                print(f"[process_queue] Data received from queue: {data}")
 
                 self.update_displays(
                     step_count=data['step_count'],
