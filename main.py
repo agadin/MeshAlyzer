@@ -873,7 +873,7 @@ class App(ctk.CTk):
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
                 if len(self.graph_times) < 2:
-                    print("[update_displays] Not enough data to plot. Latest graph_times entries:",
+                    print("[update_displays] Not enough data to plot. Latest graph_times entries: SIKE!!",
                           self.graph_times[-5:] if self.graph_times else "No data")
                 else:
                     self.ax.clear()
