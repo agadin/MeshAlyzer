@@ -1307,8 +1307,6 @@ class App(ctk.CTk):
                         self.non_protocol_start = time.time()
                     time_diff = time.time() - self.non_protocol_start
 
-                print(f"[read_sensors] time_diff: {time_diff:.2f}")
-
                 # Read additional sensor values and process them
                 LPS_pressure = self.lps.pressure
                 LPS_temperature = self.lps.temperature
