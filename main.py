@@ -924,11 +924,9 @@ class App(ctk.CTk):
         except Exception as e:
             print(f"Error updating Calibrate button: {e}")
             self.calibrate_button.configure(fg_color="gray")
-        if lps_pressure is not None and lps_temp is not None:
-            self.lps_info_label.configure(text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C")
-        else:
-            self.lps_info_label.configure(text="LPS: N/A")
-
+        self.lps_info_label.configure(
+            text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
+        )
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
