@@ -874,18 +874,17 @@ class App(ctk.CTk):
                     app_bg_color = "#FFFFFF"
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
-
-                # Debug prints for all data lists
-                print("Graph Times:", self.graph_times)
-                print("Graph Input Pressures:", self.graph_input_pressures)
-                print("Graph Pressure1s:", self.graph_pressure1s)
-                print("Graph Pressure2s:", self.graph_pressure2s)
-
-                # Instead of checking if self.graph_times[-1] is truthy, check the list’s length:
+                # Debug the lengths of your graph data lists
+                print(f"[update_displays] Graph lengths - times: {len(self.graph_times)}, "
+                      f"input_pressures: {len(self.graph_input_pressures)}, "
+                      f"pressure1s: {len(self.graph_pressure1s)}, "
+                      f"pressure2s: {len(self.graph_pressure2s)}")
                 if len(self.graph_times) < 2:
-                    print("Not enough data to plot a line yet.")
+                    print("[update_displays] Not enough data to plot. Latest graph_times entries:",
+                          self.graph_times[-5:] if self.graph_times else "No data")
                 else:
-                    print("Plotting with data. Times:", self.graph_times)
+                    print("[update_displays] Plotting graph with available data.")
+                    self.ax.clear()
                     self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                     self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                     self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
@@ -896,7 +895,7 @@ class App(ctk.CTk):
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
                     self.canvas.draw()
-                    print("Canvas redrawn with updated plot.")
+                    print("[update_displays] Canvas redrawn with updated plot.")
 
             except Exception as e:
                 print(f"Error updating displays: {e}")
@@ -905,19 +904,7 @@ class App(ctk.CTk):
         try:
             calibration_level = 0  # Cole change later
             if calibration_level == 0:
-                self.calibrate_button.configure(fg_color="red")
-            elif calibration_level == 1:
-                self.calibrate_button.configure(fg_color="yellow")
-            elif calibration_level == 2:
-                self.calibrate_button.configure(fg_color="green")
-            else:
-                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
-        except Exception as e:
-            print(f"Error updating Calibrate button: {e}")
-            self.calibrate_button.configure(fg_color="gray")
-        self.lps_info_label.configure(
-            text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
-        )
+                self.calibrate_button.configure(fg_color="red")import shutil
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
@@ -1275,9 +1262,12 @@ class App(ctk.CTk):
 
     def read_sensors(self):
         print("[read_sensors] Sensor thread started.")
-
+        iteration_count = 0
         try:
             while True:
+                iteration_count += 1
+                current_iter_time = time.time()
+                print(f"[read_sensors] Iteration {iteration_count}, Time: {current_iter_time:.2f}")
 
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
@@ -1285,6 +1275,7 @@ class App(ctk.CTk):
                     time.sleep(0.1)
                     continue  # Skip this iteration if data is insufficient
                 pressure0, pressure1, pressure2, pressure3 = pressures
+                print(f"[read_sensors] Raw pressures: {pressures}")
 
                 if (self.protocol_step is not None and self.protocol_step > 0):
                     # Record the time difference between the protocol start time and the current time
@@ -1335,7 +1326,8 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
-                    print(f"[read_sensors] Appended sensor data at time {time_diff:.2f}")
+                    print(f"[read_sensors] Appended sensor data. Total count: {len(self.sensor_data)}")
+                    print(f"[read_sensors] Latest sensor data: {self.sensor_data[-1]}")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1346,7 +1338,8 @@ class App(ctk.CTk):
                         'seconds': int(time_diff % 60),
                         'milliseconds': int((time_diff * 1000) % 1000)
                     })
-                    print("[read_sensors] Data put in queue (protocol running branch)")
+                    self.update_queue.put(data_packet)
+                    print(f"[read_sensors] Data packet queued. Queue size: {self.update_queue.qsize()}")
 
                     print("[read_sensors] Latest time: ", self.graph_times[-1])
                     print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
@@ -1395,7 +1388,8 @@ class App(ctk.CTk):
                         'clamp_state': self.clamp_state,
                         'self_protocol_step': self.protocol_step
                     })
-                    print("[read_sensors] Appended sensor data (protocol not running branch)")
+                    print(f"[read_sensors] (Non-protocol) Appended sensor data. Total count: {len(self.sensor_data)}")
+                    print(f"[read_sensors] (Non-protocol) Latest sensor data: {self.sensor_data[-1]}")
 
                     # Update displays with the new sensor data
                     self.update_queue.put({
@@ -1411,7 +1405,8 @@ class App(ctk.CTk):
                         'valve1_state': valve1_state,
                         'valve2_state': valve2_state
                     })
-                    print("[read_sensors] Data put in queue (protocol not running branch)")
+                    self.update_queue.put(data_packet)
+                    print(f"[read_sensors] (Non-protocol) Data packet queued. Queue size: {self.update_queue.qsize()}")
 
                     print("[read_sensors] Latest time: ", self.graph_times[-1])
                     print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
@@ -1436,8 +1431,10 @@ class App(ctk.CTk):
     def process_queue(self):
         try:
             while True:
+                q_size = self.update_queue.qsize()
+                print(f"[process_queue] Current queue size before get: {q_size}")
                 data = self.update_queue.get_nowait()
-                print("Queue data received:", data)  # This should show up if data is queued
+                print(f"[process_queue] Data received from queue: {data}")
 
                 self.update_displays(
                     step_count=data['step_count'],
@@ -1455,7 +1452,7 @@ class App(ctk.CTk):
 
         except queue.Empty:
             pass
-        self.after(100, self.process_queue)
+        self.after(500, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
