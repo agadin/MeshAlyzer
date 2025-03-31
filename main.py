@@ -1281,54 +1281,47 @@ class App(ctk.CTk):
 
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
-                    print("[read_sensors] Pressure data not available (got: {})".format(pressures))
+                    print(f"[read_sensors] Pressure data not available: {pressures}")
                     time.sleep(0.1)
-                    continue  # Skip this iteration if data is insufficient
+                    continue
                 pressure0, pressure1, pressure2, pressure3 = pressures
                 print(f"[read_sensors] Raw pressures: {pressures}")
 
-                if (self.protocol_step is not None and self.protocol_step > 0):
-                    # Record the time difference between the protocol start time and the current time
+                # Initialize data_packet so it's always defined
+                data_packet = None
+
+                if self.protocol_step is not None and self.protocol_step > 0:
                     if self.init is not None:
                         self.protocol_start_time = time.time()
                         time_diff = 0
                         self.sensor_data = []  # Reset sensor data for the new protocol
                         self.init = None
+                        print("[read_sensors] Protocol started, sensor data reset.")
                     else:
-                        current_time = time.time()
-                        time_diff = current_time - self.protocol_start_time
+                        time_diff = time.time() - self.protocol_start_time
 
-                    # Read sensor values
                     LPS_pressure = self.lps.pressure
                     LPS_temperature = self.lps.temperature
-
-                    # Convert pressure and temperature values using the converter function
                     self.update_pressure_values()
+                    (self.pressure0_convert,
+                     self.pressure1_convert,
+                     self.pressure2_convert) = self.pressure_sensor_converter(
+                        pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature)
 
-                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
-                        self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
-
-                    # get valve state
                     valve1_state = self.valve1.get_state()
                     valve2_state = self.valve2.get_state()
 
-                    if self.sensor_data:
-                        last_value = self.sensor_data[-1]
-                    else:
-                        print("[read_sensors] sensor_data is empty!")
-
-                    # Add new values to the list
                     self.sensor_data.append({
                         'time': time_diff,
                         'LPS_pressure': LPS_pressure,
                         'LPS_temperature': LPS_temperature,
-                        'pressure0': self.pressure0,
+                        'pressure0': pressure0,
                         'pressure0_convert': self.pressure0_convert,
-                        'pressure1': self.pressure1,
+                        'pressure1': pressure1,
                         'pressure1_convert': self.pressure1_convert,
-                        'pressure2': self.pressure2,
+                        'pressure2': pressure2,
                         'pressure2_convert': self.pressure2_convert,
-                        'pressure3': self.pressure3,
+                        'pressure3': pressure3,
                         'valve1_state': valve1_state,
                         'valve2_state': valve2_state,
                         'self_target_pressure': self.target_pressure,
@@ -1339,58 +1332,48 @@ class App(ctk.CTk):
                     print(f"[read_sensors] Appended sensor data. Total count: {len(self.sensor_data)}")
                     print(f"[read_sensors] Latest sensor data: {self.sensor_data[-1]}")
 
-                    # Update displays with the new sensor data
-                    self.update_queue.put({
+                    data_packet = {
                         'step_count': self.protocol_step,
                         'current_input_pressure': self.pressure0_convert,
                         'current_pressure1': self.pressure1_convert,
+                        'current_pressure2': self.pressure2_convert,
                         'minutes': int(time_diff // 60),
                         'seconds': int(time_diff % 60),
-                        'milliseconds': int((time_diff * 1000) % 1000)
-                    })
-                    self.update_queue.put(data_packet)
-                    print(f"[read_sensors] Data packet queued. Queue size: {self.update_queue.qsize()}")
-
-                    print("[read_sensors] Latest time: ", self.graph_times[-1])
-                    print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
-
-
+                        'milliseconds': int((time_diff * 1000) % 1000),
+                        'LPS_pressure': LPS_pressure,
+                        'LPS_temperature': LPS_temperature,
+                        'valve1_state': valve1_state,
+                        'valve2_state': valve2_state
+                    }
                 else:
-                    # Record the time difference between the protocol start time and the current time
+                    # Non-protocol branch
                     current_time = time.time()
-                    time_diff = current_time
+                    if not hasattr(self, 'non_protocol_start'):
+                        self.non_protocol_start = current_time
+                    time_diff = current_time - self.non_protocol_start
 
-                    # Read sensor values
                     LPS_pressure = self.lps.pressure
                     LPS_temperature = self.lps.temperature
-
-                    # Convert pressure and temperature values using the converter function
                     self.update_pressure_values()
+                    (self.pressure0_convert,
+                     self.pressure1_convert,
+                     self.pressure2_convert) = self.pressure_sensor_converter(
+                        pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature)
 
-                    self.pressure0_convert, self.pressure1_convert, self.pressure2_convert = self.pressure_sensor_converter(
-                        self.pressure0, self.pressure1, self.pressure2, LPS_pressure, LPS_temperature)
-
-                    # get valve state
                     valve1_state = self.valve1.get_state()
                     valve2_state = self.valve2.get_state()
 
-                    if self.sensor_data:
-                        last_value = self.sensor_data[-1]
-                    else:
-                        print("[read_sensors] sensor_data is empty!")
-
-                    # Add new values to the list
                     self.sensor_data.append({
                         'time': -1,
                         'LPS_pressure': LPS_pressure,
                         'LPS_temperature': LPS_temperature,
-                        'pressure0': self.pressure0,
+                        'pressure0': pressure0,
                         'pressure0_convert': self.pressure0_convert,
-                        'pressure1': self.pressure1,
+                        'pressure1': pressure1,
                         'pressure1_convert': self.pressure1_convert,
-                        'pressure2': self.pressure2,
+                        'pressure2': pressure2,
                         'pressure2_convert': self.pressure2_convert,
-                        'pressure3': self.pressure3,
+                        'pressure3': pressure3,
                         'valve1_state': valve1_state,
                         'valve2_state': valve2_state,
                         'self_target_pressure': self.target_pressure,
@@ -1401,8 +1384,7 @@ class App(ctk.CTk):
                     print(f"[read_sensors] (Non-protocol) Appended sensor data. Total count: {len(self.sensor_data)}")
                     print(f"[read_sensors] (Non-protocol) Latest sensor data: {self.sensor_data[-1]}")
 
-                    # Update displays with the new sensor data
-                    self.update_queue.put({
+                    data_packet = {
                         'step_count': self.protocol_step,
                         'current_input_pressure': self.pressure0_convert,
                         'current_pressure1': self.pressure1_convert,
@@ -1414,21 +1396,15 @@ class App(ctk.CTk):
                         'LPS_temperature': LPS_temperature,
                         'valve1_state': valve1_state,
                         'valve2_state': valve2_state
-                    })
+                    }
+                # Use data_packet now that it's defined
+                if data_packet is not None:
                     self.update_queue.put(data_packet)
-                    print(f"[read_sensors] (Non-protocol) Data packet queued. Queue size: {self.update_queue.qsize()}")
+                    print(f"[read_sensors] Data packet queued. Queue size: {self.update_queue.qsize()}")
 
-                    print("[read_sensors] Latest time: ", self.graph_times[-1])
-                    print("[read_sensors] Latest Pressure1: ", self.graph_pressure1s[-1])
-
-                    if not hasattr(self, 'non_protocol_start'):
-                        self.non_protocol_start = time.time()
-                    time_diff = time.time() - self.non_protocol_start
-
-                # print(f"Recorded data: {self.sensor_data[-1]}")
                 time.sleep(0.1)
         except Exception as e:
-            print(f"Error in read_sensors: {e}")
+            print(f"[read_sensors] Error: {e}")
 
     def pressure_sensor_converter(self, pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature):
         # Convert raw sensor values to calibrated pressures for each sensor.
