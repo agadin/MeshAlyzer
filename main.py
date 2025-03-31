@@ -904,7 +904,7 @@ class App(ctk.CTk):
         try:
             calibration_level = 0  # Cole change later
             if calibration_level == 0:
-                self.calibrate_button.configure(fg_color="red")import shutil
+                self.calibrate_button.configure(fg_color="red")
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
