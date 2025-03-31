@@ -41,9 +41,7 @@ warnings.filterwarnings(
     message="X does not have valid feature names, but StandardScaler was fitted with feature names",
     category=UserWarning
 )
-
-
-
+import numpy as np
 # Sensor import
 from PressureSensorReader import PressureReceiver
 from ValveController import ValveController
@@ -905,6 +903,18 @@ class App(ctk.CTk):
             calibration_level = 0  # Cole change later
             if calibration_level == 0:
                 self.calibrate_button.configure(fg_color="red")
+            elif calibration_level == 1:
+                self.calibrate_button.configure(fg_color="yellow")
+            elif calibration_level == 2:
+                self.calibrate_button.configure(fg_color="green")
+            else:
+                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+        except Exception as e:
+            print(f"Error updating Calibrate button: {e}")
+            self.calibrate_button.configure(fg_color="gray")
+        self.lps_info_label.configure(
+            text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
+        )
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
