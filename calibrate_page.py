@@ -94,22 +94,34 @@ class CalibratePage(ctk.CTkFrame):
             self.sensor3_button.configure(fg_color=new_color)
 
     def update_graph(self):
+        # Clear the axis and set the background according to the appearance mode
         self.ax.cla()
-        self.ax.set_title("Pressure Sensor Raw Values")
-        self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("Pressure Value")
-        times = [data['time'] for data in self.app.sensor_data if data['time'] >= 0]
-        if times:
-            p0 = [data['pressure0'] for data in self.app.sensor_data if data['time'] >= 0]
-            p1 = [data['pressure1'] for data in self.app.sensor_data if data['time'] >= 0]
-            p2 = [data['pressure2'] for data in self.app.sensor_data if data['time'] >= 0]
-            p3 = [data['pressure3'] for data in self.app.sensor_data if data['time'] >= 0]
-            self.ax.plot(times, p0, label="Raw Pressure0")
-            self.ax.plot(times, p1, label="Raw Pressure1")
-            self.ax.plot(times, p2, label="Raw Pressure2")
-            self.ax.legend(loc='upper right')
+        if ctk.get_appearance_mode() == "Dark":
+            app_bg_color = "#1F1F1F"
+        else:
+            app_bg_color = "#FFFFFF"
+        self.fig.patch.set_facecolor(app_bg_color)
+        self.ax.set_facecolor(app_bg_color)
+
+        # Check if there is enough data to plot
+        if len(self.app.graph_times) < 2:
+            print("[CalibratePage.update_graph] Not enough data to plot. Latest entries:",
+                  self.app.graph_times[-5:] if self.app.graph_times else "No data")
+        else:
+            # Plot the pressures
+            self.ax.plot(self.app.graph_times, self.app.graph_input_pressures, label="Input Pressure")
+            self.ax.plot(self.app.graph_times, self.app.graph_pressure1s, label="Pressure 1")
+            self.ax.plot(self.app.graph_times, self.app.graph_pressure2s, label="Pressure 2")
+            if self.app.target_pressure is not None:
+                self.ax.plot(self.app.graph_times, self.app.target_pressure, label="Target Pressure")
+            self.ax.set_ylim(0, 100)
+            self.ax.set_xlabel("Time (s)")
+            self.ax.set_ylabel("PSI")
+            self.ax.legend()
+
         self.canvas.draw()
-        self.after(1000, self.update_graph)
+        # Update every 500ms
+        self.after(500, self.update_graph)
 
     def prompt_measured_pressure_before(self, target_pressure):
         """
