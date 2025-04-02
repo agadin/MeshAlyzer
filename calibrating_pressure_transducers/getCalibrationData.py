@@ -5,8 +5,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.compose import TransformedTargetRegressor
 from joblib import dump
+import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings(
@@ -15,10 +17,8 @@ warnings.filterwarnings(
     category=UserWarning
 )
 
-
-
 class PressureCalibrator:
-    def __init__(self, data_folder=None, max_iter=100000000000000000000000000000000000000000, random_state=42):
+    def __init__(self, data_folder=None, max_iter=100000, random_state=42):
         self.data_folder = data_folder
         self.max_iter = max_iter
         self.random_state = random_state
@@ -29,7 +29,7 @@ class PressureCalibrator:
         Load and concatenate CSV files from the provided folder.
         Each CSV must contain at least the following columns:
             'Measured_pressure', 'LPS_pressure', 'LPS_temperature'
-        Sensor columns (pressure0, pressure1, pressure2) are also expected but are allowed to have missing values.
+        Sensor columns (pressure0, pressure1, pressure2) are also expected but may have missing values.
         Returns:
             combined_df (DataFrame): Combined data from all CSV files.
         """
@@ -67,53 +67,112 @@ class PressureCalibrator:
 
     def train(self):
         """
-        Train separate models for each sensor (pressure0, pressure1, pressure2).
-        For each sensor, the feature used is the sensor reading only and the target is Measured_pressure.
-        Only rows with non-missing data for the sensor being trained are used.
+        Train separate models for each sensor (pressure0, pressure1, pressure2) using only the sensor's raw value.
+        The target is Measured_pressure. Data is split into training, validation, and test sets.
+        After training, the method evaluates and plots metrics on both the validation and test sets.
+        The target is scaled using TransformedTargetRegressor to improve convergence.
         """
         combined_df = self.load_data()
         sensors = ['pressure0', 'pressure1', 'pressure2']
 
         for sensor in sensors:
-            # Now only using the sensor value as the feature
+            # Use only the sensor's raw value as the feature.
             features = [sensor]
-            # Drop rows only if the sensor reading is missing
+            # Drop rows if the sensor reading is missing
             df_sensor = combined_df.dropna(subset=[sensor])
             X = df_sensor[features]
             y = df_sensor['Measured_pressure']
-            print(f"Training model for {sensor} with features: {features} (Data shape: {X.shape})")
+            print(f"\nTraining model for {sensor} with features: {features} (Data shape: {X.shape})")
 
-            # Split data into train (70%) and test (30%) sets.
-            X_train, X_test, y_train, y_test = train_test_split(
+            # First split into train+validation and test sets (e.g., 70% train+val, 30% test)
+            X_train_val, X_test, y_train_val, y_test = train_test_split(
                 X, y, test_size=0.30, random_state=self.random_state
             )
+            # Then split the train+validation into training and validation sets (e.g., 80% train, 20% validation)
+            X_train, X_val, y_train, y_val = train_test_split(
+                X_train_val, y_train_val, test_size=0.20, random_state=self.random_state
+            )
 
-            # Create a pipeline that scales the data and trains an MLP regressor.
+            # Create a pipeline that scales the feature(s) and trains an MLP regressor.
+            base_regressor = MLPRegressor(hidden_layer_sizes=(10,),
+                                          activation='tanh',
+                                          solver='lbfgs',
+                                          max_iter=self.max_iter,
+                                          random_state=self.random_state)
+            regressor = TransformedTargetRegressor(
+                regressor=base_regressor,
+                transformer=StandardScaler()
+            )
             model = Pipeline([
                 ('scaler', StandardScaler()),
-                ('regressor', MLPRegressor(hidden_layer_sizes=(10,),
-                                           activation='tanh',
-                                           solver='lbfgs',
-                                           max_iter=self.max_iter,
-                                           random_state=self.random_state))
+                ('regressor', regressor)
             ])
 
             # Train the model on the training set.
             model.fit(X_train, y_train)
 
-            # Evaluate the model on the test set.
-            y_pred = model.predict(X_test)
-            mse = mean_squared_error(y_test, y_pred)
-            rmse = np.sqrt(mse)
-            r2 = r2_score(y_test, y_pred)
-            print(f"{sensor}: Test RMSE: {rmse:.3f}, Test R^2: {r2:.3f}")
+            # Evaluate on the validation set.
+            y_val_pred = model.predict(X_val)
+            mse_val = mean_squared_error(y_val, y_val_pred)
+            rmse_val = np.sqrt(mse_val)
+            r2_val = r2_score(y_val, y_val_pred)
+            mae_val = mean_absolute_error(y_val, y_val_pred)
+            print(f"{sensor} Validation: RMSE: {rmse_val:.3f}, R^2: {r2_val:.3f}, MAE: {mae_val:.3f}")
 
-            # Store the model for this sensor
+            # Evaluate on the test set.
+            y_test_pred = model.predict(X_test)
+            mse_test = mean_squared_error(y_test, y_test_pred)
+            rmse_test = np.sqrt(mse_test)
+            r2_test = r2_score(y_test, y_test_pred)
+            mae_test = mean_absolute_error(y_test, y_test_pred)
+            print(f"{sensor} Test: RMSE: {rmse_test:.3f}, R^2: {r2_test:.3f}, MAE: {mae_test:.3f}")
+
+            # Produce evaluation plots for the validation set.
+            self._plot_evaluation(y_val, y_val_pred, sensor, dataset='Validation')
+            # Produce evaluation plots for the test set.
+            self._plot_evaluation(y_test, y_test_pred, sensor, dataset='Test')
+
+            # Store the model for this sensor.
             self.models[sensor] = model
 
-        # Optionally, save all models to a file
+        # Optionally, save all models to a file.
         dump(self.models, 'trained_pressure_calibrator_multioutput.joblib')
         print("Models saved")
+
+    def _plot_evaluation(self, y_true, y_pred, sensor, dataset='Validation'):
+        """
+        Generate evaluation plots: scatter, residual plot, and histogram of residuals.
+        """
+        # Scatter plot: Predicted vs. Actual
+        plt.figure(figsize=(6, 5))
+        plt.scatter(y_true, y_pred, alpha=0.6, label='Data points')
+        plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'r--', label='Ideal fit')
+        plt.title(f"{sensor} - {dataset}: Predicted vs Actual")
+        plt.xlabel("Measured Pressure")
+        plt.ylabel("Predicted Pressure")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        # Residual plot: Residual vs. Actual
+        residuals = y_true - y_pred
+        plt.figure(figsize=(6, 5))
+        plt.scatter(y_true, residuals, alpha=0.6)
+        plt.axhline(y=0, color='r', linestyle='--')
+        plt.title(f"{sensor} - {dataset}: Residual Plot")
+        plt.xlabel("Measured Pressure")
+        plt.ylabel("Residual (Measured - Predicted)")
+        plt.tight_layout()
+        plt.show()
+
+        # Histogram of residuals
+        plt.figure(figsize=(6, 5))
+        plt.hist(residuals, bins=30, alpha=0.7)
+        plt.title(f"{sensor} - {dataset}: Residual Histogram")
+        plt.xlabel("Residual (Measured - Predicted)")
+        plt.ylabel("Frequency")
+        plt.tight_layout()
+        plt.show()
 
     def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure=None, LPS_temperature=None):
         """
@@ -141,7 +200,7 @@ class PressureCalibrator:
         if sensor not in self.models:
             raise ValueError(f"Model for sensor {sensor} is not trained.")
 
-        mlp_regressor = self.models[sensor].named_steps['regressor']
+        mlp_regressor = self.models[sensor].named_steps['regressor'].regressor
         params = {
             'W1': mlp_regressor.coefs_[0],
             'b1': mlp_regressor.intercepts_[0],
@@ -155,5 +214,5 @@ if __name__ == "__main__":
     # Initialize the calibrator with the folder containing your training CSV files.
     calibrator = PressureCalibrator(data_folder='/Users/colehanan/Desktop/WashuClasses/MeshAlyzer/combined_csv_files/')
 
-    # Train the models for each sensor.
+    # Train the models for each sensor, with validation and test evaluation.
     calibrator.train()
