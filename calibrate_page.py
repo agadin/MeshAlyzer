@@ -49,15 +49,15 @@ class CalibratePage(ctk.CTkFrame):
         self.sensor_values_frame.columnconfigure((0, 1, 2), weight=1)
 
         self.sensor0_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 0: N/A", font=("Arial", 16)
+            self.sensor_values_frame, text="Sensor 1: N/A", font=("Arial", 16)
         )
         self.sensor0_label.grid(row=0, column=0, padx=5, pady=5)
         self.sensor1_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 1: N/A", font=("Arial", 16)
+            self.sensor_values_frame, text="Sensor 2: N/A", font=("Arial", 16)
         )
         self.sensor1_label.grid(row=0, column=1, padx=5, pady=5)
         self.sensor2_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 2: N/A", font=("Arial", 16)
+            self.sensor_values_frame, text="Sensor 3: N/A", font=("Arial", 16)
         )
         self.sensor2_label.grid(row=0, column=2, padx=5, pady=5)
         self.update_sensor_values()  # Start updating sensor labels
@@ -115,9 +115,12 @@ class CalibratePage(ctk.CTkFrame):
     def update_sensor_values(self):
         try:
             # Format values to 2 decimal places if numeric; otherwise show N/A.
-            value0 = f"{self.app.pressure0:.2f}" if hasattr(self.app, "pressure0") and isinstance(self.app.pressure0, (int, float)) else "N/A"
-            value1 = f"{self.app.pressure1:.2f}" if hasattr(self.app, "pressure1") and isinstance(self.app.pressure1, (int, float)) else "N/A"
-            value2 = f"{self.app.pressure2:.2f}" if hasattr(self.app, "pressure2") and isinstance(self.app.pressure2, (int, float)) else "N/A"
+            value0 = f"{self.app.pressure0_convert:.2f}" if hasattr(self.app, "pressure0_convert") and isinstance(
+                self.app.pressure0_convert, (int, float)) else "N/A"
+            value1 = f"{self.app.pressure1_convert:.2f}" if hasattr(self.app, "pressure1_convert") and isinstance(
+                self.app.pressure1_convert, (int, float)) else "N/A"
+            value2 = f"{self.app.pressure2_convert:.2f}" if hasattr(self.app, "pressure2_convert") and isinstance(
+                self.app.pressure2_convert, (int, float)) else "N/A"
             self.sensor0_label.configure(text=f"Sensor 0: {value0}")
             self.sensor1_label.configure(text=f"Sensor 1: {value1}")
             self.sensor2_label.configure(text=f"Sensor 2: {value2}")
