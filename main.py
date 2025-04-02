@@ -894,16 +894,20 @@ class App(ctk.CTk):
 
         try:
             calibration_level = 0  # Cole change later
-            if calibration_level == 0:
-                self.calibrate_button.configure(fg_color="red")
-            elif calibration_level == 1:
-                self.calibrate_button.configure(fg_color="yellow")
-            elif calibration_level == 2:
-                self.calibrate_button.configure(fg_color="green")
-            else:
-                self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+
+            # Only update if the button still exists
+            if hasattr(self, 'calibrate_button') and self.calibrate_button.winfo_exists():
+                if calibration_level == 0:
+                    self.calibrate_button.configure(fg_color="red")
+                elif calibration_level == 1:
+                    self.calibrate_button.configure(fg_color="yellow")
+                elif calibration_level == 2:
+                    self.calibrate_button.configure(fg_color="green")
+                else:
+                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
         except Exception as e:
             print(f"Error updating Calibrate button: {e}")
+
             self.calibrate_button.configure(fg_color="gray")
         self.lps_info_label.configure(
             text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
