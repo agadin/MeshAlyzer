@@ -8,7 +8,6 @@ import datetime
 import threading
 import os
 
-
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
         """
@@ -23,14 +22,22 @@ class CalibratePage(ctk.CTkFrame):
         self.top_frame.pack(fill="x", padx=10, pady=5)
         self.top_frame.columnconfigure((0, 1), weight=1)
 
-        self.check_calib_button = ctk.CTkButton(self.top_frame, text="Check Calibration",
-                                                command=self.start_check_calibration,
-                                                width=150, height=40, text_font=("Arial", 14))
+        self.check_calib_button = ctk.CTkButton(
+            self.top_frame,
+            text="Check Calibration",
+            command=self.start_check_calibration,
+            width=150, height=40,
+            font=("Arial", 14)
+        )
         self.check_calib_button.grid(row=0, column=0, padx=10, pady=5)
 
-        self.sensor_calib_button = ctk.CTkButton(self.top_frame, text="Calibrate Pressure Sensors",
-                                                 command=self.start_sensor_calibration,
-                                                 width=200, height=40, text_font=("Arial", 14))
+        self.sensor_calib_button = ctk.CTkButton(
+            self.top_frame,
+            text="Calibrate Pressure Sensors",
+            command=self.start_sensor_calibration,
+            width=200, height=40,
+            font=("Arial", 14)
+        )
         self.sensor_calib_button.grid(row=0, column=1, padx=10, pady=5)
 
         # --- Sensor Values Display ---
@@ -38,13 +45,21 @@ class CalibratePage(ctk.CTkFrame):
         self.sensor_values_frame.pack(fill="x", padx=10, pady=5)
         self.sensor_values_frame.columnconfigure((0, 1, 2, 3), weight=1)
 
-        self.sensor0_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 0: N/A", text_font=("Arial", 12))
+        self.sensor0_label = ctk.CTkLabel(
+            self.sensor_values_frame, text="Sensor 0: N/A", font=("Arial", 12)
+        )
         self.sensor0_label.grid(row=0, column=0, padx=5, pady=5)
-        self.sensor1_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 1: N/A", text_font=("Arial", 12))
+        self.sensor1_label = ctk.CTkLabel(
+            self.sensor_values_frame, text="Sensor 1: N/A", font=("Arial", 12)
+        )
         self.sensor1_label.grid(row=0, column=1, padx=5, pady=5)
-        self.sensor2_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 2: N/A", text_font=("Arial", 12))
+        self.sensor2_label = ctk.CTkLabel(
+            self.sensor_values_frame, text="Sensor 2: N/A", font=("Arial", 12)
+        )
         self.sensor2_label.grid(row=0, column=2, padx=5, pady=5)
-        self.sensor3_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 3: N/A", text_font=("Arial", 12))
+        self.sensor3_label = ctk.CTkLabel(
+            self.sensor_values_frame, text="Sensor 3: N/A", font=("Arial", 12)
+        )
         self.sensor3_label.grid(row=0, column=3, padx=5, pady=5)
         self.update_sensor_values()  # Start updating sensor labels
 
@@ -63,22 +78,34 @@ class CalibratePage(ctk.CTkFrame):
         self.bottom_frame.pack(fill="x", padx=10, pady=5)
         self.bottom_frame.columnconfigure((0, 1, 2), weight=1)
 
-        self.sensor1_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 1",
-                                            fg_color="gray", width=150, height=40,
-                                            text_font=("Arial", 14),
-                                            command=lambda: self.toggle_sensor(0))
+        self.sensor1_button = ctk.CTkButton(
+            self.bottom_frame,
+            text="Pressure Sensor 1",
+            fg_color="gray",
+            width=150, height=40,
+            font=("Arial", 14),
+            command=lambda: self.toggle_sensor(0)
+        )
         self.sensor1_button.grid(row=0, column=0, padx=10, pady=5)
 
-        self.sensor2_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 2",
-                                            fg_color="gray", width=150, height=40,
-                                            text_font=("Arial", 14),
-                                            command=lambda: self.toggle_sensor(1))
+        self.sensor2_button = ctk.CTkButton(
+            self.bottom_frame,
+            text="Pressure Sensor 2",
+            fg_color="gray",
+            width=150, height=40,
+            font=("Arial", 14),
+            command=lambda: self.toggle_sensor(1)
+        )
         self.sensor2_button.grid(row=0, column=1, padx=10, pady=5)
 
-        self.sensor3_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 3",
-                                            fg_color="gray", width=150, height=40,
-                                            text_font=("Arial", 14),
-                                            command=lambda: self.toggle_sensor(2))
+        self.sensor3_button = ctk.CTkButton(
+            self.bottom_frame,
+            text="Pressure Sensor 3",
+            fg_color="gray",
+            width=150, height=40,
+            font=("Arial", 14),
+            command=lambda: self.toggle_sensor(2)
+        )
         self.sensor3_button.grid(row=0, column=2, padx=10, pady=5)
 
         self.sensor_selected = [False, False, False]
@@ -88,15 +115,18 @@ class CalibratePage(ctk.CTkFrame):
 
     def update_sensor_values(self):
         try:
-            # Update sensor labels with current sensor values.
             self.sensor0_label.configure(
-                text=f"Sensor 0: {self.app.pressure0 if hasattr(self.app, 'pressure0') else 'N/A'}")
+                text=f"Sensor 0: {self.app.pressure0 if hasattr(self.app, 'pressure0') else 'N/A'}"
+            )
             self.sensor1_label.configure(
-                text=f"Sensor 1: {self.app.pressure1 if hasattr(self.app, 'pressure1') else 'N/A'}")
+                text=f"Sensor 1: {self.app.pressure1 if hasattr(self.app, 'pressure1') else 'N/A'}"
+            )
             self.sensor2_label.configure(
-                text=f"Sensor 2: {self.app.pressure2 if hasattr(self.app, 'pressure2') else 'N/A'}")
+                text=f"Sensor 2: {self.app.pressure2 if hasattr(self.app, 'pressure2') else 'N/A'}"
+            )
             self.sensor3_label.configure(
-                text=f"Sensor 3: {self.app.pressure3 if hasattr(self.app, 'pressure3') else 'N/A'}")
+                text=f"Sensor 3: {self.app.pressure3 if hasattr(self.app, 'pressure3') else 'N/A'}"
+            )
         except Exception as e:
             print(f"Error updating sensor values: {e}")
         self.after(500, self.update_sensor_values)
@@ -122,12 +152,12 @@ class CalibratePage(ctk.CTkFrame):
             self.fig.patch.set_facecolor(app_bg_color)
             self.ax.set_facecolor(app_bg_color)
 
-            # Check if enough data is available
+            # Check if enough data is available.
             if len(self.app.graph_times) < 2:
                 print("[CalibratePage.update_graph] Not enough data to plot. Latest entries:",
                       self.app.graph_times[-5:] if self.app.graph_times else "No data")
             else:
-                # Plot using the same data arrays as the main page.
+                # Plot using the same data arrays as on the main page.
                 self.ax.plot(self.app.graph_times, self.app.graph_input_pressures, label="Input Pressure")
                 self.ax.plot(self.app.graph_times, self.app.graph_pressure1s, label="Pressure 1")
                 self.ax.plot(self.app.graph_times, self.app.graph_pressure2s, label="Pressure 2")
@@ -141,7 +171,6 @@ class CalibratePage(ctk.CTkFrame):
             self.canvas.draw()
         except Exception as e:
             print(f"Error updating calibrate page graph: {e}")
-        # Schedule next update in 500ms
         self.after(500, self.update_graph)
 
     def prompt_measured_pressure_before(self, target_pressure):
@@ -169,34 +198,6 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn.pack(padx=10, pady=10)
         popup.wait_window()
         return result[0] if result else 0
-
-    def start_check_calibration(self):
-        popup = ctk.CTkToplevel(self)
-        popup.title("Check Calibration")
-        tk.Label(popup, text="Enter Reference Pressure (max 100 psi):").pack(padx=10, pady=5)
-        ref_entry = ctk.CTkEntry(popup)
-        ref_entry.pack(padx=10, pady=5)
-        tk.Label(popup, text="Select sensors experiencing the reference pressure:").pack(padx=10, pady=5)
-        sensor_vars = [tk.BooleanVar(), tk.BooleanVar(), tk.BooleanVar()]
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 1 (Pressure0)", variable=sensor_vars[0]).pack(padx=10, pady=2)
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 2 (Pressure1)", variable=sensor_vars[1]).pack(padx=10, pady=2)
-        ctk.CTkCheckBox(popup, text="Pressure Sensor 3 (Pressure2)", variable=sensor_vars[2]).pack(padx=10, pady=2)
-
-        def on_submit():
-            try:
-                ref_pressure = float(ref_entry.get())
-            except ValueError:
-                tk.Label(popup, text="Invalid input, please enter a number.", fg="red").pack()
-                return
-            if ref_pressure > 100:
-                tk.Label(popup, text="Reference pressure must be ≤ 100 psi.", fg="red").pack()
-                return
-            self.sensor_selected = [var.get() for var in sensor_vars]
-            popup.destroy()
-            threading.Thread(target=self.perform_check_calibration, args=(ref_pressure,), daemon=True).start()
-
-        submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
-        submit_btn.pack(padx=10, pady=10)
 
     def perform_check_calibration(self, ref_pressure):
         # (For check calibration, we simply supply for 10 seconds and record one set of readings.)
