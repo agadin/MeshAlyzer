@@ -199,6 +199,34 @@ class CalibratePage(ctk.CTkFrame):
         popup.wait_window()
         return result[0] if result else 0
 
+    def start_check_calibration(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Check Calibration")
+        tk.Label(popup, text="Enter Reference Pressure (max 100 psi):").pack(padx=10, pady=5)
+        ref_entry = ctk.CTkEntry(popup)
+        ref_entry.pack(padx=10, pady=5)
+        tk.Label(popup, text="Select sensors experiencing the reference pressure:").pack(padx=10, pady=5)
+        sensor_vars = [tk.BooleanVar(), tk.BooleanVar(), tk.BooleanVar()]
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 1 (Pressure0)", variable=sensor_vars[0]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 2 (Pressure1)", variable=sensor_vars[1]).pack(padx=10, pady=2)
+        ctk.CTkCheckBox(popup, text="Pressure Sensor 3 (Pressure2)", variable=sensor_vars[2]).pack(padx=10, pady=2)
+
+        def on_submit():
+            try:
+                ref_pressure = float(ref_entry.get())
+            except ValueError:
+                tk.Label(popup, text="Invalid input, please enter a number.", fg="red").pack()
+                return
+            if ref_pressure > 100:
+                tk.Label(popup, text="Reference pressure must be ≤ 100 psi.", fg="red").pack()
+                return
+            self.sensor_selected = [var.get() for var in sensor_vars]
+            popup.destroy()
+            threading.Thread(target=self.perform_check_calibration, args=(ref_pressure,), daemon=True).start()
+
+        submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
+        submit_btn.pack(padx=10, pady=10)
+
     def perform_check_calibration(self, ref_pressure):
         # (For check calibration, we simply supply for 10 seconds and record one set of readings.)
         if self.sensor_selected[1]:
