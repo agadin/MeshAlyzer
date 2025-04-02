@@ -1,5 +1,4 @@
 import time
-
 import customtkinter as ctk
 import tkinter as tk
 import matplotlib.pyplot as plt
@@ -16,6 +15,10 @@ class CalibratePage(ctk.CTkFrame):
         """
         super().__init__(master, *args, **kwargs)
         self.app = app
+
+        # --- Header ---
+        self.header_label = ctk.CTkLabel(self, text="Calibrate", font=("Arial", 20, "bold"))
+        self.header_label.pack(padx=10, pady=(10, 5))
 
         # --- Top frame for calibration buttons ---
         self.top_frame = ctk.CTkFrame(self, height=60)
@@ -40,27 +43,23 @@ class CalibratePage(ctk.CTkFrame):
         )
         self.sensor_calib_button.grid(row=0, column=1, padx=10, pady=5)
 
-        # --- Sensor Values Display ---
+        # --- Sensor Values Display (only sensors 0-2) ---
         self.sensor_values_frame = ctk.CTkFrame(self, height=50)
         self.sensor_values_frame.pack(fill="x", padx=10, pady=5)
-        self.sensor_values_frame.columnconfigure((0, 1, 2, 3), weight=1)
+        self.sensor_values_frame.columnconfigure((0, 1, 2), weight=1)
 
         self.sensor0_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 0: N/A", font=("Arial", 12)
+            self.sensor_values_frame, text="Sensor 0: N/A", font=("Arial", 16)
         )
         self.sensor0_label.grid(row=0, column=0, padx=5, pady=5)
         self.sensor1_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 1: N/A", font=("Arial", 12)
+            self.sensor_values_frame, text="Sensor 1: N/A", font=("Arial", 16)
         )
         self.sensor1_label.grid(row=0, column=1, padx=5, pady=5)
         self.sensor2_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 2: N/A", font=("Arial", 12)
+            self.sensor_values_frame, text="Sensor 2: N/A", font=("Arial", 16)
         )
         self.sensor2_label.grid(row=0, column=2, padx=5, pady=5)
-        self.sensor3_label = ctk.CTkLabel(
-            self.sensor_values_frame, text="Sensor 3: N/A", font=("Arial", 12)
-        )
-        self.sensor3_label.grid(row=0, column=3, padx=5, pady=5)
         self.update_sensor_values()  # Start updating sensor labels
 
         # --- Graph Frame ---
@@ -115,18 +114,13 @@ class CalibratePage(ctk.CTkFrame):
 
     def update_sensor_values(self):
         try:
-            self.sensor0_label.configure(
-                text=f"Sensor 0: {self.app.pressure0 if hasattr(self.app, 'pressure0') else 'N/A'}"
-            )
-            self.sensor1_label.configure(
-                text=f"Sensor 1: {self.app.pressure1 if hasattr(self.app, 'pressure1') else 'N/A'}"
-            )
-            self.sensor2_label.configure(
-                text=f"Sensor 2: {self.app.pressure2 if hasattr(self.app, 'pressure2') else 'N/A'}"
-            )
-            self.sensor3_label.configure(
-                text=f"Sensor 3: {self.app.pressure3 if hasattr(self.app, 'pressure3') else 'N/A'}"
-            )
+            # Format values to 2 decimal places if numeric; otherwise show N/A.
+            value0 = f"{self.app.pressure0:.2f}" if hasattr(self.app, "pressure0") and isinstance(self.app.pressure0, (int, float)) else "N/A"
+            value1 = f"{self.app.pressure1:.2f}" if hasattr(self.app, "pressure1") and isinstance(self.app.pressure1, (int, float)) else "N/A"
+            value2 = f"{self.app.pressure2:.2f}" if hasattr(self.app, "pressure2") and isinstance(self.app.pressure2, (int, float)) else "N/A"
+            self.sensor0_label.configure(text=f"Sensor 0: {value0}")
+            self.sensor1_label.configure(text=f"Sensor 1: {value1}")
+            self.sensor2_label.configure(text=f"Sensor 2: {value2}")
         except Exception as e:
             print(f"Error updating sensor values: {e}")
         self.after(500, self.update_sensor_values)
@@ -241,7 +235,6 @@ class CalibratePage(ctk.CTkFrame):
         readings = []
         while time.time() - start_time < 10:
             time_diff = time.time() - start_time
-            # Record full sensor reading
             LPS_pressure = self.app.lps.pressure
             LPS_temperature = self.app.lps.temperature
             valve1_state = self.app.valve1.get_state()
@@ -267,7 +260,6 @@ class CalibratePage(ctk.CTkFrame):
         self.app.valve2.neutral()
         print("Check Calibration: Valves set to neutral.")
 
-        # Save all readings to a CSV file
         base_folder = "calibration_data"
         if not os.path.exists(base_folder):
             os.makedirs(base_folder)
@@ -330,11 +322,8 @@ class CalibratePage(ctk.CTkFrame):
         print("Starting full sensor calibration...")
         while current_pressure <= 100:
             print(f"Calibrating at target {current_pressure} psi...")
-            # Prompt for measured pressure BEFORE supplying air.
             measured_pressure = self.prompt_measured_pressure_before(current_pressure)
             print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
-
-            # Supply air for 10 seconds and record sensor readings every 0.01 sec.
             self.app.valve1.supply()
             self.app.valve2.supply()
             print("Valves activated for 10 seconds. Recording sensor data...")
@@ -368,7 +357,6 @@ class CalibratePage(ctk.CTkFrame):
             self.app.valve2.neutral()
             print("Valves set to neutral after 10 seconds.")
 
-            # Save all readings to a CSV file for this target pressure.
             csv_filename = os.path.join(
                 calibration_folder,
                 f"calibration_{measured_pressure}_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
@@ -387,8 +375,7 @@ class CalibratePage(ctk.CTkFrame):
         print("Full sensor calibration complete. All data saved.")
         complete_popup = ctk.CTkToplevel(self)
         complete_popup.title("Calibration Complete")
-        tk.Label(complete_popup, text="Sensor calibration is complete and all data has been saved.").pack(padx=10,
-                                                                                                          pady=10)
+        tk.Label(complete_popup, text="Sensor calibration is complete and all data has been saved.").pack(padx=10, pady=10)
         ctk.CTkButton(complete_popup, text="OK", command=complete_popup.destroy).pack(pady=5)
 
     def update_sensor_buttons(self, success_list):
