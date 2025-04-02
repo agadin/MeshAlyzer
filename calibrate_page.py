@@ -1,60 +1,54 @@
-# --- New CalibratePage class (with continuous sensor recording every 0.01s) ---
-import customtkinter as ctk
-import shutil
-import multiprocessing.shared_memory as sm
-from tkinter import Canvas, Frame, Scrollbar, filedialog, StringVar
-from PIL import Image, ImageTk, ImageOps
-import cv2
-import queue
 import time
-import struct
-import csv
-from collections import defaultdict
-from threading import Thread
+
+import customtkinter as ctk
+import tkinter as tk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import pandas as pd
-import seaborn as sns
-from tkinter import ttk
-import matplotlib.ticker as ticker
 import datetime
-import tkinter as tk
-import subprocess
 import threading
-import sys
 import os
-import filecmp
-import cairosvg
-import xml.etree.ElementTree as ET
-
-# lps22
-import board
-import busio
-import adafruit_lps2x
 
 
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
         """
-        master: parent frame (self.content_frame)
-        app: reference to the App instance (provides access to valves, sensor_data, etc.)
+        master: parent frame (e.g. self.content_frame)
+        app: reference to the main App instance (providing sensor data, valves, etc.)
         """
         super().__init__(master, *args, **kwargs)
-        self.app = app  # reference to main App instance
+        self.app = app
 
-        # Top frame with calibration control buttons
-        self.top_frame = ctk.CTkFrame(self, height=50)
+        # --- Top frame for calibration buttons ---
+        self.top_frame = ctk.CTkFrame(self, height=60)
         self.top_frame.pack(fill="x", padx=10, pady=5)
+        self.top_frame.columnconfigure((0, 1), weight=1)
 
         self.check_calib_button = ctk.CTkButton(self.top_frame, text="Check Calibration",
-                                                command=self.start_check_calibration)
-        self.check_calib_button.pack(side="left", padx=10)
+                                                command=self.start_check_calibration,
+                                                width=150, height=40, text_font=("Arial", 14))
+        self.check_calib_button.grid(row=0, column=0, padx=10, pady=5)
 
         self.sensor_calib_button = ctk.CTkButton(self.top_frame, text="Calibrate Pressure Sensors",
-                                                 command=self.start_sensor_calibration)
-        self.sensor_calib_button.pack(side="left", padx=10)
+                                                 command=self.start_sensor_calibration,
+                                                 width=200, height=40, text_font=("Arial", 14))
+        self.sensor_calib_button.grid(row=0, column=1, padx=10, pady=5)
 
-        # Graph frame in the middle to show pressure values
+        # --- Sensor Values Display ---
+        self.sensor_values_frame = ctk.CTkFrame(self, height=50)
+        self.sensor_values_frame.pack(fill="x", padx=10, pady=5)
+        self.sensor_values_frame.columnconfigure((0, 1, 2, 3), weight=1)
+
+        self.sensor0_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 0: N/A", text_font=("Arial", 12))
+        self.sensor0_label.grid(row=0, column=0, padx=5, pady=5)
+        self.sensor1_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 1: N/A", text_font=("Arial", 12))
+        self.sensor1_label.grid(row=0, column=1, padx=5, pady=5)
+        self.sensor2_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 2: N/A", text_font=("Arial", 12))
+        self.sensor2_label.grid(row=0, column=2, padx=5, pady=5)
+        self.sensor3_label = ctk.CTkLabel(self.sensor_values_frame, text="Sensor 3: N/A", text_font=("Arial", 12))
+        self.sensor3_label.grid(row=0, column=3, padx=5, pady=5)
+        self.update_sensor_values()  # Start updating sensor labels
+
+        # --- Graph Frame ---
         self.graph_frame = ctk.CTkFrame(self)
         self.graph_frame.pack(expand=True, fill="both", padx=10, pady=5)
         self.fig, self.ax = plt.subplots(figsize=(6, 4))
@@ -62,26 +56,50 @@ class CalibratePage(ctk.CTkFrame):
         self.canvas.get_tk_widget().pack(expand=True, fill="both")
         self.ax.set_title("Pressure Sensor Raw Values")
         self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("Pressure Value")
+        self.ax.set_ylabel("PSI")
 
-        # Bottom frame with sensor toggle buttons
-        self.bottom_frame = ctk.CTkFrame(self, height=50)
+        # --- Bottom frame for sensor toggle buttons ---
+        self.bottom_frame = ctk.CTkFrame(self, height=60)
         self.bottom_frame.pack(fill="x", padx=10, pady=5)
+        self.bottom_frame.columnconfigure((0, 1, 2), weight=1)
 
-        self.sensor1_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 1", fg_color="gray",
+        self.sensor1_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 1",
+                                            fg_color="gray", width=150, height=40,
+                                            text_font=("Arial", 14),
                                             command=lambda: self.toggle_sensor(0))
-        self.sensor1_button.pack(side="left", padx=10)
+        self.sensor1_button.grid(row=0, column=0, padx=10, pady=5)
 
-        self.sensor2_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 2", fg_color="gray",
+        self.sensor2_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 2",
+                                            fg_color="gray", width=150, height=40,
+                                            text_font=("Arial", 14),
                                             command=lambda: self.toggle_sensor(1))
-        self.sensor2_button.pack(side="left", padx=10)
+        self.sensor2_button.grid(row=0, column=1, padx=10, pady=5)
 
-        self.sensor3_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 3", fg_color="gray",
+        self.sensor3_button = ctk.CTkButton(self.bottom_frame, text="Pressure Sensor 3",
+                                            fg_color="gray", width=150, height=40,
+                                            text_font=("Arial", 14),
                                             command=lambda: self.toggle_sensor(2))
-        self.sensor3_button.pack(side="left", padx=10)
+        self.sensor3_button.grid(row=0, column=2, padx=10, pady=5)
 
         self.sensor_selected = [False, False, False]
+
+        # Start the graph update loop.
         self.update_graph()
+
+    def update_sensor_values(self):
+        try:
+            # Update sensor labels with current sensor values.
+            self.sensor0_label.configure(
+                text=f"Sensor 0: {self.app.pressure0 if hasattr(self.app, 'pressure0') else 'N/A'}")
+            self.sensor1_label.configure(
+                text=f"Sensor 1: {self.app.pressure1 if hasattr(self.app, 'pressure1') else 'N/A'}")
+            self.sensor2_label.configure(
+                text=f"Sensor 2: {self.app.pressure2 if hasattr(self.app, 'pressure2') else 'N/A'}")
+            self.sensor3_label.configure(
+                text=f"Sensor 3: {self.app.pressure3 if hasattr(self.app, 'pressure3') else 'N/A'}")
+        except Exception as e:
+            print(f"Error updating sensor values: {e}")
+        self.after(500, self.update_sensor_values)
 
     def toggle_sensor(self, sensor_index):
         self.sensor_selected[sensor_index] = not self.sensor_selected[sensor_index]
@@ -95,7 +113,7 @@ class CalibratePage(ctk.CTkFrame):
 
     def update_graph(self):
         try:
-            # Clear the axis and set background color according to the current appearance mode.
+            # Clear the axis and set background color based on appearance mode.
             self.ax.clear()
             if ctk.get_appearance_mode() == "Dark":
                 app_bg_color = "#1F1F1F"
@@ -104,12 +122,12 @@ class CalibratePage(ctk.CTkFrame):
             self.fig.patch.set_facecolor(app_bg_color)
             self.ax.set_facecolor(app_bg_color)
 
-            # Check if there is enough data to plot
+            # Check if enough data is available
             if len(self.app.graph_times) < 2:
                 print("[CalibratePage.update_graph] Not enough data to plot. Latest entries:",
                       self.app.graph_times[-5:] if self.app.graph_times else "No data")
             else:
-                # Plot the same data arrays as in main.py
+                # Plot using the same data arrays as the main page.
                 self.ax.plot(self.app.graph_times, self.app.graph_input_pressures, label="Input Pressure")
                 self.ax.plot(self.app.graph_times, self.app.graph_pressure1s, label="Pressure 1")
                 self.ax.plot(self.app.graph_times, self.app.graph_pressure2s, label="Pressure 2")
@@ -123,7 +141,7 @@ class CalibratePage(ctk.CTkFrame):
             self.canvas.draw()
         except Exception as e:
             print(f"Error updating calibrate page graph: {e}")
-        # Schedule the next update in 500ms
+        # Schedule next update in 500ms
         self.after(500, self.update_graph)
 
     def prompt_measured_pressure_before(self, target_pressure):
@@ -242,32 +260,6 @@ class CalibratePage(ctk.CTkFrame):
             for row in readings:
                 writer.writerow(row)
         print("Check Calibration: Data successfully saved.")
-
-    def prompt_measured_pressure_before(self, target_pressure):
-        """
-        Displays a popup prompting the user to input a measured pressure value
-        for the given target pressure BEFORE the air supply is activated.
-        """
-        result = []
-        popup = ctk.CTkToplevel(self)
-        popup.title("Enter Measured Pressure")
-        tk.Label(popup, text=f"Set value of pressure close to ~{target_pressure} psi:").pack(padx=10, pady=5)
-        entry = ctk.CTkEntry(popup)
-        entry.pack(padx=10, pady=5)
-
-        def on_submit():
-            try:
-                val = float(entry.get())
-            except ValueError:
-                tk.Label(popup, text="Invalid input. Please enter a number.", fg="red").pack()
-                return
-            result.append(val)
-            popup.destroy()
-
-        submit_btn = ctk.CTkButton(popup, text="Submit", command=on_submit)
-        submit_btn.pack(padx=10, pady=10)
-        popup.wait_window()
-        return result[0] if result else 0
 
     def start_sensor_calibration(self):
         popup = ctk.CTkToplevel(self)
