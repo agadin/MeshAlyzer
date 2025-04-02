@@ -809,63 +809,58 @@ class App(ctk.CTk):
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
+        # Helper function to safely update a widget's configuration.
+        def safe_configure(widget, **kwargs):
+            try:
+                if widget and hasattr(widget, "winfo_exists") and widget.winfo_exists():
+                    widget.configure(**kwargs)
+            except Exception as e:
+                print(f"Error updating widget {widget}: {e}")
 
+        # Only update the main display widgets if the home page is still displayed.
         if self.home_displayed:
             try:
-
-                self.time_display.configure(text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
-                self.step_display.configure(text=f"{step_count} / {self.moving_steps_total}")
-                self.angle_display.configure(text=f"{current_input_pressure:.2f}hPa")
-                # If one of the pressures is None, use the other
+                safe_configure(self.time_display, text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
+                safe_configure(self.step_display, text=f"{step_count} / {self.moving_steps_total}")
+                safe_configure(self.angle_display, text=f"{current_input_pressure:.2f} hPa")
                 if current_pressure2 is None:
                     current_pressure2 = current_pressure1
                 if current_pressure1 is None:
                     current_pressure1 = current_pressure2
-
-                # Calculate average force and update force display
                 avg_force = (current_pressure1 + current_pressure2) / 2
-                self.force_display_frame.configure(
-                    text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
+                safe_configure(self.force_display_frame,
+                               text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
 
-                # For the dummy BLK box, you can keep it constant or later add a condition
-                blk_status = True
-
+                # Update status boxes (RPI, UNO, BLK)
                 try:
                     rpi_status = self.pressure_receiver.status()
                 except Exception as e:
                     print(f"Error checking PressureReceiver status: {e}")
                     rpi_status = False
-
-                    # Check the UNO status using the motor_controller's status method
                 try:
                     uno_status = self.motor_controller.status()
                 except Exception as e:
                     print(f"Error checking MotorController status: {e}")
                     uno_status = False
-
-                # Set colors based on status (green for True, red for False)
                 rpi_color = "green" if rpi_status else "red"
                 uno_color = "green" if uno_status else "red"
-                blk_color = "green" if blk_status else "red"
+                blk_color = "green"  # Assuming BLK status is always good here.
+                safe_configure(self.rpi_box, fg_color=rpi_color)
+                safe_configure(self.uno_box, fg_color=uno_color)
+                safe_configure(self.blk_box, fg_color=blk_color)
 
-                self.rpi_box.configure(fg_color=rpi_color)
-                self.uno_box.configure(fg_color=uno_color)
-                self.blk_box.configure(fg_color=blk_color)
-                # Set protocol_step to 0 if None
                 protocol_step = self.protocol_step if self.protocol_step is not None else 0
-                self.protocol_step_counter.configure(text=f"Step: {protocol_step} / {self.total_steps}")
-                self.valve_display.configure(text=f"{valve1_state} | {valve2_state}")
+                safe_configure(self.protocol_step_counter, text=f"Step: {protocol_step} / {self.total_steps}")
+                safe_configure(self.valve_display, text=f"{valve1_state} | {valve2_state}")
 
-                # Append the new data point to each parallel list.
+                # Append the new data point for graphing.
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
                 self.graph_times.append(current_time_val)
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
 
-                self.ax.clear()
-
-                # Set background colors based on appearance mode
+                # Update the matplotlib graph.
                 if ctk.get_appearance_mode() == "Dark":
                     app_bg_color = "#1F1F1F"
                 else:
@@ -873,7 +868,7 @@ class App(ctk.CTk):
                 self.fig.patch.set_facecolor(app_bg_color)
                 self.ax.set_facecolor(app_bg_color)
                 if len(self.graph_times) < 2:
-                    print("[update_displays] Not enough data to plot. Latest graph_times entries: SIKE!!",
+                    print("[update_displays] Not enough data to plot. Latest entries:",
                           self.graph_times[-5:] if self.graph_times else "No data")
                 else:
                     self.ax.clear()
@@ -887,31 +882,32 @@ class App(ctk.CTk):
                     self.ax.set_ylabel("PSI")
                     self.ax.legend()
                     self.canvas.draw()
-
             except Exception as e:
-                print(f"Error updating displays: {e}")
-                traceback.print_exc()
+                print(f"Error updating home displays: {e}")
 
+        # Update the calibrate button regardless of the current page.
         try:
-            calibration_level = 0  # Cole change later
-
-            # Only update if the button still exists
-            if hasattr(self, 'calibrate_button') and self.calibrate_button.winfo_exists():
-                if calibration_level == 0:
-                    self.calibrate_button.configure(fg_color="red")
-                elif calibration_level == 1:
-                    self.calibrate_button.configure(fg_color="yellow")
-                elif calibration_level == 2:
-                    self.calibrate_button.configure(fg_color="green")
-                else:
-                    self.calibrate_button.configure(fg_color="gray")  # Default color for unknown states
+            calibration_level = 0  # Update this logic as needed.
+            if calibration_level == 0:
+                safe_configure(self.calibrate_button, fg_color="red")
+            elif calibration_level == 1:
+                safe_configure(self.calibrate_button, fg_color="yellow")
+            elif calibration_level == 2:
+                safe_configure(self.calibrate_button, fg_color="green")
+            else:
+                safe_configure(self.calibrate_button, fg_color="gray")
         except Exception as e:
             print(f"Error updating Calibrate button: {e}")
+            try:
+                safe_configure(self.calibrate_button, fg_color="gray")
+            except Exception as inner_e:
+                print(f"Also failed to update calibrate button: {inner_e}")
 
-            self.calibrate_button.configure(fg_color="gray")
-        self.lps_info_label.configure(
-            text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C"
-        )
+        # Update the LPS info label.
+        try:
+            safe_configure(self.lps_info_label, text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C")
+        except Exception as e:
+            print(f"Error updating lps_info_label: {e}")
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
