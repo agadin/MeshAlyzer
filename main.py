@@ -809,7 +809,7 @@ class App(ctk.CTk):
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
-        # Helper to safely update a widget
+        # Helper to safely update a widget.
         def safe_configure(widget, **kwargs):
             try:
                 if widget is not None and hasattr(widget, "winfo_exists") and widget.winfo_exists():
@@ -817,17 +817,25 @@ class App(ctk.CTk):
             except Exception as e:
                 print(f"Error updating widget {widget}: {e}")
 
+        # --- Always update sensor data arrays, regardless of the current page ---
+        # Use one of the pressures if the other is None.
+        if current_pressure2 is None:
+            current_pressure2 = current_pressure1
+        if current_pressure1 is None:
+            current_pressure1 = current_pressure2
+
+        current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
+        self.graph_times.append(current_time_val)
+        self.graph_input_pressures.append(current_input_pressure)
+        self.graph_pressure1s.append(current_pressure1)
+        self.graph_pressure2s.append(current_pressure2)
+
+        # --- Update home page widgets if the home page is displayed ---
         if self.home_displayed:
             try:
                 safe_configure(self.time_display, text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 safe_configure(self.step_display, text=f"{step_count} / {self.moving_steps_total}")
                 safe_configure(self.angle_display, text=f"{current_input_pressure:.2f} hPa")
-
-                # Use one of the pressures if the other is None.
-                if current_pressure2 is None:
-                    current_pressure2 = current_pressure1
-                if current_pressure1 is None:
-                    current_pressure1 = current_pressure2
 
                 avg_force = (current_pressure1 + current_pressure2) / 2
                 safe_configure(self.force_display_frame,
@@ -856,16 +864,8 @@ class App(ctk.CTk):
                 safe_configure(self.protocol_step_counter, text=f"Step: {protocol_step} / {self.total_steps}")
                 safe_configure(self.valve_display, text=f"{valve1_state} | {valve2_state}")
 
-                # Append new data for the graph.
-                current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
-                self.graph_times.append(current_time_val)
-                self.graph_input_pressures.append(current_input_pressure)
-                self.graph_pressure1s.append(current_pressure1)
-                self.graph_pressure2s.append(current_pressure2)
-
-                # Update the matplotlib graph if the canvas exists.
+                # Also update the home page graph if its canvas exists.
                 if hasattr(self, "canvas") and self.canvas is not None:
-                    # Set background based on appearance mode.
                     if ctk.get_appearance_mode() == "Dark":
                         app_bg_color = "#1F1F1F"
                     else:
@@ -891,9 +891,9 @@ class App(ctk.CTk):
             except Exception as e:
                 print(f"Error updating home displays: {e}")
 
-        # Update the Calibrate button regardless of current page.
+        # --- Update the Calibrate button regardless of current page ---
         try:
-            calibration_level = 0  # Update this logic as needed.
+            calibration_level = 0  # Adjust this logic as needed.
             if calibration_level == 0:
                 safe_configure(self.calibrate_button, fg_color="red")
             elif calibration_level == 1:
@@ -909,7 +909,7 @@ class App(ctk.CTk):
             except Exception as inner_e:
                 print(f"Also failed to update calibrate button: {inner_e}")
 
-        # Update the LPS info label.
+        # --- Update the LPS info label ---
         try:
             safe_configure(self.lps_info_label, text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C")
         except Exception as e:
