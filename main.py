@@ -631,7 +631,7 @@ class App(ctk.CTk):
 
         # make transparent graph here
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
-        if self.graph_frame is not None:
+        if self.graph_frame is not None and self.graph_frame.winfo_exists():
             for widget in self.graph_frame.winfo_children():
                 widget.destroy()
         self.graph_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -809,24 +809,26 @@ class App(ctk.CTk):
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
-        # Helper function to safely update a widget's configuration.
+        # Helper to safely update a widget
         def safe_configure(widget, **kwargs):
             try:
-                if widget and hasattr(widget, "winfo_exists") and widget.winfo_exists():
+                if widget is not None and hasattr(widget, "winfo_exists") and widget.winfo_exists():
                     widget.configure(**kwargs)
             except Exception as e:
                 print(f"Error updating widget {widget}: {e}")
 
-        # Only update the main display widgets if the home page is still displayed.
         if self.home_displayed:
             try:
                 safe_configure(self.time_display, text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 safe_configure(self.step_display, text=f"{step_count} / {self.moving_steps_total}")
                 safe_configure(self.angle_display, text=f"{current_input_pressure:.2f} hPa")
+
+                # Use one of the pressures if the other is None.
                 if current_pressure2 is None:
                     current_pressure2 = current_pressure1
                 if current_pressure1 is None:
                     current_pressure1 = current_pressure2
+
                 avg_force = (current_pressure1 + current_pressure2) / 2
                 safe_configure(self.force_display_frame,
                                text=f"{avg_force:.2f} PSI\n{current_pressure1:.2f} PSI | {current_pressure2:.2f} PSI")
@@ -842,9 +844,10 @@ class App(ctk.CTk):
                 except Exception as e:
                     print(f"Error checking MotorController status: {e}")
                     uno_status = False
+
                 rpi_color = "green" if rpi_status else "red"
                 uno_color = "green" if uno_status else "red"
-                blk_color = "green"  # Assuming BLK status is always good here.
+                blk_color = "green"  # Assuming BLK status is always OK
                 safe_configure(self.rpi_box, fg_color=rpi_color)
                 safe_configure(self.uno_box, fg_color=uno_color)
                 safe_configure(self.blk_box, fg_color=blk_color)
@@ -853,39 +856,42 @@ class App(ctk.CTk):
                 safe_configure(self.protocol_step_counter, text=f"Step: {protocol_step} / {self.total_steps}")
                 safe_configure(self.valve_display, text=f"{valve1_state} | {valve2_state}")
 
-                # Append the new data point for graphing.
+                # Append new data for the graph.
                 current_time_val = minutes * 60 + seconds + milliseconds / 1000.0
                 self.graph_times.append(current_time_val)
                 self.graph_input_pressures.append(current_input_pressure)
                 self.graph_pressure1s.append(current_pressure1)
                 self.graph_pressure2s.append(current_pressure2)
 
-                # Update the matplotlib graph.
-                if ctk.get_appearance_mode() == "Dark":
-                    app_bg_color = "#1F1F1F"
-                else:
-                    app_bg_color = "#FFFFFF"
-                self.fig.patch.set_facecolor(app_bg_color)
-                self.ax.set_facecolor(app_bg_color)
-                if len(self.graph_times) < 2:
-                    print("[update_displays] Not enough data to plot. Latest entries:",
-                          self.graph_times[-5:] if self.graph_times else "No data")
-                else:
-                    self.ax.clear()
-                    self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                    self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                    self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                    if self.target_pressure is not None:
-                        self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
-                    self.ax.set_ylim(0, 100)
-                    self.ax.set_xlabel("Time (s)")
-                    self.ax.set_ylabel("PSI")
-                    self.ax.legend()
-                    self.canvas.draw()
+                # Update the matplotlib graph if the canvas exists.
+                if hasattr(self, "canvas") and self.canvas is not None:
+                    # Set background based on appearance mode.
+                    if ctk.get_appearance_mode() == "Dark":
+                        app_bg_color = "#1F1F1F"
+                    else:
+                        app_bg_color = "#FFFFFF"
+                    self.fig.patch.set_facecolor(app_bg_color)
+                    self.ax.set_facecolor(app_bg_color)
+
+                    if len(self.graph_times) < 2:
+                        print("[update_displays] Not enough data to plot. Latest entries:",
+                              self.graph_times[-5:] if self.graph_times else "No data")
+                    else:
+                        self.ax.clear()
+                        self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                        self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                        self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                        if self.target_pressure is not None:
+                            self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
+                        self.ax.set_ylim(0, 100)
+                        self.ax.set_xlabel("Time (s)")
+                        self.ax.set_ylabel("PSI")
+                        self.ax.legend()
+                        self.canvas.draw()
             except Exception as e:
                 print(f"Error updating home displays: {e}")
 
-        # Update the calibrate button regardless of the current page.
+        # Update the Calibrate button regardless of current page.
         try:
             calibration_level = 0  # Update this logic as needed.
             if calibration_level == 0:
