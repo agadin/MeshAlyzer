@@ -661,21 +661,19 @@ class App(ctk.CTk):
         self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A\nN/A | N/A", **display_style)
         self.force_display_frame.grid(row=0, column=3, padx=10, pady=10)
 
-        # Row 1: Protocol step counter and Valve display
+        # Row 1: Protocol step counter, Valve display, Left Distance, and Right Distance
         self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
         self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10)
         self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
         self.valve_display.grid(row=1, column=1, padx=10, pady=10)
 
-        # --- New: Left Distance Display ---
         left_distance_frame = ctk.CTkFrame(display_frame, fg_color="transparent")
-        left_distance_frame.grid(row=0, column=4, padx=10, pady=10)
+        left_distance_frame.grid(row=1, column=2, padx=10, pady=10)
         self.left_distance_label = ctk.CTkLabel(left_distance_frame, text="Left: 0.00", **display_style)
         self.left_distance_label.pack()
 
-        # --- New: Right Distance Display ---
         right_distance_frame = ctk.CTkFrame(display_frame, fg_color="transparent")
-        right_distance_frame.grid(row=0, column=5, padx=10, pady=10)
+        right_distance_frame.grid(row=1, column=3, padx=10, pady=10)
         self.right_distance_label = ctk.CTkLabel(right_distance_frame, text="Right: 0.00", **display_style)
         self.right_distance_label.pack()
 
@@ -1542,7 +1540,7 @@ class App(ctk.CTk):
 
         except queue.Empty:
             pass
-        self.after(500, self.process_queue)
+        self.after(100, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
