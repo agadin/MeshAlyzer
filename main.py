@@ -149,6 +149,10 @@ class App(ctk.CTk):
         self.graph_frame = None
         self.sampleID = None
         self.running = True  # Initialize the running attribute
+        self.stop_flag = False  # Initialize the stop flag
+        self.distance_left = 0.0
+        self.distance_right = 0.0
+        self.selected_motor = "both"
         self.graph_time_range = 30  # Default time range in seconds (can be set to 15 or 60 as needed)
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
         ctk.set_default_color_theme("blue")
@@ -524,13 +528,40 @@ class App(ctk.CTk):
         self.run_button = ctk.CTkButton(self.sidebar_frame, text="Run Protocol", command=self.run_protocol)
         self.run_button.pack(pady=15)
 
-        # Light/Dark mode toggle
-        self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Dark/Light Mode", command=self.toggle_mode)
-        self.mode_toggle.pack(pady=15)
+        # Add Stop Protocol button to the sidebar
+        self.stop_protocol_button = ctk.CTkButton(
+            self.sidebar_frame,
+            text="Stop Protocol",
+            command=self.stop_protocol
+        )
+        self.stop_protocol_button.pack(pady=5)
+
+
 
         # Motor buttons frame
-        motor_button_frame = ctk.CTkFrame(self.sidebar_frame)
-        motor_button_frame.pack(pady=15)
+        motor_button_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        motor_button_frame.pack(pady=10)
+
+        # --- New: Segmented Button for Motor Control ---
+        self.motor_segmented_button = ctk.CTkSegmentedButton(
+            self.sidebar_frame,
+            values=["Left", "Both", "Right"],
+            command=self.set_motor_control
+        )
+        self.motor_segmented_button.set("Both")  # Default to Both (middle option)
+        self.motor_segmented_button.pack(pady=5)
+
+        # --- New: Reset Buttons in Sidebar ---
+        self.reset_left_button_sidebar = ctk.CTkButton(
+            self.sidebar_frame, text="Reset Left Distance", command=self.reset_left_distance
+        )
+        self.reset_left_button_sidebar.pack(pady=5)
+
+        self.reset_right_button_sidebar = ctk.CTkButton(
+            self.sidebar_frame, text="Reset Right Distance", command=self.reset_right_distance
+        )
+        self.reset_right_button_sidebar.pack(pady=5)
+
 
         self.motor_forward_button = ctk.CTkButton(motor_button_frame, text="Advance Motor", fg_color="transparent")
         self.motor_forward_button.pack(side="left", padx=5)
@@ -541,6 +572,10 @@ class App(ctk.CTk):
         self.motor_reverse_button.pack(side="left", padx=5)
         self.motor_reverse_button.bind("<ButtonPress-1>", self.start_motor_reverse)
         self.motor_reverse_button.bind("<ButtonRelease-1>", self.stop_motor_reverse)
+
+        # Light/Dark mode toggle
+        self.mode_toggle = ctk.CTkSwitch(self.sidebar_frame, text="Dark/Light Mode", command=self.toggle_mode)
+        self.mode_toggle.pack(pady=15)
 
         self.lps_info_label = ctk.CTkLabel(
             self.sidebar_frame,
@@ -553,7 +588,7 @@ class App(ctk.CTk):
         # add status lights below lps_info_label
         # Container frame for status boxes
         self.status_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        self.status_frame.pack(pady=10, padx=10)
+        self.status_frame.pack(side="bottom", pady=10, padx=10)
 
         # RPI Box – will check PressureReceiver status
         self.rpi_box = ctk.CTkFrame(self.status_frame, width=80, height=40, corner_radius=10, fg_color="gray")
@@ -573,6 +608,7 @@ class App(ctk.CTk):
         self.blk_label = ctk.CTkLabel(self.blk_box, text="BLK", font=("Arial", 10, "bold"))
         self.blk_label.place(relx=0.5, rely=0.5, anchor="center")
 
+
         # Valve control dropdown
         self.valve_control = ValveControlDropdown(
             self.sidebar_frame,
@@ -591,6 +627,8 @@ class App(ctk.CTk):
         self.sample_id_entry = ctk.CTkEntry(self.sidebar_frame, placeholder_text="Sample ID")
         self.sample_id_entry.pack(pady=15, padx=15)
         self.sample_id_entry.bind("<FocusOut>", self.update_sample_id)
+
+
 
         # Main content area
         self.main_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
@@ -628,6 +666,18 @@ class App(ctk.CTk):
         self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10)
         self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
         self.valve_display.grid(row=1, column=1, padx=10, pady=10)
+
+        # --- New: Left Distance Display ---
+        left_distance_frame = ctk.CTkFrame(display_frame, fg_color="transparent")
+        left_distance_frame.grid(row=0, column=4, padx=10, pady=10)
+        self.left_distance_label = ctk.CTkLabel(left_distance_frame, text="Left: 0.00", **display_style)
+        self.left_distance_label.pack()
+
+        # --- New: Right Distance Display ---
+        right_distance_frame = ctk.CTkFrame(display_frame, fg_color="transparent")
+        right_distance_frame.grid(row=0, column=5, padx=10, pady=10)
+        self.right_distance_label = ctk.CTkLabel(right_distance_frame, text="Right: 0.00", **display_style)
+        self.right_distance_label.pack()
 
         # make transparent graph here
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
@@ -751,6 +801,21 @@ class App(ctk.CTk):
         # Start updating the output text widget
         self.update_output_window()
 
+    def set_motor_control(self, value):
+        self.selected_motor = value.lower()  # Converts "Left"/"Both"/"Right" to lowercase for the command string
+
+    def convert_duration_to_distance(self, duration, direction):
+        """
+        Temporary method to convert a duration into a distance.
+        For now, 1 second yields 1.0 unit of distance.
+        Forward movement is positive, reverse negative.
+        """
+        distance = duration * 1.0
+        if direction.lower() == "reverse":
+            return -distance
+        return distance
+
+
     def start_motor_forward(self, event):
         # When the button is pressed, record the time and set the flag.
         self.motor_forward_pressed = True
@@ -766,10 +831,26 @@ class App(ctk.CTk):
 
     def send_motor_forward_command(self):
         if self.motor_forward_active:
-            # Send a short-duration forward command.
-            # Adjust the command string as needed by your Arduino code.
-            self.motor_controller.send_command("forward,both,0.1")
-            # Schedule this method to run again (e.g., every 100ms) while held down.
+            # Send the forward command using the selected motor.
+            command_str = f"forward,{self.selected_motor},0.1"
+            self.motor_controller.send_command(command_str)
+
+            # Convert the duration (0.1 sec) to distance.
+            distance_increment = self.convert_duration_to_distance(0.1, "forward")
+            if self.selected_motor == "left":
+                self.distance_left += distance_increment
+            elif self.selected_motor == "right":
+                self.distance_right += distance_increment
+            elif self.selected_motor == "both":
+                self.distance_left += distance_increment
+                self.distance_right += distance_increment
+
+            # Update the distance display labels (if they exist).
+            if hasattr(self, "left_distance_label"):
+                self.left_distance_label.configure(text=f"Left: {self.distance_left:.2f}")
+            if hasattr(self, "right_distance_label"):
+                self.right_distance_label.configure(text=f"Right: {self.distance_right:.2f}")
+
             self.after(100, self.send_motor_forward_command)
 
     def stop_motor_forward(self, event):
@@ -794,10 +875,26 @@ class App(ctk.CTk):
 
     def send_motor_reverse_command(self):
         if self.motor_reverse_active:
-            # Send the reverse command.
-            # Adjust the command string ("reverse,both,0.1") as needed for your setup.
-            self.motor_controller.send_command("reverse,both,0.1")
-            # Repeat the command every 100ms while the button is held down.
+            # Send the reverse command using the selected motor.
+            command_str = f"reverse,{self.selected_motor},0.1"
+            self.motor_controller.send_command(command_str)
+
+            # Convert the duration (0.1 sec) to distance (note: reverse yields negative distance).
+            distance_increment = self.convert_duration_to_distance(0.1, "reverse")
+            if self.selected_motor == "left":
+                self.distance_left += distance_increment
+            elif self.selected_motor == "right":
+                self.distance_right += distance_increment
+            elif self.selected_motor == "both":
+                self.distance_left += distance_increment
+                self.distance_right += distance_increment
+
+            # Update the distance display labels (if they exist).
+            if hasattr(self, "left_distance_label"):
+                self.left_distance_label.configure(text=f"Left: {self.distance_left:.2f}")
+            if hasattr(self, "right_distance_label"):
+                self.right_distance_label.configure(text=f"Right: {self.distance_right:.2f}")
+
             self.after(100, self.send_motor_reverse_command)
 
     def stop_motor_reverse(self, event):
@@ -806,6 +903,16 @@ class App(ctk.CTk):
         self.motor_reverse_active = False
         # Send a stop command to the motor controller.
         self.motor_controller.send_command("stop")
+
+    def reset_left_distance(self):
+        self.distance_left = 0.0
+        if hasattr(self, "left_distance_label"):
+            self.left_distance_label.configure(text="Left: 0.00")
+
+    def reset_right_distance(self):
+        self.distance_right = 0.0
+        if hasattr(self, "right_distance_label"):
+            self.right_distance_label.configure(text="Right: 0.00")
 
     def update_displays(self, step_count, current_input_pressure, current_pressure1, current_pressure2,
                         minutes, seconds, milliseconds, lps_temp, lps_pressure, valve1_state, valve2_state):
@@ -835,7 +942,7 @@ class App(ctk.CTk):
             try:
                 safe_configure(self.time_display, text=f"{int(minutes):02}:{int(seconds):02}.{milliseconds:03}")
                 safe_configure(self.step_display, text=f"{step_count} / {self.moving_steps_total}")
-                safe_configure(self.angle_display, text=f"{current_input_pressure:.2f} hPa")
+                safe_configure(self.angle_display, text=f"{current_input_pressure:.2f} PSI")
 
                 avg_force = (current_pressure1 + current_pressure2) / 2
                 safe_configure(self.force_display_frame,
@@ -952,6 +1059,10 @@ class App(ctk.CTk):
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
         self.canvas_widget = self.canvas.get_tk_widget()
         self.canvas_widget.pack(expand=True, fill="both")
+
+    def stop_protocol(self):
+        self.stop_flag = "1"
+        print("Stop flag set. Protocol will be halted.")
 
     def variable_saver(self, variable_name, user_input):
         with open('variables.txt', 'a') as file:
