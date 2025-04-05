@@ -7,7 +7,7 @@ import webbrowser
 import subprocess
 
 
-from tkinter import Canvas, StringVar
+from tkinter import StringVar
 import cv2
 import queue
 import time
@@ -192,6 +192,7 @@ def load_default_settings(app=None):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.splash_canvas = None
         self.graph_y_range = None
         self.no_cap = None
         self.init = None
@@ -230,6 +231,7 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
+        self.splash_canvas: Canvas = Canvas(self, width=800, height=600)
         self.splash_canvas.pack(expand=True, fill="both")
 
 
