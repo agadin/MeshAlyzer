@@ -656,8 +656,8 @@ class App(ctk.CTk):
         sensor_section = ctk.CTkFrame(display_container, fg_color="transparent")
         sensor_section.pack(pady=10)
 
-        sensor_title = ctk.CTkLabel(sensor_section, text="Live Sensor Metrics", font=("Arial", 18, "bold"))
-        sensor_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
+        # sensor_title = ctk.CTkLabel(sensor_section, text="Live Sensor Metrics", font=("Arial", 18, "bold"))
+        # sensor_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
 
         self.time_display = ctk.CTkLabel(sensor_section, text="Time\n--:--.--", **display_style)
         self.time_display.grid(row=1, column=0, padx=10, pady=5)
@@ -675,8 +675,8 @@ class App(ctk.CTk):
         system_section = ctk.CTkFrame(display_container, fg_color="transparent")
         system_section.pack(pady=10)
 
-        system_title = ctk.CTkLabel(system_section, text="Protocol & System Info", font=("Arial", 18, "bold"))
-        system_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
+        # system_title = ctk.CTkLabel(system_section, text="Protocol & System Info", font=("Arial", 18, "bold"))
+        # system_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
 
         self.protocol_step_counter = ctk.CTkLabel(system_section, text="Protocol\nStep N/A", **display_style)
         self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=5)
@@ -1002,6 +1002,9 @@ class App(ctk.CTk):
                         self.ax.set_xlabel("Time (s)")
                         self.ax.set_ylabel("PSI")
                         self.ax.legend()
+                        legend = self.ax.legend()
+                        legend.get_frame().set_facecolor(app_bg_color)
+                        legend.get_frame().set_edgecolor(app_bg_color)
                         self.canvas.draw()
             except Exception as e:
                 print(f"Error updating home displays: {e}")
@@ -1609,7 +1612,7 @@ class App(ctk.CTk):
             header = next(reader)
             data = [row for row in reader]
             self.total_time = data[-1][0]
-            self.total_steps = data[-1][6]
+            self.total_steps = len(data[6])
 
         # Copy and rename `data.csv`
         data_csv_path = 'data.csv'
@@ -1628,7 +1631,7 @@ class App(ctk.CTk):
         # Create and save `information.txt` with the current date
         info_path = os.path.join(folder_name, 'information.txt')
         with open(info_path, 'w') as info_file:
-            current_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+            current_date =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             info_file.write(f"Created on: {current_date}\n")
             info_file.write(f"Total time: {self.total_time}\n")
             info_file.write(f"Total steps: {self.total_steps}\n")
@@ -1636,7 +1639,7 @@ class App(ctk.CTk):
             info_file.write(f"Selected arm: {selected_arm}\n")
 
         # variables.txt
-        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_date =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # get all from  def get_from_dict(self, dict_key, variable_name):
         #         # Retrieve the dictionary from the class attribute
         #         data_dict = self.data_dict.get(dict_key, {})
