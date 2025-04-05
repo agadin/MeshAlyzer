@@ -214,7 +214,7 @@ class App(ctk.CTk):
             img.save(png_icon_path)
             self.icon_img = ImageTk.PhotoImage(file=png_icon_path)
             self.iconphoto(False, self.icon_img)
-            print("Icon set successfully.")
+
         except Exception as e:
             print(f"Failed to set icon: {e}")
 
@@ -848,10 +848,10 @@ class App(ctk.CTk):
 
     def show_settings(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
-        for widget in self.winfo_children():
-            widget.destroy()
-        settings_page = SettingsPage(self, app=self)
+        self.clear_content_frame()
+        settings_page = SettingsPage(self.content_frame, app=self)
         settings_page.pack(fill="both", expand=True)
+        self.clear_content_frame()
 
     def set_motor_control(self, value):
         self.selected_motor = value.lower()  # Converts "Left"/"Both"/"Right" to lowercase for the command string
