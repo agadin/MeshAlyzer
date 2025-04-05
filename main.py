@@ -499,14 +499,12 @@ class App(ctk.CTk):
 
     def open_twitter(self):
         """
-        Opens the MeshToTheMax Twitter page in the Raspberry Pi's browser.
-        Change 'epiphany-browser' to the desired browser if needed.
+        Opens the MeshToTheMax Twitter page in Chromium.
         """
         try:
-            # Launch the browser (e.g., Epiphany is the default browser on many Raspberry Pis)
-            subprocess.Popen(["epiphany-browser", "https://x.com/MeshToTheMax"])
+            subprocess.Popen(["chromium-browser", "https://x.com/MeshToTheMax"])
         except Exception as e:
-            print("Failed to open RasPi browser:", e)
+            print("Failed to open Chromium browser:", e)
 
     def update_pressure_values(self):
         pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
