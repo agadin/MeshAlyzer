@@ -3,6 +3,10 @@ import customtkinter as ctk
 import multiprocessing.shared_memory as sm
 from tkinter import Canvas, Frame, Scrollbar, filedialog
 from PIL import Image, ImageTk, ImageOps
+import webbrowser
+import subprocess
+
+
 
 from tkinter import Canvas, StringVar
 import cv2
@@ -275,7 +279,7 @@ class App(ctk.CTk):
             text="",
             hover_color="gray",
             fg_color="transparent",
-            command=self.show_home  # Replace with the desired command
+            command=self.open_twitter  # Updated command
         )
         self.mesh_logo_button.pack(side="left", padx=1)
 
@@ -493,6 +497,15 @@ class App(ctk.CTk):
     def clear_content_frame(self):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
+
+    def open_twitter(self):
+        """
+        Opens the MeshToTheMax Twitter page in Chromium.
+        """
+        try:
+            subprocess.Popen(["chromium-browser", "https://x.com/MeshToTheMax"])
+        except Exception as e:
+            print("Failed to open Chromium browser:", e)
 
     def update_pressure_values(self):
         pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
