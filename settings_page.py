@@ -88,9 +88,10 @@ class SettingsPage(ctk.CTkFrame):
         # Dynamically create a "rounded box" for each setting.
         row = 0
         for key, definition in self.settings_definitions.items():
-            box = ctk.CTkFrame(self.scroll_frame, corner_radius=10, fg_color="lightgray")
+            # Create a box that stretches full width with a dark gray background.
+            box = ctk.CTkFrame(self.scroll_frame, corner_radius=10, fg_color="#2E2E2E")
             box.grid(row=row, column=0, padx=10, pady=5, sticky="ew")
-            # Make sure the box expands horizontally.
+            # Configure the inner grid so the content expands.
             box.columnconfigure(1, weight=1)
 
             # Title Label (left)
@@ -111,8 +112,8 @@ class SettingsPage(ctk.CTkFrame):
                 current_val = self.settings.get(key, definition["options"][0])
                 input_var = ctk.StringVar(value=current_val)
                 input_widget = ctk.CTkComboBox(box, values=definition["options"],
-                                              variable=input_var,
-                                              command=lambda val, key=key, box=box: self.mark_modified(key, box))
+                                               variable=input_var,
+                                               command=lambda val, key=key, box=box: self.mark_modified(key, box))
             else:
                 current_val = self.settings.get(key, "")
                 input_var = ctk.StringVar(value=current_val)
@@ -120,12 +121,12 @@ class SettingsPage(ctk.CTkFrame):
                 input_widget.bind("<KeyRelease>", lambda e, key=key, box=box: self.mark_modified(key, box))
             input_widget.grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
-            # Optional checkbox for "Save as Default" (you can use this flag later if needed)
+            # Optional checkbox for "Save as Default" (can be used later if needed)
             default_var = ctk.BooleanVar(value=False)
             default_checkbox = ctk.CTkCheckBox(box, text="Default", variable=default_var)
             default_checkbox.grid(row=0, column=3, padx=5, pady=5)
 
-            # Save widget references for use when saving.
+            # Save widget references for later use.
             self.setting_widgets[key] = {
                 "box": box,
                 "input_var": input_var,
