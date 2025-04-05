@@ -54,7 +54,7 @@ from calibrate_page import CalibratePage
 from valve_control_dropdown import ValveControlDropdown
 from joblib import load
 from calibrating_pressure_transducers.getCalibrationData import PressureCalibrator
-
+from settings_page import SettingsPage
 
 class ProtocolViewer(ctk.CTkFrame):
     def __init__(self, master, protocol_folder, protocol_var, app, *args, **kwargs):
@@ -145,11 +145,56 @@ class ProtocolViewer(ctk.CTkFrame):
 
         self.after(500, self.update_current_step)  # Check every 500ms
 
+def read_settings():
+    """
+    Reads settings.txt and returns a dictionary of key/value pairs.
+    Assumes each setting is on its own line in the form:
+        key = value
+    """
+    settings = {}
+    if os.path.exists("settings.txt"):
+        with open("settings.txt", "r") as file:
+            for line in file:
+                line = line.strip()
+                if line and "=" in line:
+                    key, value = line.split("=", 1)
+                    settings[key.strip()] = value.strip()
+    return settings
+
+def load_default_settings(app=None):
+    """
+    Copies default_settings.txt to settings.txt and, if an app instance is provided,
+    updates the app's settings attributes with the defaults.
+    """
+    try:
+        shutil.copy("default_settings.txt", "settings.txt")
+        print("Default settings loaded.")
+        # Read the defaults from the settings file
+        default_settings = read_settings()
+        if app is not None:
+            # Update boolean setting (convert string to bool)
+            app.no_cap = default_settings.get("no_cap", "False").lower() in ("true", "1", "yes")
+            # Update tuple setting (using eval to convert string to tuple)
+            try:
+                app.graph_y_range = eval(default_settings.get("graph_y_range", str(app.graph_y_range)))
+            except Exception as e:
+                print("Error evaluating graph_y_range:", e)
+            # Update integer setting
+            try:
+                app.graph_time_range = int(default_settings.get("graph_time_range", app.graph_time_range))
+            except Exception as e:
+                print("Error parsing graph_time_range:", e)
+            # Update string setting
+            app.accent_color = default_settings.get("accent_color", app.accent_color)
+            print("App settings updated with defaults.")
+    except Exception as e:
+        print("Error copying default settings:", e)
 
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.graph_y_range = None
         self.no_cap = None
         self.init = None
         self.graph_frame = None
@@ -161,8 +206,9 @@ class App(ctk.CTk):
         self.selected_motor = "both"
         self.graph_time_range = 30  # Default time range in seconds (can be set to 15 or 60 as needed)
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
-        ctk.set_default_color_theme("blue")
-
+        self.accent_color = "#00BFFF"  # Light blue color
+        ctk.set_default_color_theme(self.accent_color)
+        load_default_settings(self)
         icon_path = os.path.abspath('./img/ratfav.ico')
         png_icon_path = os.path.abspath('./img/ratfav.png')
         try:
@@ -804,33 +850,10 @@ class App(ctk.CTk):
 
     def show_settings(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
-        """Show settings and monitor protocol_runner.py output"""
-        self.clear_content_frame()
-
-        # Create a frame for settings
-        settings_frame = ctk.CTkFrame(self.content_frame)
-        settings_frame.pack(fill="both", expand=True, padx=20, pady=20)
-
-        # Label
-        settings_label = ctk.CTkLabel(settings_frame, text="Settings", font=("Arial", 16, "bold"))
-        settings_label.pack(pady=10)
-
-        # Create a frame for output display
-        output_frame = ctk.CTkFrame(settings_frame)
-        output_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Create a scrolling text widget to show protocol_runner.py output
-        self.output_text = tk.Text(output_frame, wrap="word", height=15, width=80, state="disabled", bg="black",
-                                   fg="white")
-        self.output_text.pack(side="left", fill="both", expand=True)
-
-        # Add a scrollbar
-        scrollbar = tk.Scrollbar(output_frame, command=self.output_text.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.output_text.config(yscrollcommand=scrollbar.set)
-
-        # Start updating the output text widget
-        self.update_output_window()
+        for widget in self.winfo_children():
+            widget.destroy()
+        settings_page = SettingsPage(self, app=self)
+        settings_page.pack(fill="both", expand=True)
 
     def set_motor_control(self, value):
         self.selected_motor = value.lower()  # Converts "Left"/"Both"/"Right" to lowercase for the command string
@@ -1046,7 +1069,11 @@ class App(ctk.CTk):
                                 ]
                                 self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
                                              color=text_bg_color)
-                            # self.ax.set_ylim(0, 100)
+                            if self.graph_y_range is not None:
+                                # extract numbers from the graph_y_range tuple
+                                low_y = self.graph_y_range[0]
+                                high_y= self.graph_y_range[1]
+                                self.ax.set_ylim(low_y, high_y)
                             self.ax.set_xlabel("Time (s)", color=text_bg_color)
                             self.ax.set_ylabel("PSI", color=text_bg_color)
                             self.ax.tick_params(axis='x', colors=text_bg_color)
@@ -1776,3 +1803,6 @@ if __name__ == "__main__":
     app = App()
     app.protocol("WM_DELETE_WINDOW", app.destroy)
     app.mainloop()
+
+
+# add to settings page: self.no_cap, self.graph_y_range (tuple), self.graph_time_range, self.accent_color
