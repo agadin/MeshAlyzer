@@ -1348,7 +1348,7 @@ class App(ctk.CTk):
                 # Example usage of the parsed inputs
                 print(f"Time/Pressure: {time_or_pressure}, Value: {value}, Valve: {valve}")
                 self.inflate(time_or_pressure, value, valve)
-                if len(parts) > 1:
+                if len(parts) > 3:
                     for i in range(1, len(parts), 2):
                         metric = str(parts[i].strip())
                         variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
