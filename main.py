@@ -192,6 +192,7 @@ def load_default_settings(app=None):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.splash_canvas = None
         self.graph_y_range = None
         self.no_cap = None
         self.init = None
