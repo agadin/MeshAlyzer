@@ -1033,12 +1033,12 @@ class App(ctk.CTk):
                                 self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
                                 self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
                                 self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                        else:
-                            times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
-                            self.ax.clear()
-                            self.ax.plot(times, input_pressures, label="Input Pressure")
-                            self.ax.plot(times, pressure1s, label="Pressure 1")
-                            self.ax.plot(times, pressure2s, label="Pressure 2")
+                            else:
+                                times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
+                                self.ax.clear()
+                                self.ax.plot(times, input_pressures, label="Input Pressure")
+                                self.ax.plot(times, pressure1s, label="Pressure 1")
+                                self.ax.plot(times, pressure2s, label="Pressure 2")
                             # If target_pressure is a list parallel to graph_times, filter it similarly:
                             if self.target_pressure is not None:
                                 filtered_target = [
@@ -1054,11 +1054,11 @@ class App(ctk.CTk):
                             self.ax.title.set_color(text_bg_color)
                             self.ax.legend()
                             legend = self.ax.legend()
-                        legend.get_frame().set_facecolor(app_bg_color)
-                        legend.get_frame().set_edgecolor(app_bg_color)
-                        for text in legend.get_texts():
-                            text.set_color(text_bg_color)
-                        self.canvas.draw()
+                            legend.get_frame().set_facecolor(app_bg_color)
+                            legend.get_frame().set_edgecolor(app_bg_color)
+                            for text in legend.get_texts():
+                                text.set_color(text_bg_color)
+                            self.canvas.draw()
             except Exception as e:
                 print(f"Error updating home displays: {e}")
 
