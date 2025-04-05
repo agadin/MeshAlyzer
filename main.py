@@ -146,11 +146,6 @@ class ProtocolViewer(ctk.CTkFrame):
         self.after(500, self.update_current_step)  # Check every 500ms
 
 def read_settings():
-    """
-    Reads settings.txt and returns a dictionary of key/value pairs.
-    Assumes each setting is on its own line in the form:
-        key = value
-    """
     settings = {}
     if os.path.exists("settings.txt"):
         with open("settings.txt", "r") as file:
@@ -160,6 +155,7 @@ def read_settings():
                     key, value = line.split("=", 1)
                     settings[key.strip()] = value.strip()
     return settings
+
 
 def load_default_settings(app=None):
     """
@@ -206,7 +202,7 @@ class App(ctk.CTk):
         self.selected_motor = "both"
         self.graph_time_range = 30  # Default time range in seconds (can be set to 15 or 60 as needed)
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
-        self.accent_color = "#00BFFF"  # Light blue color
+        self.accent_color = "Blue"  # Light blue color
         ctk.set_default_color_theme(self.accent_color)
         load_default_settings(self)
         icon_path = os.path.abspath('./img/ratfav.ico')

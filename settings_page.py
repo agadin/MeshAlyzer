@@ -15,11 +15,6 @@ def load_default_settings():
         print("Error copying default settings:", e)
 
 def read_settings():
-    """
-    Reads settings.txt and returns a dictionary of key/value pairs.
-    Assumes each setting is on its own line in the form:
-        key = value
-    """
     settings = {}
     if os.path.exists("settings.txt"):
         with open("settings.txt", "r") as file:
@@ -29,6 +24,7 @@ def read_settings():
                     key, value = line.split("=", 1)
                     settings[key.strip()] = value.strip()
     return settings
+
 
 def write_settings(settings):
     """
@@ -95,25 +91,32 @@ class SettingsPage(ctk.CTkFrame):
             desc_label = ctk.CTkLabel(frame, text=definition["description"])
             desc_label.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-            # Input Widget: Use a switch for booleans; otherwise use an entry.
+            # Create input widget based on type
             if definition["type"] == "bool":
                 current_val = self.str_to_bool(self.settings.get(key, "False"))
                 input_var = ctk.BooleanVar(value=current_val)
                 input_widget = ctk.CTkSwitch(frame, variable=input_var,
                                              command=lambda key=key, fr=frame: self.mark_modified(key, fr))
+            elif definition["type"] == "dropdown":
+                # For drop-down, use the options list from the definition
+                current_val = self.settings.get(key, definition["options"][0])
+                input_var = ctk.StringVar(value=current_val)
+                input_widget = ctk.CTkComboBox(frame, values=definition["options"],
+                                               variable=input_var,
+                                               command=lambda val, key=key, fr=frame: self.mark_modified(key, fr))
             else:
+                # Default: use an entry widget
                 current_val = self.settings.get(key, "")
                 input_var = ctk.StringVar(value=current_val)
                 input_widget = ctk.CTkEntry(frame, textvariable=input_var)
                 input_widget.bind("<KeyRelease>", lambda e, key=key, fr=frame: self.mark_modified(key, fr))
             input_widget.grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
-            # Checkbox for "Save as Default"
+            # Checkbox for "Save as Default" (optional)
             default_var = ctk.BooleanVar(value=False)
             default_checkbox = ctk.CTkCheckBox(frame, text="Default", variable=default_var)
             default_checkbox.grid(row=0, column=3, padx=5, pady=5)
 
-            # Save widget references for later use
             self.setting_widgets[key] = {
                 "frame": frame,
                 "input_var": input_var,
@@ -146,10 +149,6 @@ class SettingsPage(ctk.CTkFrame):
         self.save_apply_button.configure(state="normal", fg_color="green")
 
     def save_and_apply(self):
-        """
-        Reads each setting’s value, writes them to settings.txt,
-        and updates the main application attributes accordingly.
-        """
         new_settings = {}
         for key, widgets in self.setting_widgets.items():
             definition = widgets["definition"]
@@ -158,16 +157,12 @@ class SettingsPage(ctk.CTkFrame):
             else:
                 value = widgets["input_var"].get()
             new_settings[key] = value
-            # Reset background color after saving.
             widgets["frame"].configure(fg_color="lightgray")
         write_settings(new_settings)
-        # Example: Apply the settings to your main application.
+        # Optionally update app attributes, e.g.:
         self.app.no_cap = new_settings.get("no_cap", self.app.no_cap)
         try:
-            # Convert string to tuple if needed.
-            range_str = new_settings.get("graph_y_range", "")
-            if range_str:
-                self.app.graph_y_range = eval(range_str)
+            self.app.graph_y_range = eval(new_settings.get("graph_y_range", str(self.app.graph_y_range)))
         except Exception as e:
             print("Error parsing graph_y_range:", e)
         try:
@@ -175,6 +170,8 @@ class SettingsPage(ctk.CTkFrame):
         except Exception as e:
             print("Error parsing graph_time_range:", e)
         self.app.accent_color = new_settings.get("accent_color", self.app.accent_color)
+        # For a drop-down, update accordingly:
+        self.app.color_scheme = new_settings.get("color_scheme", "System")
         self.save_apply_button.configure(state="disabled", fg_color="gray")
         self.settings_modified = False
         print("Settings saved and applied.")
