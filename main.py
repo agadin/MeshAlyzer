@@ -146,6 +146,7 @@ class ProtocolViewer(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.init = None
         self.graph_frame = None
         self.sampleID = None
         self.running = True  # Initialize the running attribute
@@ -729,7 +730,7 @@ class App(ctk.CTk):
         self.protocol_thread = threading.Thread(target=self.process_protocol, args=(protocol_name,))
         self.protocol_thread.start()
         self.protocol_running = True
-
+        self.show_overlay_notification("Protocol started")
         print(f"Running Protocol: {protocol_name}")
 
     def update_sample_id(self, event):
@@ -1015,9 +1016,9 @@ class App(ctk.CTk):
                         if filtered_data:
                             times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
                             self.ax.clear()
-                            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure",color=text_bg_color)
-                            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1", color=text_bg_color)
-                            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color=text_bg_color)
+                            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
                             # If target_pressure is a list parallel to graph_times, filter it similarly:
                             if self.target_pressure is not None:
                                 filtered_target = [
@@ -1076,16 +1077,6 @@ class App(ctk.CTk):
         self.ax.set_facecolor("none")
         self.fig.patch.set_facecolor("none")
         self.canvas.draw()
-
-    def clear_graphs(self):
-        # Reset the data lists
-        self.angle_special = []
-        self.force_special = []
-        self.time_data = []
-        self.angle_data = []
-        self.force_data = []
-
-        self.update_graph_view(self.segmented_button.get())
 
     def update_graph_view(self, mode):
         # Clear the current graph frame
@@ -1220,6 +1211,7 @@ class App(ctk.CTk):
 
         # calculate total number of commands
         self.total_commands = len(commands)
+        self.time
 
         # clear previous data
         self.data_dict = {}
@@ -1293,6 +1285,7 @@ class App(ctk.CTk):
         if not data_saved:
             # Set the name to the current date and time
             data_saved = self.create_folder_with_files(folder_name)
+        self.protocol_running = False
 
     # Add save as file name ability
 
@@ -1423,6 +1416,42 @@ class App(ctk.CTk):
                 ]
                 writer.writerow(row)
 
+    def show_overlay_notification(self, message, auto_dismiss_ms=5000):
+        """
+        Displays a temporary overlay notification in the center of the window.
+
+        Args:
+            message (str): The message to display.
+            auto_dismiss_ms (int): Time in milliseconds after which the notification auto-dismisses.
+        """
+        # Create a notification frame that will overlay on top of all other widgets.
+        notification = ctk.CTkFrame(self, fg_color="green", corner_radius=10)
+        # Place it in the center of the window.
+        notification.place(relx=0.5, rely=0.5, anchor="center")
+        # Bring the notification to the front.
+        notification.tkraise()
+
+        # Create a label with white text for the message.
+        label = ctk.CTkLabel(notification, text=message, text_color="white", bg_color="transparent", font=("Arial", 12))
+        label.pack(side="left", padx=(10, 5), pady=5)
+
+        # Create a close button to allow manual dismissal.
+        close_button = ctk.CTkButton(
+            notification,
+            text="X",
+            width=20,
+            fg_color="transparent",
+            text_color="white",
+            font=("Arial", 12),
+            command=notification.destroy
+        )
+        close_button.pack(side="right", padx=(5, 10), pady=5)
+
+        # Automatically dismiss the notification after auto_dismiss_ms milliseconds.
+        if auto_dismiss_ms is not None:
+            notification.after(auto_dismiss_ms, notification.destroy)
+
+
     def read_sensors(self):
         print("[read_sensors] Sensor thread started.")
         iteration_count = 0
@@ -1447,6 +1476,7 @@ class App(ctk.CTk):
                         time_diff = 0
                         self.sensor_data = []  # Reset sensor data for the new protocol
                         self.init = None
+                        self.clear_graph_data()
                         print("[read_sensors] Protocol started, sensor data reset.")
                     else:
                         time_diff = time.time() - self.protocol_start_time
