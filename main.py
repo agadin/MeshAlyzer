@@ -4,6 +4,8 @@ import multiprocessing.shared_memory as sm
 from tkinter import Canvas, Frame, Scrollbar, filedialog
 from PIL import Image, ImageTk, ImageOps
 import webbrowser
+import subprocess
+
 
 
 from tkinter import Canvas, StringVar
@@ -276,7 +278,7 @@ class App(ctk.CTk):
             text="",
             hover_color="gray",
             fg_color="transparent",
-            command=self.open_twitter  # Updated command to open Twitter
+            command=self.open_twitter  # Updated command
         )
         self.mesh_logo_button.pack(side="left", padx=1)
 
@@ -496,8 +498,15 @@ class App(ctk.CTk):
             widget.destroy()
 
     def open_twitter(self):
-        """Opens the MeshToTheMax Twitter page in the default web browser."""
-        webbrowser.open("https://x.com/MeshToTheMax")
+        """
+        Opens the MeshToTheMax Twitter page in the Raspberry Pi's browser.
+        Change 'epiphany-browser' to the desired browser if needed.
+        """
+        try:
+            # Launch the browser (e.g., Epiphany is the default browser on many Raspberry Pis)
+            subprocess.Popen(["epiphany-browser", "https://x.com/MeshToTheMax"])
+        except Exception as e:
+            print("Failed to open RasPi browser:", e)
 
     def update_pressure_values(self):
         pressure0, pressure1, pressure2, pressure3 = PressureReceiver.getpressures()
