@@ -7,7 +7,6 @@ import webbrowser
 import subprocess
 
 
-
 from tkinter import Canvas, StringVar
 import cv2
 import queue
@@ -34,6 +33,9 @@ import filecmp
 import threading
 import cairosvg
 import xml.etree.ElementTree as ET
+from tkinter import messagebox
+from PIL import Image, ImageTk
+
 
 # lps22
 import board
@@ -219,9 +221,6 @@ class App(ctk.CTk):
             print(f"Failed to set icon: {e}")
 
         # Window configuration
-
-        self.show_boot_animation()
-
         self.title("MeshAlyzer")
         self.resizable(False, False)
         # Calculate the center of the screen
@@ -231,6 +230,11 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
+        self.splash_canvas.pack(expand=True, fill="both")
+
+
+        self.show_boot_animation()
+
 
         # Protocol Handling dictionary inti
         self.data_dict = {}
@@ -458,6 +462,9 @@ class App(ctk.CTk):
 
     def show_boot_animation(self):
         # Remove title bar for splash screen effect
+        video_thread = threading.Thread(target=self.play_video_thread, daemon=True)
+        video_thread.start()
+
         self.overrideredirect(True)
 
         # Set the desired window size (720p video dimensions)
@@ -538,6 +545,52 @@ class App(ctk.CTk):
         # Start the video playback
         play_video()
         self.overrideredirect(False)
+
+    def show_error_dialog(self, title, message):
+        """Display a user-friendly error dialog."""
+        messagebox.showerror(title, message)
+
+    def update_splash_canvas(self, photo):
+        """Update the splash canvas with the new video frame."""
+        self.splash_canvas.create_image(0, 0, anchor="nw", image=photo)
+        # Keep a reference to avoid garbage collection
+        self.splash_canvas.image = photo
+
+    def play_video_thread(self):
+        """Run video playback in a separate thread to keep the UI responsive."""
+        video_path = "./img/MeshAlyzer_.mp4"
+        if not os.path.exists(video_path):
+            # Schedule the error dialog in the main thread
+            self.after(0, lambda: self.show_error_dialog("Video Error", f"Video file not found:\n{video_path}"))
+            return
+
+        video = cv2.VideoCapture(video_path)
+        if not video.isOpened():
+            self.after(0, lambda: self.show_error_dialog("Video Error", "Unable to open video file."))
+            return
+
+        fps = video.get(cv2.CAP_PROP_FPS)
+        fps = fps if fps > 0 else 25  # Fallback if FPS is not available
+        delay = 1.0 / fps
+
+        while video.isOpened():
+            ret, frame = video.read()
+            if not ret:
+                break
+
+            # Convert the frame to RGB and then to a PhotoImage
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame_rgb)
+            photo = ImageTk.PhotoImage(image)
+
+            # Schedule the UI update in the main thread
+            self.after(0, lambda img=photo: self.update_splash_canvas(img))
+            time.sleep(delay)
+
+        video.release()
+        # After video ends, schedule removal of the splash canvas (or transition to main UI)
+        self.after(0, self.splash_canvas.destroy)
+
 
     def clear_content_frame(self):
         for widget in self.content_frame.winfo_children():
