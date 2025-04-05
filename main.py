@@ -767,11 +767,16 @@ class App(ctk.CTk):
             self.settings_button.configure(text_color="black")
             self.home_button.configure(text_color="black")
             self.protocol_builder_button.configure(text_color="black")
+            self.motor_forward_button.configure(text_color="black")
+            self.motor_reverse_button.configure(text_color="black")
         else:
             self.inspector_button.configure(text_color="white")
             self.settings_button.configure(text_color="white")
             self.home_button.configure(text_color="white")
             self.protocol_builder_button.configure(text_color="white")
+            self.motor_forward_button.configure(text_color="white")
+            self.motor_reverse_button.configure(text_color="white")
+
 
     def show_calibrate(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -983,8 +988,10 @@ class App(ctk.CTk):
                 if hasattr(self, "canvas") and self.canvas is not None:
                     if ctk.get_appearance_mode() == "Dark":
                         app_bg_color = "#1F1F1F"
+                        text_bg_color = "white"
                     else:
                         app_bg_color = "#FFFFFF"
+                        text_bg_color = "black"
                     self.fig.patch.set_facecolor(app_bg_color)
                     self.ax.set_facecolor(app_bg_color)
 
@@ -1008,22 +1015,28 @@ class App(ctk.CTk):
                         if filtered_data:
                             times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
                             self.ax.clear()
-                            self.ax.plot(times, input_pressures, label="Input Pressure")
-                            self.ax.plot(times, pressure1s, label="Pressure 1")
-                            self.ax.plot(times, pressure2s, label="Pressure 2")
+                            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure",color=text_bg_color)
+                            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1", color=text_bg_color)
+                            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color=text_bg_color)
                             # If target_pressure is a list parallel to graph_times, filter it similarly:
                             if self.target_pressure is not None:
                                 filtered_target = [
                                     tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
                                 ]
-                                self.ax.plot(times, filtered_target, label="Target Pressure")
-                            self.ax.set_ylim(0, 100)
-                            self.ax.set_xlabel("Time (s)")
-                            self.ax.set_ylabel("PSI")
+                                self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
+                                             color=text_bg_color)
+                            # self.ax.set_ylim(0, 100)
+                            self.ax.set_xlabel("Time (s)", color=text_bg_color)
+                            self.ax.set_ylabel("PSI", color=text_bg_color)
+                            self.ax.tick_params(axis='x', colors=text_bg_color)
+                            self.ax.tick_params(axis='y', colors=text_bg_color)
+                            self.ax.title.set_color(text_bg_color)
                             self.ax.legend()
                             legend = self.ax.legend()
                         legend.get_frame().set_facecolor(app_bg_color)
                         legend.get_frame().set_edgecolor(app_bg_color)
+                        for text in legend.get_texts():
+                            text.set_color(text_bg_color)
                         self.canvas.draw()
             except Exception as e:
                 print(f"Error updating home displays: {e}")
