@@ -221,6 +221,8 @@ class App(ctk.CTk):
         except Exception as e:
             print(f"Failed to set icon: {e}")
 
+        self.show_boot_animation()
+
         # Window configuration
         self.title("MeshAlyzer")
         self.resizable(False, False)
@@ -231,12 +233,6 @@ class App(ctk.CTk):
         y_coordinate = (screen_height // 2) - (920 // 2)
 
         self.geometry(f"1800x920+{x_coordinate}+{y_coordinate}")
-        self.splash_canvas: Canvas = Canvas(self, width=800, height=600)
-        self.splash_canvas.pack(expand=True, fill="both")
-
-        self.after(100, self.show_boot_animation)
-
-
 
         # Protocol Handling dictionary inti
         self.data_dict = {}
