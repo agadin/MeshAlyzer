@@ -662,8 +662,8 @@ class App(ctk.CTk):
         sensor_section = ctk.CTkFrame(display_container, fg_color="transparent")
         sensor_section.pack(pady=10)
 
-        sensor_title = ctk.CTkLabel(sensor_section, text="Live Sensor Metrics", font=("Arial", 18, "bold"))
-        sensor_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
+        # sensor_title = ctk.CTkLabel(sensor_section, text="Live Sensor Metrics", font=("Arial", 18, "bold"))
+        # sensor_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
 
         self.time_display = ctk.CTkLabel(sensor_section, text="Time\n--:--.--", **display_style)
         self.time_display.grid(row=1, column=0, padx=10, pady=5)
@@ -681,8 +681,8 @@ class App(ctk.CTk):
         system_section = ctk.CTkFrame(display_container, fg_color="transparent")
         system_section.pack(pady=10)
 
-        system_title = ctk.CTkLabel(system_section, text="Protocol & System Info", font=("Arial", 18, "bold"))
-        system_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
+        # system_title = ctk.CTkLabel(system_section, text="Protocol & System Info", font=("Arial", 18, "bold"))
+        # system_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
 
         self.protocol_step_counter = ctk.CTkLabel(system_section, text="Protocol\nStep N/A", **display_style)
         self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=5)
@@ -773,11 +773,16 @@ class App(ctk.CTk):
             self.settings_button.configure(text_color="black")
             self.home_button.configure(text_color="black")
             self.protocol_builder_button.configure(text_color="black")
+            self.motor_forward_button.configure(text_color="black")
+            self.motor_reverse_button.configure(text_color="black")
         else:
             self.inspector_button.configure(text_color="white")
             self.settings_button.configure(text_color="white")
             self.home_button.configure(text_color="white")
             self.protocol_builder_button.configure(text_color="white")
+            self.motor_forward_button.configure(text_color="white")
+            self.motor_reverse_button.configure(text_color="white")
+
 
     def show_calibrate(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -989,8 +994,10 @@ class App(ctk.CTk):
                 if hasattr(self, "canvas") and self.canvas is not None:
                     if ctk.get_appearance_mode() == "Dark":
                         app_bg_color = "#1F1F1F"
+                        text_bg_color = "white"
                     else:
                         app_bg_color = "#FFFFFF"
+                        text_bg_color = "black"
                     self.fig.patch.set_facecolor(app_bg_color)
                     self.ax.set_facecolor(app_bg_color)
 
@@ -1014,21 +1021,29 @@ class App(ctk.CTk):
                         if filtered_data:
                             times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
                             self.ax.clear()
-                            self.ax.plot(times, input_pressures, label="Input Pressure")
-                            self.ax.plot(times, pressure1s, label="Pressure 1")
-                            self.ax.plot(times, pressure2s, label="Pressure 2")
+                            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure",color=text_bg_color)
+                            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1", color=text_bg_color)
+                            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2", color=text_bg_color)
                             # If target_pressure is a list parallel to graph_times, filter it similarly:
                             if self.target_pressure is not None:
                                 filtered_target = [
                                     tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
                                 ]
-                                self.ax.plot(times, filtered_target, label="Target Pressure")
-                            self.ax.set_ylim(0, 100)
-                            self.ax.set_xlabel("Time (s)")
-                            self.ax.set_ylabel("PSI")
+                                self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
+                                             color=text_bg_color)
+                            # self.ax.set_ylim(0, 100)
+                            self.ax.set_xlabel("Time (s)", color=text_bg_color)
+                            self.ax.set_ylabel("PSI", color=text_bg_color)
+                            self.ax.tick_params(axis='x', colors=text_bg_color)
+                            self.ax.tick_params(axis='y', colors=text_bg_color)
+                            self.ax.title.set_color(text_bg_color)
                             self.ax.legend()
-                            self.canvas.draw()
-
+                            legend = self.ax.legend()
+                        legend.get_frame().set_facecolor(app_bg_color)
+                        legend.get_frame().set_edgecolor(app_bg_color)
+                        for text in legend.get_texts():
+                            text.set_color(text_bg_color)
+                        self.canvas.draw()
             except Exception as e:
                 print(f"Error updating home displays: {e}")
 
@@ -1635,7 +1650,7 @@ class App(ctk.CTk):
             header = next(reader)
             data = [row for row in reader]
             self.total_time = data[-1][0]
-            self.total_steps = data[-1][6]
+            self.total_steps = len(data[6])
 
         # Copy and rename `data.csv`
         data_csv_path = 'data.csv'
@@ -1654,7 +1669,7 @@ class App(ctk.CTk):
         # Create and save `information.txt` with the current date
         info_path = os.path.join(folder_name, 'information.txt')
         with open(info_path, 'w') as info_file:
-            current_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+            current_date =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             info_file.write(f"Created on: {current_date}\n")
             info_file.write(f"Total time: {self.total_time}\n")
             info_file.write(f"Total steps: {self.total_steps}\n")
@@ -1662,7 +1677,7 @@ class App(ctk.CTk):
             info_file.write(f"Selected arm: {selected_arm}\n")
 
         # variables.txt
-        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_date =  datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # get all from  def get_from_dict(self, dict_key, variable_name):
         #         # Retrieve the dictionary from the class attribute
         #         data_dict = self.data_dict.get(dict_key, {})
