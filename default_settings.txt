@@ -1,4 +1,4 @@
 no_cap = False
 graph_y_range = None
 graph_time_range = 30
-accent_color = #blue
+accent_color = blue
