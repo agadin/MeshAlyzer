@@ -1376,8 +1376,12 @@ class App(ctk.CTk):
                         metric_value = self.calculate_metric(metric, self.protocol_step)
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
-
-
+            elif command.startswith("Wait"):
+                parts = command.split(":")[1].split(",")
+                wait_time = float(parts[0].strip())
+                wait_time = self.string_to_value_checker(wait_time, type_s='float')
+                print(f"Waiting for {wait_time} seconds")
+                time.sleep(wait_time)
             elif command.startswith("Wait_for_user_input"):
                 self.wait_for_user_input(command)
             elif command.startswith("no_save"):
