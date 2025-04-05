@@ -638,60 +638,55 @@ class App(ctk.CTk):
                                                 font=("Arial", 35, "bold"))
         self.protocol_name_label.pack(pady=10, padx=20, anchor="w")
 
-        # Create display frame with updated layout for the metrics
-        display_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        display_frame.pack(pady=5)
-
+        # Define a neater, modern display style
         display_style = {
-            "width": 200,
-            "height": 100,
-            "corner_radius": 20,
-            "fg_color": "lightblue",
-            "text_color": "black",
-            "font": ("Arial", 45, "bold"),
+            "width": 220,
+            "height": 120,
+            "corner_radius": 15,
+            "fg_color": "#F0F4F8",  # A soft light blue-gray background
+            "text_color": "#1A1A1A",  # Dark, contrasting text
+            "font": ("Helvetica", 20, "bold"),
         }
 
-        # === Main Display Section ===
-        display_container = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        display_container.pack(pady=20)
+        # Create a display frame in the main content area
+        display_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        display_frame.pack(pady=15, padx=15, fill="x")
 
-        # === Top Section: Sensor Metrics ===
-        sensor_section = ctk.CTkFrame(display_container, fg_color="transparent")
-        sensor_section.pack(pady=10)
+        # Configure grid columns for even expansion
+        for col in range(4):
+            display_frame.grid_columnconfigure(col, weight=1)
 
-        sensor_title = ctk.CTkLabel(sensor_section, text="Live Sensor Metrics", font=("Arial", 18, "bold"))
-        sensor_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
+        # --- Row 0: Time, Steps, Angle, and Force displays ---
+        self.time_display = ctk.CTkLabel(display_frame, text="Time: N/A", **display_style)
+        self.time_display.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.time_display = ctk.CTkLabel(sensor_section, text="Time\n--:--.--", **display_style)
-        self.time_display.grid(row=1, column=0, padx=10, pady=5)
+        self.step_display = ctk.CTkLabel(display_frame, text="Steps: N/A", **display_style)
+        self.step_display.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        self.step_display = ctk.CTkLabel(sensor_section, text="Steps\nN/A", **display_style)
-        self.step_display.grid(row=1, column=1, padx=10, pady=5)
+        self.angle_display = ctk.CTkLabel(display_frame, text="Angle: N/A", **display_style)
+        self.angle_display.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
-        self.angle_display = ctk.CTkLabel(sensor_section, text="Angle\nN/A°", **display_style)
-        self.angle_display.grid(row=1, column=2, padx=10, pady=5)
+        self.force_display_frame = ctk.CTkLabel(display_frame, text="N/A\nN/A | N/A", **display_style)
+        self.force_display_frame.grid(row=0, column=3, padx=10, pady=10, sticky="nsew")
 
-        self.force_display_frame = ctk.CTkLabel(sensor_section, text="Force\n-- | --", **display_style)
-        self.force_display_frame.grid(row=1, column=3, padx=10, pady=5)
+        # --- Row 1: Protocol Step Counter, Valve, Left and Right Distance displays ---
+        self.protocol_step_counter = ctk.CTkLabel(display_frame, text="Step: N/A", **display_style)
+        self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-        # === Bottom Section: System Info ===
-        system_section = ctk.CTkFrame(display_container, fg_color="transparent")
-        system_section.pack(pady=10)
+        self.valve_display = ctk.CTkLabel(display_frame, text="Valve: N/A", **display_style)
+        self.valve_display.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 
-        system_title = ctk.CTkLabel(system_section, text="Protocol & System Info", font=("Arial", 18, "bold"))
-        system_title.grid(row=0, column=0, columnspan=4, pady=(0, 10))
+        # Left Distance wrapped in its own transparent frame
+        left_distance_frame = ctk.CTkFrame(display_frame, fg_color="transparent")
+        left_distance_frame.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
+        self.left_distance_label = ctk.CTkLabel(left_distance_frame, text="Left: 0.00", **display_style)
+        self.left_distance_label.pack(expand=True, fill="both")
 
-        self.protocol_step_counter = ctk.CTkLabel(system_section, text="Protocol\nStep N/A", **display_style)
-        self.protocol_step_counter.grid(row=1, column=0, padx=10, pady=5)
-
-        self.valve_display = ctk.CTkLabel(system_section, text="Valves\nN/A", **display_style)
-        self.valve_display.grid(row=1, column=1, padx=10, pady=5)
-
-        self.left_distance_label = ctk.CTkLabel(system_section, text="Left\n0.00 mm", **display_style)
-        self.left_distance_label.grid(row=1, column=2, padx=10, pady=5)
-
-        self.right_distance_label = ctk.CTkLabel(system_section, text="Right\n0.00 mm", **display_style)
-        self.right_distance_label.grid(row=1, column=3, padx=10, pady=5)
+        # Right Distance wrapped similarly
+        right_distance_frame = ctk.CTkFrame(display_frame, fg_color="transparent")
+        right_distance_frame.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+        self.right_distance_label = ctk.CTkLabel(right_distance_frame, text="Right: 0.00", **display_style)
+        self.right_distance_label.pack(expand=True, fill="both")
 
         # make transparent graph here
         # === ADD TRANSPARENT GRAPH BELOW THE DISPLAYS ===
