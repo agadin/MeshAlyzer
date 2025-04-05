@@ -992,17 +992,36 @@ class App(ctk.CTk):
                         print("[update_displays] Not enough data to plot. Latest entries:",
                               self.graph_times[-5:] if self.graph_times else "No data")
                     else:
-                        self.ax.clear()
-                        self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                        self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                        self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                        if self.target_pressure is not None:
-                            self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure")
-                        self.ax.set_ylim(0, 100)
-                        self.ax.set_xlabel("Time (s)")
-                        self.ax.set_ylabel("PSI")
-                        self.ax.legend()
-                        legend = self.ax.legend()
+                        # Determine the lower time bound (last 30 seconds)
+                        current_time = self.graph_times[-1]
+                        lower_bound = current_time - self.graph_time_range  # graph_time_range is set to 30 seconds
+
+                        # Filter the data points within the last 30 seconds
+                        filtered_data = [
+                            (t, ip, p1, p2)
+                            for t, ip, p1, p2 in
+                            zip(self.graph_times, self.graph_input_pressures, self.graph_pressure1s,
+                                self.graph_pressure2s)
+                            if t >= lower_bound
+                        ]
+
+                        if filtered_data:
+                            times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
+                            self.ax.clear()
+                            self.ax.plot(times, input_pressures, label="Input Pressure")
+                            self.ax.plot(times, pressure1s, label="Pressure 1")
+                            self.ax.plot(times, pressure2s, label="Pressure 2")
+                            # If target_pressure is a list parallel to graph_times, filter it similarly:
+                            if self.target_pressure is not None:
+                                filtered_target = [
+                                    tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
+                                ]
+                                self.ax.plot(times, filtered_target, label="Target Pressure")
+                            self.ax.set_ylim(0, 100)
+                            self.ax.set_xlabel("Time (s)")
+                            self.ax.set_ylabel("PSI")
+                            self.ax.legend()
+                            legend = self.ax.legend()
                         legend.get_frame().set_facecolor(app_bg_color)
                         legend.get_frame().set_edgecolor(app_bg_color)
                         self.canvas.draw()
