@@ -234,8 +234,8 @@ class App(ctk.CTk):
         self.splash_canvas: Canvas = Canvas(self, width=800, height=600)
         self.splash_canvas.pack(expand=True, fill="both")
 
+        self.after(100, self.show_boot_animation)
 
-        self.show_boot_animation()
 
 
         # Protocol Handling dictionary inti
@@ -558,11 +558,23 @@ class App(ctk.CTk):
         # Keep a reference to avoid garbage collection
         self.splash_canvas.image = photo
 
+    def update_splash_image(self, pil_image):
+        """
+        This method runs on the main thread.
+        It converts the PIL image to a PhotoImage and updates the canvas.
+        """
+        try:
+            photo = ImageTk.PhotoImage(pil_image)
+            self.splash_canvas.create_image(0, 0, anchor="nw", image=photo)
+            # Keep a reference to avoid garbage collection.
+            self.splash_canvas.image = photo
+        except Exception as e:
+            self.show_error_dialog("Image Error", f"Failed to update image: {e}")
+
     def play_video_thread(self):
         """Run video playback in a separate thread to keep the UI responsive."""
         video_path = "./img/MeshAlyzer_.mp4"
         if not os.path.exists(video_path):
-            # Schedule the error dialog in the main thread
             self.after(0, lambda: self.show_error_dialog("Video Error", f"Video file not found:\n{video_path}"))
             return
 
@@ -580,17 +592,16 @@ class App(ctk.CTk):
             if not ret:
                 break
 
-            # Convert the frame to RGB and then to a PhotoImage
+            # Convert the frame to RGB and then to a PIL Image.
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame_rgb)
-            photo = ImageTk.PhotoImage(image)
+            pil_image = Image.fromarray(frame_rgb)
 
-            # Schedule the UI update in the main thread
-            self.after(0, lambda img=photo: self.update_splash_canvas(img))
+            # Schedule the update of the canvas on the main thread.
+            self.after(0, self.update_splash_image, pil_image)
             time.sleep(delay)
 
         video.release()
-        # After video ends, schedule removal of the splash canvas (or transition to main UI)
+        # After video ends, schedule removal of the splash canvas.
         self.after(0, self.splash_canvas.destroy)
 
 
