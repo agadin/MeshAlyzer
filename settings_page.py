@@ -25,7 +25,6 @@ def read_settings():
                     settings[key.strip()] = value.strip()
     return settings
 
-
 def write_settings(settings):
     """
     Writes a dictionary of settings back to settings.txt.
@@ -160,17 +159,32 @@ class SettingsPage(ctk.CTkFrame):
 
     def save_and_apply(self):
         """
-        Gathers values from all settings, writes them to settings.txt, and updates the main app attributes.
+        Gathers values from all settings, compares them with the current file values,
+        updates only those keys that have changed, writes back to settings.txt,
+        and updates the main app attributes.
         """
         new_settings = {}
         for key, widgets in self.setting_widgets.items():
-            definition = widgets["definition"]
-            # For booleans the variable holds a bool; otherwise, it's a string.
             value = widgets["input_var"].get()
             new_settings[key] = value
-            # Reset box color to indicate saved state.
-            widgets["box"].configure(fg_color="lightgray")
-        write_settings(new_settings)
+            # Reset box color to dark gray to indicate saved state.
+            widgets["box"].configure(fg_color="#2E2E2E")
+
+        # Read current settings from file.
+        current_settings = read_settings()
+        changes = {}
+        for key, new_val in new_settings.items():
+            if key not in current_settings or current_settings[key] != str(new_val):
+                changes[key] = new_val
+
+        if changes:
+            # Update only the changed keys.
+            current_settings.update({key: str(value) for key, value in changes.items()})
+            write_settings(current_settings)
+            print("Updated settings for keys:", list(changes.keys()))
+        else:
+            print("No changes detected; file remains unchanged.")
+
         # Update app attributes with proper type conversion.
         self.app.no_cap = new_settings.get("no_cap", self.app.no_cap)
         try:
@@ -203,7 +217,7 @@ class SettingsPage(ctk.CTkFrame):
                         widgets["input_var"].set(self.str_to_bool(val))
                     else:
                         widgets["input_var"].set(val)
-                    widgets["box"].configure(fg_color="lightgray")
+                    widgets["box"].configure(fg_color="#2E2E2E")
             self.save_and_apply()  # Apply restored defaults.
             print("Defaults restored.")
         except Exception as e:
