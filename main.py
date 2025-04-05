@@ -150,6 +150,7 @@ class ProtocolViewer(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.no_cap = None
         self.init = None
         self.graph_frame = None
         self.sampleID = None
@@ -1027,11 +1028,17 @@ class App(ctk.CTk):
                         ]
 
                         if filtered_data:
+                            self.ax.clear()
+                            if self.no_cap is True:
+                                self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                                self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                                self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                        else:
                             times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
                             self.ax.clear()
-                            self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                            self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                            self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                            self.ax.plot(times, input_pressures, label="Input Pressure")
+                            self.ax.plot(times, pressure1s, label="Pressure 1")
+                            self.ax.plot(times, pressure2s, label="Pressure 2")
                             # If target_pressure is a list parallel to graph_times, filter it similarly:
                             if self.target_pressure is not None:
                                 filtered_target = [
@@ -1224,7 +1231,6 @@ class App(ctk.CTk):
 
         # calculate total number of commands
         self.total_commands = len(commands)
-        self.time
 
         # clear previous data
         self.data_dict = {}
@@ -1440,7 +1446,7 @@ class App(ctk.CTk):
         # Create a notification frame that will overlay on top of all other widgets.
         notification = ctk.CTkFrame(self, fg_color="green", corner_radius=10)
         # Place it in the center of the window.
-        notification.place(relx=0.5, rely=0.5, anchor="center")
+        notification.place(relx=0.5, rely=0.5, anchor="s")
         # Bring the notification to the front.
         notification.tkraise()
 
