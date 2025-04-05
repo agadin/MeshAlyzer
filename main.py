@@ -1445,7 +1445,19 @@ class App(ctk.CTk):
         self.protocol_step = None
 
     def inflate(self, time_or_pressure, value, valve):
-        # Placeholder for the actual inflation logic
+        if valve == "valve1" or valve == "both":
+            self.valve1.supply()
+        if valve == "valve2" or valve == "both":
+            self.valve2.supply()
+
+        if time_or_pressure == "time":
+            time.sleep(value)
+        elif time_or_pressure == "pressure":
+            while self.lps.pressure < value:
+                time.sleep(0.01)
+
+        self.valve1.neutral()
+        self.valve2.neutral()
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
 
     def deflate(self, time_or_pressure, value, valve):
