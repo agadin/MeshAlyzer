@@ -202,8 +202,10 @@ class App(ctk.CTk):
         self.selected_motor = "both"
         self.graph_time_range = 30  # Default time range in seconds (can be set to 15 or 60 as needed)
         ctk.set_appearance_mode("System")  # Options: "System", "Dark", "Light"
-        self.accent_color = "Blue"  # Light blue color
+        self.accent_color = "blue"  # Light blue color
+        # set default color theme
         ctk.set_default_color_theme(self.accent_color)
+
         load_default_settings(self)
         icon_path = os.path.abspath('./img/ratfav.ico')
         png_icon_path = os.path.abspath('./img/ratfav.png')
