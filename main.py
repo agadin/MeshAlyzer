@@ -904,7 +904,6 @@ class App(ctk.CTk):
         self.clear_content_frame()
         settings_page = SettingsPage(self.content_frame, app=self)
         settings_page.pack(fill="both", expand=True)
-        self.clear_content_frame()
 
     def set_motor_control(self, value):
         self.selected_motor = value.lower()  # Converts "Left"/"Both"/"Right" to lowercase for the command string
