@@ -1348,7 +1348,7 @@ class App(ctk.CTk):
                 # Example usage of the parsed inputs
                 print(f"Time/Pressure: {time_or_pressure}, Value: {value}, Valve: {valve}")
                 self.inflate(time_or_pressure, value, valve)
-                if len(parts) > 1:
+                if len(parts) > 3:
                     for i in range(1, len(parts), 2):
                         metric = str(parts[i].strip())
                         variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
@@ -1441,7 +1441,19 @@ class App(ctk.CTk):
         self.protocol_step = None
 
     def inflate(self, time_or_pressure, value, valve):
-        # Placeholder for the actual inflation logic
+        if valve == "valve1" or valve == "both":
+            self.valve1.supply()
+        if valve == "valve2" or valve == "both":
+            self.valve2.supply()
+
+        if time_or_pressure == "time":
+            time.sleep(value)
+        elif time_or_pressure == "pressure":
+            while self.lps.pressure < value:
+                time.sleep(0.01)
+
+        self.valve1.neutral()
+        self.valve2.neutral()
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
 
     def deflate(self, time_or_pressure, value, valve):
