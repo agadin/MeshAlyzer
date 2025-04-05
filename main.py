@@ -234,8 +234,8 @@ class App(ctk.CTk):
         self.splash_canvas: Canvas = Canvas(self, width=800, height=600)
         self.splash_canvas.pack(expand=True, fill="both")
 
+        self.after(100, self.show_boot_animation)
 
-        self.show_boot_animation()
 
 
         # Protocol Handling dictionary inti
@@ -566,7 +566,7 @@ class App(ctk.CTk):
         try:
             photo = ImageTk.PhotoImage(pil_image)
             self.splash_canvas.create_image(0, 0, anchor="nw", image=photo)
-            # Keep a reference to the image to avoid garbage collection.
+            # Keep a reference to avoid garbage collection.
             self.splash_canvas.image = photo
         except Exception as e:
             self.show_error_dialog("Image Error", f"Failed to update image: {e}")
