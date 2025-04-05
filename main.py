@@ -615,6 +615,7 @@ class App(ctk.CTk):
     def show_home(self):
         self.clear_content_frame()
         self.home_displayed = True
+        self.update_app_settings()
 
         # Sidebar
         self.sidebar_frame = ctk.CTkFrame(self.content_frame, width=300)
@@ -1482,6 +1483,27 @@ class App(ctk.CTk):
         error_label.pack(pady=5)
 
         popup.mainloop()
+
+    def update_app_settings(self):
+        """
+        Reads settings.txt, converts each value to its proper type if possible,
+        and updates the app's settings by doing:
+            self.<key> = <converted_value>
+        This function scans the whole file and applies all settings.
+        """
+        # Read current settings from file.
+        settings = read_settings()  # Assumes read_settings() is defined and accessible.
+        for key, value in settings.items():
+            try:
+                # Try to convert the value using eval (e.g., "True" becomes True, "(0, 100)" becomes a tuple, etc.)
+                converted_value = eval(value)
+            except Exception:
+                # If eval fails, leave the value as a string.
+                converted_value = value
+            # Set the attribute on self with the name of the key.
+            setattr(self, key, converted_value)
+            print(f"Updated self.{key} = {converted_value}")
+
 
     def write_sensor_data_to_csv(self):
         # Define the CSV file name
