@@ -240,7 +240,7 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn.pack(padx=10, pady=10)
 
     def perform_check_calibration(self, ref_pressure):
-        # (For check calibration, we simply supply for 10 seconds and record one set of readings.)
+        # (For check calibration, we simply supply for 5 seconds and record one set of readings.)
         if self.sensor_selected[1]:
             self.app.valve1.supply()
         if self.sensor_selected[2]:
@@ -248,10 +248,10 @@ class CalibratePage(ctk.CTkFrame):
         if self.sensor_selected[0] and not any(self.sensor_selected[1:]):
             self.app.valve1.supply()
             self.app.valve2.supply()
-        print("Check Calibration: Valves activated. Recording sensor data for 10 seconds...")
+        print("Check Calibration: Valves activated. Recording sensor data for 5 seconds...")
         start_time = time.time()
         readings = []
-        while time.time() - start_time < 10:
+        while time.time() - start_time < 5:
             time_diff = time.time() - start_time
             LPS_pressure = self.app.lps.pressure
             LPS_temperature = self.app.lps.temperature
@@ -344,10 +344,10 @@ class CalibratePage(ctk.CTkFrame):
             print(f"User entered measured pressure: {measured_pressure} psi for target {current_pressure} psi")
             self.app.valve1.supply()
             self.app.valve2.supply()
-            print("Valves activated for 10 seconds. Recording sensor data...")
+            print("Valves activated for 5 seconds. Recording sensor data...")
             start_time = time.time()
             readings = []
-            while time.time() - start_time < 10:
+            while time.time() - start_time < 5:
                 time_diff = time.time() - start_time
                 LPS_pressure = self.app.lps.pressure
                 LPS_temperature = self.app.lps.temperature
@@ -373,7 +373,7 @@ class CalibratePage(ctk.CTkFrame):
                 time.sleep(0.01)
             self.app.valve1.neutral()
             self.app.valve2.neutral()
-            print("Valves set to neutral after 10 seconds.")
+            print("Valves set to neutral after 5 seconds.")
 
             csv_filename = os.path.join(
                 calibration_folder,
