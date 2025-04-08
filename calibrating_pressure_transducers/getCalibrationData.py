@@ -18,7 +18,7 @@ warnings.filterwarnings(
 )
 
 class PressureCalibrator:
-    def __init__(self, data_folder=None, max_iter=100000, random_state=42):
+    def __init__(self, data_folder=None, max_iter=10000000000, random_state=42):
         self.data_folder = data_folder
         self.max_iter = max_iter
         self.random_state = random_state
@@ -84,9 +84,9 @@ class PressureCalibrator:
             y = df_sensor['Measured_pressure']
             print(f"\nTraining model for {sensor} with features: {features} (Data shape: {X.shape})")
 
-            # First split into train+validation and test sets (e.g., 70% train+val, 30% test)
+            # First split into train+validation and test sets (e.g., 80% train+val, 20% test)
             X_train_val, X_test, y_train_val, y_test = train_test_split(
-                X, y, test_size=0.30, random_state=self.random_state
+                X, y, test_size=0.20, random_state=self.random_state
             )
             # Then split the train+validation into training and validation sets (e.g., 80% train, 20% validation)
             X_train, X_val, y_train, y_val = train_test_split(
