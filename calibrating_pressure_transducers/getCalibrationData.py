@@ -212,7 +212,7 @@ class PressureCalibrator:
 # Example usage:
 if __name__ == "__main__":
     # Initialize the calibrator with the folder containing your training CSV files.
-    calibrator = PressureCalibrator(data_folder='/Users/colehanan/Desktop/WashuClasses/MeshAlyzer/combined_csv_files/')
+    calibrator = PressureCalibrator(data_folder='/Users/colehanan/Desktop/WashuClasses/MeshAlyzer/betterData_150_PSI/daily_combined_csv/')
 
     # Train the models for each sensor, with validation and test evaluation.
     calibrator.train()
