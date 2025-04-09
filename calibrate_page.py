@@ -154,8 +154,10 @@ class CalibratePage(ctk.CTkFrame):
             self.ax.set_title("Calibrated Pressure Sensor Values", color=text_bg_color)
             self.ax.set_xlabel("Time (s)", color=text_bg_color)
             self.ax.set_ylabel("PSI", color=text_bg_color)
-            self.ax.tick_params(axis='x', color=text_bg_color)
-            self.ax.tick_params(axis='y', color=text_bg_color)
+            self.ax.tick_params(axis='x', colors=text_bg_color,
+                                labelcolor=text_bg_color)  # Set x-axis tick and label color
+            self.ax.tick_params(axis='y', colors=text_bg_color,
+                                labelcolor=text_bg_color)  # Set y-axis tick and label color
 
             self.ax.spines['bottom'].set_color(text_bg_color)  # Bottom axis line
             self.ax.spines['top'].set_color(text_bg_color)  # Top axis line
@@ -180,14 +182,14 @@ class CalibratePage(ctk.CTkFrame):
                 ]
                 if filtered_data:
                     times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
-                    self.ax.plot(times, input_pressures, label="Input Pressure")
-                    self.ax.plot(times, pressure1s, label="Pressure 1")
-                    self.ax.plot(times, pressure2s, label="Pressure 2")
+                    self.ax.plot(times, input_pressures, label="Input Pressure", zorder=3)
+                    self.ax.plot(times, pressure1s, label="Pressure 1", zorder=3)
+                    self.ax.plot(times, pressure2s, label="Pressure 2", zorder=3)
                     if self.app.target_pressure is not None:
                         filtered_target = [
                             tp for t, tp in zip(self.app.graph_times, self.app.target_pressure) if t >= lower_bound
                         ]
-                        self.ax.plot(times, filtered_target, label="Target Pressure")
+                        self.ax.plot(times, filtered_target, label="Target Pressure", zorder=3)
                 self.ax.set_ylim(0, 100)
                 self.ax.set_xlabel("Time (s)")
                 self.ax.set_ylabel("PSI")
