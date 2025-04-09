@@ -255,7 +255,7 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn.pack(padx=10, pady=10)
 
     def perform_check_calibration(self, ref_pressure):
-        # (For check calibration, we simply supply for 5 seconds and record one set of readings.)
+        # (For check calibration, we supply for 5 seconds and record one set of readings.)
         if self.sensor_selected[1]:
             self.app.valve1.supply()
         if self.sensor_selected[2]:
@@ -268,24 +268,14 @@ class CalibratePage(ctk.CTkFrame):
         readings = []
         while time.time() - start_time < 5:
             time_diff = time.time() - start_time
-            LPS_pressure = self.app.lps.pressure
-            LPS_temperature = self.app.lps.temperature
-            valve1_state = self.app.valve1.get_state()
-            valve2_state = self.app.valve2.get_state()
+            # Use the calibrated pressure values instead of the raw ones
             reading = {
                 'time': time_diff,
-                'LPS_pressure': LPS_pressure,
-                'LPS_temperature': LPS_temperature,
-                'pressure0': self.app.pressure0,
-                'pressure1': self.app.pressure1,
-                'pressure2': self.app.pressure2,
-                'pressure3': self.app.pressure3,
-                'valve1_state': valve1_state,
-                'valve2_state': valve2_state,
+                'pressure0': self.app.pressure0_convert,  # Changed from self.app.pressure0
+                'pressure1': self.app.pressure1_convert,  # Changed from self.app.pressure1
+                'pressure2': self.app.pressure2_convert,  # Changed from self.app.pressure2
+                'pressure3': self.app.pressure3,  # Keeping pressure3 as is (if no calibration exists)
                 'Target_pressure': self.app.target_pressure,
-                'Target_time': self.app.target_time,
-                'clamp_state': self.app.clamp_state,
-                'self_protocol_step': self.app.protocol_step
             }
             readings.append(reading)
             time.sleep(0.01)
@@ -303,10 +293,8 @@ class CalibratePage(ctk.CTkFrame):
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
             print(f"Created calibration folder: {calibration_folder}")
-        csv_filename = os.path.join(
-            calibration_folder,
-            f"check_calibration_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        )
+        csv_filename = os.path.join(calibration_folder,
+                                    f"check_calibration_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         print(f"Saving check calibration data to CSV file: {csv_filename}")
         import csv
         with open(csv_filename, "w", newline="") as csvfile:
