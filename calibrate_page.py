@@ -151,11 +151,11 @@ class CalibratePage(ctk.CTkFrame):
             self.fig.patch.set_facecolor(app_bg_color)
             self.ax.set_facecolor(app_bg_color)
 
-            self.ax.set_title("Calibrated Pressure Sensor Values", colors=text_bg_color)
-            self.ax.set_xlabel("Time (s)", colors=text_bg_color)
-            self.ax.set_ylabel("PSI", colors=text_bg_color)
-            self.ax.tick_params(axis='x', colors=text_bg_color)
-            self.ax.tick_params(axis='y', colors=text_bg_color)
+            self.ax.set_title("Calibrated Pressure Sensor Values", color=text_bg_color)
+            self.ax.set_xlabel("Time (s)", color=text_bg_color)
+            self.ax.set_ylabel("PSI", color=text_bg_color)
+            self.ax.tick_params(axis='x', color=text_bg_color)
+            self.ax.tick_params(axis='y', color=text_bg_color)
 
             # Check if enough data is available.
             if len(self.app.graph_times) < 2:
