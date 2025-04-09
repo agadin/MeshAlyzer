@@ -9,8 +9,8 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.compose import TransformedTargetRegressor
 from joblib import dump
 import matplotlib.pyplot as plt
-
 import warnings
+
 warnings.filterwarnings(
     "ignore",
     message="X does not have valid feature names, but StandardScaler was fitted with feature names",
@@ -31,7 +31,7 @@ class PressureCalibrator:
             'Measured_pressure', 'LPS_pressure', 'LPS_temperature'
         Sensor columns (pressure0, pressure1, pressure2) are also expected but may have missing values.
         Returns:
-            combined_df (DataFrame): Combined data from all CSV files.
+            combined_df (DataFrame): Combined data from all CSV files, with Measured_pressure rounded to 1 decimal.
         """
         if self.data_folder is None:
             raise ValueError("data_folder is not specified.")
@@ -57,6 +57,9 @@ class PressureCalibrator:
                     print(f"Warning: Missing values in {required_cols} in file {file_path}. Dropping those rows.")
                     df = df.dropna(subset=required_cols).reset_index(drop=True)
 
+                # Round Measured_pressure to 1 decimal place
+                df['Measured_pressure'] = df['Measured_pressure'].round(1)
+
                 dataframes.append(df)
 
         if not dataframes:
@@ -68,7 +71,7 @@ class PressureCalibrator:
     def train(self):
         """
         Train separate models for each sensor (pressure0, pressure1, pressure2) using only the sensor's raw value.
-        The target is Measured_pressure. Data is split into training, validation, and test sets.
+        The target is Measured_pressure (rounded to 1 decimal). Data is split into training, validation, and test sets.
         After training, the method evaluates and plots metrics on both the validation and test sets.
         The target is scaled using TransformedTargetRegressor to improve convergence.
         """
@@ -84,13 +87,13 @@ class PressureCalibrator:
             y = df_sensor['Measured_pressure']
             print(f"\nTraining model for {sensor} with features: {features} (Data shape: {X.shape})")
 
-            # First split into train+validation and test sets (e.g., 95% train+val, 5% test)
+            # First split into train+validation and test sets (e.g., 80% train+val, 20% test)
             X_train_val, X_test, y_train_val, y_test = train_test_split(
-                X, y, test_size=0.05, random_state=self.random_state
+                X, y, test_size=0.20, random_state=self.random_state
             )
-            # Then split the train+validation into training and validation sets (e.g., 95% train, 5% validation)
+            # Then split train+validation into training and validation sets (e.g., 80% train, 20% validation)
             X_train, X_val, y_train, y_val = train_test_split(
-                X_train_val, y_train_val, test_size=0.05, random_state=self.random_state
+                X_train_val, y_train_val, test_size=0.20, random_state=self.random_state
             )
 
             # Create a pipeline that scales the feature(s) and trains an MLP regressor.
@@ -143,7 +146,7 @@ class PressureCalibrator:
         """
         Generate evaluation plots: scatter, residual plot, and histogram of residuals.
         """
-        # Scatter plot: Predicted vs. Actual
+        # Scatter Plot: Predicted vs. Actual
         plt.figure(figsize=(6, 5))
         plt.scatter(y_true, y_pred, alpha=0.6, label='Data points')
         plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'r--', label='Ideal fit')
@@ -154,7 +157,7 @@ class PressureCalibrator:
         plt.tight_layout()
         plt.show()
 
-        # Residual plot: Residual vs. Actual
+        # Residual Plot: Residual vs. Actual
         residuals = y_true - y_pred
         plt.figure(figsize=(6, 5))
         plt.scatter(y_true, residuals, alpha=0.6)
@@ -165,7 +168,7 @@ class PressureCalibrator:
         plt.tight_layout()
         plt.show()
 
-        # Histogram of residuals
+        # Histogram of Residuals
         plt.figure(figsize=(6, 5))
         plt.hist(residuals, bins=30, alpha=0.7)
         plt.title(f"{sensor} - {dataset}: Residual Histogram")
@@ -177,19 +180,19 @@ class PressureCalibrator:
     def pressure_sensor_converter_main(self, pressure0, pressure1, pressure2, LPS_pressure=None, LPS_temperature=None):
         """
         Convert raw sensor readings from each sensor into calibrated pressure values.
-        Since the models are trained only on the sensor readings, LPS_pressure and LPS_temperature are not used.
+        The predictions are rounded to 1 decimal place.
         """
         if not self.models:
             raise ValueError("Models are not trained. Call the train() method first.")
 
-        # Each model now expects a single feature: the sensor reading.
+        # Each model expects a single feature.
         input0 = [[pressure0]]
         input1 = [[pressure1]]
         input2 = [[pressure2]]
 
-        conv_pressure0 = self.models['pressure0'].predict(input0)[0]
-        conv_pressure1 = self.models['pressure1'].predict(input1)[0]
-        conv_pressure2 = self.models['pressure2'].predict(input2)[0]
+        conv_pressure0 = round(self.models['pressure0'].predict(input0)[0], 1)
+        conv_pressure1 = round(self.models['pressure1'].predict(input1)[0], 1)
+        conv_pressure2 = round(self.models['pressure2'].predict(input2)[0], 1)
 
         return conv_pressure0, conv_pressure1, conv_pressure2
 
@@ -199,7 +202,6 @@ class PressureCalibrator:
         """
         if sensor not in self.models:
             raise ValueError(f"Model for sensor {sensor} is not trained.")
-
         mlp_regressor = self.models[sensor].named_steps['regressor'].regressor
         params = {
             'W1': mlp_regressor.coefs_[0],
@@ -212,7 +214,8 @@ class PressureCalibrator:
 # Example usage:
 if __name__ == "__main__":
     # Initialize the calibrator with the folder containing your training CSV files.
-    calibrator = PressureCalibrator(data_folder='/Users/colehanan/Desktop/WashuClasses/MeshAlyzer/betterData_150_PSI/daily_combined_csv/')
+    calibrator = PressureCalibrator(data_folder='/Users/colehanan/Desktop/WashuClasses/MeshAlyzer/betterData_150_PSI/daily_combined_csv/', max_iter=10000000000, random_state=42)
 
-    # Train the models for each sensor, with validation and test evaluation.
+    # Train the models for each sensor.
     calibrator.train()
+
