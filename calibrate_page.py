@@ -157,6 +157,11 @@ class CalibratePage(ctk.CTkFrame):
             self.ax.tick_params(axis='x', color=text_bg_color)
             self.ax.tick_params(axis='y', color=text_bg_color)
 
+            self.ax.spines['bottom'].set_color(text_bg_color)  # Bottom axis line
+            self.ax.spines['top'].set_color(text_bg_color)  # Top axis line
+            self.ax.spines['left'].set_color(text_bg_color)  # Left axis line
+            self.ax.spines['right'].set_color(text_bg_color)  # Right axis line
+
             # Check if enough data is available.
             if len(self.app.graph_times) < 2:
                 print("[CalibratePage.update_graph] Not enough data to plot. Latest entries:",
