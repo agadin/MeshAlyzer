@@ -64,13 +64,11 @@ class CalibratePage(ctk.CTkFrame):
 
         # --- Graph Frame ---
         self.graph_frame = ctk.CTkFrame(self)
-        self.graph_frame.pack(expand=True, fill="both", padx=10, pady=5)
+        self.graph_frame.pack(expand=True, fill="both", padx=20, pady=10)
         self.fig, self.ax = plt.subplots(figsize=(6, 4))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
         self.canvas.get_tk_widget().pack(expand=True, fill="both")
-        self.ax.set_title("Pressure Sensor Raw Values")
-        self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("PSI")
+
 
         # --- Bottom frame for sensor toggle buttons ---
         self.bottom_frame = ctk.CTkFrame(self, height=60)
@@ -144,10 +142,20 @@ class CalibratePage(ctk.CTkFrame):
             self.ax.clear()
             if ctk.get_appearance_mode() == "Dark":
                 app_bg_color = "#1F1F1F"
+                text_bg_color = "white"
+
             else:
                 app_bg_color = "#FFFFFF"
+                text_bg_color = "white"
+
             self.fig.patch.set_facecolor(app_bg_color)
             self.ax.set_facecolor(app_bg_color)
+
+            self.ax.set_title("Calibrated Pressure Sensor Values", colors=text_bg_color)
+            self.ax.set_xlabel("Time (s)", colors=text_bg_color)
+            self.ax.set_ylabel("PSI", colors=text_bg_color)
+            self.ax.tick_params(axis='x', colors=text_bg_color)
+            self.ax.tick_params(axis='y', colors=text_bg_color)
 
             # Check if enough data is available.
             if len(self.app.graph_times) < 2:
@@ -183,7 +191,7 @@ class CalibratePage(ctk.CTkFrame):
             self.canvas.draw()
         except Exception as e:
             print(f"Error updating calibrate page graph: {e}")
-        self.after(500, self.update_graph)
+        self.after(50, self.update_graph)
 
     def prompt_measured_pressure_before(self, target_pressure):
         """

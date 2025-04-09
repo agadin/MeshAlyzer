@@ -1758,7 +1758,7 @@ class App(ctk.CTk):
 
         except queue.Empty:
             pass
-        self.after(100, self.process_queue)
+        self.after(50, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
