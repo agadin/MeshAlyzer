@@ -293,11 +293,12 @@ class CalibratePage(ctk.CTkFrame):
         self.app.valve2.neutral()
         print("Check Calibration: Valves set to neutral.")
 
-        base_folder = "calibration_data"
-        if not os.path.exists(base_folder):
-            os.makedirs(base_folder)
-            print(f"Created base folder: {base_folder}")
-        calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
+        accuracy_results = "check_calibration_results"
+
+        if not os.path.exists(accuracy_results):
+            os.makedirs(accuracy_results)
+            print(f"Created base folder: {accuracy_results}")
+        calibration_folder = os.path.join(accuracy_results, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
             print(f"Created calibration folder: {calibration_folder}")
@@ -314,6 +315,27 @@ class CalibratePage(ctk.CTkFrame):
             for row in readings:
                 writer.writerow(row)
         print("Check Calibration: Data successfully saved.")
+
+        for i, sensor_key in enumerate(['pressure0', 'pressure1', 'pressure2']):
+            if self.sensor_selected[i]:
+                sensor_readings = [r[sensor_key] for r in readings]
+                avg_reading = sum(sensor_readings) / len(sensor_readings)
+                accuracy = 100 - abs((avg_reading - ref_pressure) / ref_pressure * 100) if ref_pressure != 0 else 100
+                accuracy_results.append((f"Sensor {i + 1}", avg_reading, accuracy))
+            else:
+                accuracy_results.append((f"Sensor {i + 1}", "N/A", "N/A"))
+
+        # Display results in a pop-up window
+        popup = ctk.CTkToplevel(self)
+        popup.title("Calibration Accuracy Results")
+        tk.Label(popup, text="Calibration Accuracy Results", font=("Arial", 16, "bold")).pack(pady=10)
+        for sensor, avg_reading, accuracy in accuracy_results:
+            tk.Label(
+                popup,
+                text=f"{sensor}: Avg Reading = {avg_reading}, Accuracy = {accuracy:.2f}%" if accuracy != "N/A" else f"{sensor}: Not Selected",
+                font=("Arial", 14)
+            ).pack(pady=5)
+        ctk.CTkButton(popup, text="OK", command=popup.destroy).pack(pady=10)
 
     def start_sensor_calibration(self):
         popup = ctk.CTkToplevel(self)
