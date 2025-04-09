@@ -294,6 +294,7 @@ class CalibratePage(ctk.CTkFrame):
         print("Check Calibration: Valves set to neutral.")
 
         accuracy_results = "check_calibration_results"
+        accuracy_results1 = []  # Initialize as an empty list
 
         if not os.path.exists(accuracy_results):
             os.makedirs(accuracy_results)
@@ -321,15 +322,15 @@ class CalibratePage(ctk.CTkFrame):
                 sensor_readings = [r[sensor_key] for r in readings]
                 avg_reading = sum(sensor_readings) / len(sensor_readings)
                 accuracy = 100 - abs((avg_reading - ref_pressure) / ref_pressure * 100) if ref_pressure != 0 else 100
-                accuracy_results.append((f"Sensor {i + 1}", avg_reading, accuracy))
+                accuracy_results1.append((f"Sensor {i + 1}", avg_reading, accuracy))
             else:
-                accuracy_results.append((f"Sensor {i + 1}", "N/A", "N/A"))
+                accuracy_results1.append((f"Sensor {i + 1}", "N/A", "N/A"))
 
         # Display results in a pop-up window
         popup = ctk.CTkToplevel(self)
         popup.title("Calibration Accuracy Results")
         tk.Label(popup, text="Calibration Accuracy Results", font=("Arial", 16, "bold")).pack(pady=10)
-        for sensor, avg_reading, accuracy in accuracy_results:
+        for sensor, avg_reading, accuracy in accuracy_results1:
             tk.Label(
                 popup,
                 text=f"{sensor}: Avg Reading = {avg_reading}, Accuracy = {accuracy:.2f}%" if accuracy != "N/A" else f"{sensor}: Not Selected",
