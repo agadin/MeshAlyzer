@@ -56,7 +56,7 @@ class ValveControlDropdown(ctk.CTkFrame):
         """Show the dropdown and start the inactivity timer."""
         pressures = self.get_pressures()
         if pressures.get("pressure0", 0) < 15:
-            self.segmented_button.configure(state="disabled")
+            # self.segmented_button.configure(state="disabled")
             self.warning_label.configure(text="Minimum input pressure is 15psi")
         else:
             self.segmented_button.configure(state="normal")
