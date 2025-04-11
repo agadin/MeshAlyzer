@@ -64,13 +64,11 @@ class CalibratePage(ctk.CTkFrame):
 
         # --- Graph Frame ---
         self.graph_frame = ctk.CTkFrame(self)
-        self.graph_frame.pack(expand=True, fill="both", padx=10, pady=5)
+        self.graph_frame.pack(expand=True, fill="both", padx=20, pady=10)
         self.fig, self.ax = plt.subplots(figsize=(6, 4))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
         self.canvas.get_tk_widget().pack(expand=True, fill="both")
-        self.ax.set_title("Pressure Sensor Raw Values")
-        self.ax.set_xlabel("Time (s)")
-        self.ax.set_ylabel("PSI")
+
 
         # --- Bottom frame for sensor toggle buttons ---
         self.bottom_frame = ctk.CTkFrame(self, height=60)
@@ -144,10 +142,27 @@ class CalibratePage(ctk.CTkFrame):
             self.ax.clear()
             if ctk.get_appearance_mode() == "Dark":
                 app_bg_color = "#1F1F1F"
+                text_bg_color = "white"
+
             else:
                 app_bg_color = "#FFFFFF"
+                text_bg_color = "white"
+
             self.fig.patch.set_facecolor(app_bg_color)
             self.ax.set_facecolor(app_bg_color)
+
+            self.ax.set_title("Calibrated Pressure Sensor Values", color=text_bg_color)
+            self.ax.set_xlabel("Time (s)", color=text_bg_color)
+            self.ax.set_ylabel("PSI", color=text_bg_color)
+            self.ax.tick_params(axis='x', colors=text_bg_color,
+                                labelcolor=text_bg_color)  # Set x-axis tick and label color
+            self.ax.tick_params(axis='y', colors=text_bg_color,
+                                labelcolor=text_bg_color)  # Set y-axis tick and label color
+
+            self.ax.spines['bottom'].set_color(text_bg_color)  # Bottom axis line
+            self.ax.spines['top'].set_color(text_bg_color)  # Top axis line
+            self.ax.spines['left'].set_color(text_bg_color)  # Left axis line
+            self.ax.spines['right'].set_color(text_bg_color)  # Right axis line
 
             # Check if enough data is available.
             if len(self.app.graph_times) < 2:
@@ -167,14 +182,14 @@ class CalibratePage(ctk.CTkFrame):
                 ]
                 if filtered_data:
                     times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
-                    self.ax.plot(times, input_pressures, label="Input Pressure")
-                    self.ax.plot(times, pressure1s, label="Pressure 1")
-                    self.ax.plot(times, pressure2s, label="Pressure 2")
+                    self.ax.plot(times, input_pressures, label="Input Pressure", zorder=3)
+                    self.ax.plot(times, pressure1s, label="Pressure 1", zorder=3)
+                    self.ax.plot(times, pressure2s, label="Pressure 2", zorder=3)
                     if self.app.target_pressure is not None:
                         filtered_target = [
                             tp for t, tp in zip(self.app.graph_times, self.app.target_pressure) if t >= lower_bound
                         ]
-                        self.ax.plot(times, filtered_target, label="Target Pressure")
+                        self.ax.plot(times, filtered_target, label="Target Pressure", zorder=3)
                 self.ax.set_ylim(0, 100)
                 self.ax.set_xlabel("Time (s)")
                 self.ax.set_ylabel("PSI")
@@ -183,7 +198,7 @@ class CalibratePage(ctk.CTkFrame):
             self.canvas.draw()
         except Exception as e:
             print(f"Error updating calibrate page graph: {e}")
-        self.after(500, self.update_graph)
+        self.after(50, self.update_graph)
 
     def prompt_measured_pressure_before(self, target_pressure):
         """
@@ -240,7 +255,7 @@ class CalibratePage(ctk.CTkFrame):
         submit_btn.pack(padx=10, pady=10)
 
     def perform_check_calibration(self, ref_pressure):
-        # (For check calibration, we simply supply for 5 seconds and record one set of readings.)
+        # (For check calibration, we supply for 5 seconds and record one set of readings.)
         if self.sensor_selected[1]:
             self.app.valve1.supply()
         if self.sensor_selected[2]:
@@ -253,24 +268,14 @@ class CalibratePage(ctk.CTkFrame):
         readings = []
         while time.time() - start_time < 5:
             time_diff = time.time() - start_time
-            LPS_pressure = self.app.lps.pressure
-            LPS_temperature = self.app.lps.temperature
-            valve1_state = self.app.valve1.get_state()
-            valve2_state = self.app.valve2.get_state()
+            # Use the calibrated pressure values instead of the raw ones
             reading = {
                 'time': time_diff,
-                'LPS_pressure': LPS_pressure,
-                'LPS_temperature': LPS_temperature,
-                'pressure0': self.app.pressure0,
-                'pressure1': self.app.pressure1,
-                'pressure2': self.app.pressure2,
-                'pressure3': self.app.pressure3,
-                'valve1_state': valve1_state,
-                'valve2_state': valve2_state,
+                'pressure0': self.app.pressure0_convert,  # Changed from self.app.pressure0
+                'pressure1': self.app.pressure1_convert,  # Changed from self.app.pressure1
+                'pressure2': self.app.pressure2_convert,  # Changed from self.app.pressure2
+                'pressure3': self.app.pressure3,  # Keeping pressure3 as is (if no calibration exists)
                 'Target_pressure': self.app.target_pressure,
-                'Target_time': self.app.target_time,
-                'clamp_state': self.app.clamp_state,
-                'self_protocol_step': self.app.protocol_step
             }
             readings.append(reading)
             time.sleep(0.01)
@@ -278,18 +283,18 @@ class CalibratePage(ctk.CTkFrame):
         self.app.valve2.neutral()
         print("Check Calibration: Valves set to neutral.")
 
-        base_folder = "calibration_data"
-        if not os.path.exists(base_folder):
-            os.makedirs(base_folder)
-            print(f"Created base folder: {base_folder}")
-        calibration_folder = os.path.join(base_folder, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
+        accuracy_results = "check_calibration_results"
+        accuracy_results1 = []  # Initialize as an empty list
+
+        if not os.path.exists(accuracy_results):
+            os.makedirs(accuracy_results)
+            print(f"Created base folder: {accuracy_results}")
+        calibration_folder = os.path.join(accuracy_results, f"calibration_{datetime.datetime.now().strftime('%Y%m%d')}")
         if not os.path.exists(calibration_folder):
             os.makedirs(calibration_folder)
             print(f"Created calibration folder: {calibration_folder}")
-        csv_filename = os.path.join(
-            calibration_folder,
-            f"check_calibration_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        )
+        csv_filename = os.path.join(calibration_folder,
+                                    f"check_calibration_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         print(f"Saving check calibration data to CSV file: {csv_filename}")
         import csv
         with open(csv_filename, "w", newline="") as csvfile:
@@ -299,6 +304,27 @@ class CalibratePage(ctk.CTkFrame):
             for row in readings:
                 writer.writerow(row)
         print("Check Calibration: Data successfully saved.")
+
+        for i, sensor_key in enumerate(['pressure0', 'pressure1', 'pressure2']):
+            if self.sensor_selected[i]:
+                sensor_readings = [r[sensor_key] for r in readings]
+                avg_reading = sum(sensor_readings) / len(sensor_readings)
+                accuracy = 100 - abs((avg_reading - ref_pressure) / ref_pressure * 100) if ref_pressure != 0 else 100
+                accuracy_results1.append((f"Sensor {i + 1}", avg_reading, accuracy))
+            else:
+                accuracy_results1.append((f"Sensor {i + 1}", "N/A", "N/A"))
+
+        # Display results in a pop-up window
+        popup = ctk.CTkToplevel(self)
+        popup.title("Calibration Accuracy Results")
+        tk.Label(popup, text="Calibration Accuracy Results", font=("Arial", 16, "bold")).pack(pady=10)
+        for sensor, avg_reading, accuracy in accuracy_results1:
+            tk.Label(
+                popup,
+                text=f"{sensor}: Avg Reading = {avg_reading}, Accuracy = {accuracy:.2f}%" if accuracy != "N/A" else f"{sensor}: Not Selected",
+                font=("Arial", 14)
+            ).pack(pady=5)
+        ctk.CTkButton(popup, text="OK", command=popup.destroy).pack(pady=10)
 
     def start_sensor_calibration(self):
         popup = ctk.CTkToplevel(self)
