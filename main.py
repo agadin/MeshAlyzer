@@ -192,6 +192,7 @@ def load_default_settings(app=None):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()  # Initialize the parent class
+        self.last_graph_update = 0
         self.splash_canvas = None
         self.graph_y_range = None
         self.no_cap = None
@@ -247,6 +248,7 @@ class App(ctk.CTk):
         self.graph_input_pressures = []
         self.graph_pressure1s = []
         self.graph_pressure2s = []
+        self.previous_values = {}
 
         # Initialize PressureReceiver
         self.pressure_receiver = PressureReceiver()
@@ -1083,69 +1085,73 @@ class App(ctk.CTk):
                 safe_configure(self.valve_display, text=f"{valve1_state} | {valve2_state}")
 
                 # Also update the home page graph if its canvas exists.
-                if hasattr(self, "canvas") and self.canvas is not None:
-                    if ctk.get_appearance_mode() == "Dark":
-                        app_bg_color = "#1F1F1F"
-                        text_bg_color = "white"
-                    else:
-                        app_bg_color = "#FFFFFF"
-                        text_bg_color = "black"
-                    self.fig.patch.set_facecolor(app_bg_color)
-                    self.ax.set_facecolor(app_bg_color)
+                current_time = time.time()
+                if current_time - self.last_graph_update >= 0.5:  # Check if 0.5 seconds have passed
+                    self.last_graph_update = current_time  # Update the last graph update time
 
-                    if len(self.graph_times) < 2:
-                        print("[update_displays] Not enough data to plot. Latest entries:",
-                              self.graph_times[-5:] if self.graph_times else "No data")
-                    else:
-                        # Determine the lower time bound (last 30 seconds)
-                        current_time = self.graph_times[-1]
-                        lower_bound = current_time - self.graph_time_range  # graph_time_range is set to 30 seconds
+                    if hasattr(self, "canvas") and self.canvas is not None:
+                        if ctk.get_appearance_mode() == "Dark":
+                            app_bg_color = "#1F1F1F"
+                            text_bg_color = "white"
+                        else:
+                            app_bg_color = "#FFFFFF"
+                            text_bg_color = "black"
+                        self.fig.patch.set_facecolor(app_bg_color)
+                        self.ax.set_facecolor(app_bg_color)
 
-                        # Filter the data points within the last 30 seconds
-                        filtered_data = [
-                            (t, ip, p1, p2)
-                            for t, ip, p1, p2 in
-                            zip(self.graph_times, self.graph_input_pressures, self.graph_pressure1s,
-                                self.graph_pressure2s)
-                            if t >= lower_bound
-                        ]
+                        if len(self.graph_times) < 2:
+                            print("[update_displays] Not enough data to plot. Latest entries:",
+                                  self.graph_times[-5:] if self.graph_times else "No data")
+                        else:
+                            # Determine the lower time bound (last 30 seconds)
+                            current_time = self.graph_times[-1]
+                            lower_bound = current_time - self.graph_time_range  # graph_time_range is set to 30 seconds
 
-                        if filtered_data:
-                            self.ax.clear()
-                            if self.no_cap is True:
-                                self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
-                                self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
-                                self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
-                            else:
-                                times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
+                            # Filter the data points within the last 30 seconds
+                            filtered_data = [
+                                (t, ip, p1, p2)
+                                for t, ip, p1, p2 in
+                                zip(self.graph_times, self.graph_input_pressures, self.graph_pressure1s,
+                                    self.graph_pressure2s)
+                                if t >= lower_bound
+                            ]
+
+                            if filtered_data:
                                 self.ax.clear()
-                                self.ax.plot(times, input_pressures, label="Input Pressure")
-                                self.ax.plot(times, pressure1s, label="Pressure 1")
-                                self.ax.plot(times, pressure2s, label="Pressure 2")
-                            # If target_pressure is a list parallel to graph_times, filter it similarly:
-                            if self.target_pressure is not None:
-                                filtered_target = [
-                                    tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
-                                ]
-                                self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
-                                             color=text_bg_color)
-                            if self.graph_y_range is not None:
-                                # extract numbers from the graph_y_range tuple
-                                low_y = self.graph_y_range[0]
-                                high_y= self.graph_y_range[1]
-                                self.ax.set_ylim(low_y, high_y)
-                            self.ax.set_xlabel("Time (s)", color=text_bg_color)
-                            self.ax.set_ylabel("PSI", color=text_bg_color)
-                            self.ax.tick_params(axis='x', colors=text_bg_color)
-                            self.ax.tick_params(axis='y', colors=text_bg_color)
-                            self.ax.title.set_color(text_bg_color)
-                            self.ax.legend()
-                            legend = self.ax.legend()
-                            legend.get_frame().set_facecolor(app_bg_color)
-                            legend.get_frame().set_edgecolor(app_bg_color)
-                            for text in legend.get_texts():
-                                text.set_color(text_bg_color)
-                            self.canvas.draw()
+                                if self.no_cap is True:
+                                    self.ax.plot(self.graph_times, self.graph_input_pressures, label="Input Pressure")
+                                    self.ax.plot(self.graph_times, self.graph_pressure1s, label="Pressure 1")
+                                    self.ax.plot(self.graph_times, self.graph_pressure2s, label="Pressure 2")
+                                else:
+                                    times, input_pressures, pressure1s, pressure2s = zip(*filtered_data)
+                                    self.ax.clear()
+                                    self.ax.plot(times, input_pressures, label="Input Pressure")
+                                    self.ax.plot(times, pressure1s, label="Pressure 1")
+                                    self.ax.plot(times, pressure2s, label="Pressure 2")
+                                # If target_pressure is a list parallel to graph_times, filter it similarly:
+                                if self.target_pressure is not None:
+                                    filtered_target = [
+                                        tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
+                                    ]
+                                    self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
+                                                 color=text_bg_color)
+                                if self.graph_y_range is not None:
+                                    # extract numbers from the graph_y_range tuple
+                                    low_y = self.graph_y_range[0]
+                                    high_y = self.graph_y_range[1]
+                                    self.ax.set_ylim(low_y, high_y)
+                                self.ax.set_xlabel("Time (s)", color=text_bg_color)
+                                self.ax.set_ylabel("PSI", color=text_bg_color)
+                                self.ax.tick_params(axis='x', colors=text_bg_color)
+                                self.ax.tick_params(axis='y', colors=text_bg_color)
+                                self.ax.title.set_color(text_bg_color)
+                                self.ax.legend()
+                                legend = self.ax.legend()
+                                legend.get_frame().set_facecolor(app_bg_color)
+                                legend.get_frame().set_edgecolor(app_bg_color)
+                                for text in legend.get_texts():
+                                    text.set_color(text_bg_color)
+                                self.canvas.draw()
             except Exception as e:
                 print(f"Error updating home displays: {e}")
 
@@ -1185,21 +1191,6 @@ class App(ctk.CTk):
         self.fig.patch.set_facecolor("none")
         self.canvas.draw()
 
-    def update_graph_view(self, mode):
-        # Clear the current graph frame
-        for widget in self.graph_frame.winfo_children():
-            widget.destroy()
-
-        # Initialize variables
-        self.angle_data = []
-        self.force_data = []
-        self.time_data = []
-
-        # Create a new Matplotlib figure
-        self.fig, self.ax = plt.subplots(figsize=(6, 4))  # Adjust the figure size as needed
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.pack(expand=True, fill="both")
 
     def stop_protocol(self):
         self.stop_flag = "1"
@@ -1594,19 +1585,18 @@ class App(ctk.CTk):
         if auto_dismiss_ms is not None:
             notification.after(auto_dismiss_ms, notification.destroy)
 
-
     def read_sensors(self):
         print("[read_sensors] Sensor thread started.")
         iteration_count = 0
+        stop_event = threading.Event()  # Event to control the loop
         try:
-            while True:
+            while not stop_event.wait(0.1):  # Wait for 0.1 seconds or until the event is set
                 iteration_count += 1
                 current_iter_time = time.time()
 
                 pressures = PressureReceiver.getpressures()
                 if not pressures or len(pressures) < 4:
                     print(f"[read_sensors] Pressure data not available: {pressures}")
-                    time.sleep(0.1)
                     continue
                 pressure0, pressure1, pressure2, pressure3 = pressures
 
@@ -1627,9 +1617,7 @@ class App(ctk.CTk):
                     LPS_pressure = self.lps.pressure
                     LPS_temperature = self.lps.temperature
                     self.update_pressure_values()
-                    (self.pressure0_convert,
-                     self.pressure1_convert,
-                     self.pressure2_convert) = self.pressure_sensor_converter(
+                    (self.pressure0_convert, self.pressure1_convert, self.pressure2_convert) = self.pressure_sensor_converter(
                         pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature)
 
                     valve1_state = self.valve1.get_state()
@@ -1682,8 +1670,7 @@ class App(ctk.CTk):
                     self.update_pressure_values()
                     (self.pressure0_convert,
                      self.pressure1_convert,
-                     self.pressure2_convert) = self.pressure_sensor_converter(
-                        pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature)
+                     self.pressure2_convert) = self.pressure_sensor_converter(pressure0, pressure1, pressure2, LPS_pressure, LPS_temperature)
 
                     valve1_state = self.valve1.get_state()
                     valve2_state = self.valve2.get_state()
@@ -1723,8 +1710,6 @@ class App(ctk.CTk):
                 # Queue the data packet
                 if data_packet is not None:
                     self.update_queue.put(data_packet)
-
-                time.sleep(0.1)
         except Exception as e:
             print(f"[read_sensors] Error: {e}")
 
@@ -1758,7 +1743,7 @@ class App(ctk.CTk):
 
         except queue.Empty:
             pass
-        self.after(100, self.process_queue)
+        self.after(200, self.process_queue)
 
     def create_folder_with_files(self, provided_name=None, special=False):
         self.write_sensor_data_to_csv()
