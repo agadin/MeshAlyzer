@@ -14,7 +14,7 @@ class VideoRecorderApp:
         self.start_time = time.time()
         self.duration = 30  # seconds to record
         self.fps = 20  # frames per second
-        self.interval = int(1000 / self.fps)  # interval in milliseconds
+        self.interval = int(1000 / self.fps)  # update interval in milliseconds
 
         # Create a Matplotlib figure for the graph
         self.fig = Figure(figsize=(6, 4), dpi=100)
@@ -61,15 +61,14 @@ class VideoRecorderApp:
         self.x_data.append(current_time)
         self.y_data.append(random.uniform(0, 10))
         self.line.set_data(self.x_data, self.y_data)
-        # Optionally update the x-axis limit dynamically
         self.ax.set_xlim(0, max(self.duration, current_time + 1))
         self.canvas.draw()
 
-        # Capture the canvas as an RGB image from the figure's buffer
-        width, height = self.fig.canvas.get_width_height()
-        img = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype=np.uint8)
-        img = img.reshape((height, width, 3))
-        # Convert from RGB to BGR (OpenCV format)
+        # Capture the canvas as an RGB image using print_to_buffer()
+        buffer, (width, height) = self.fig.canvas.print_to_buffer()
+        # The buffer contains 4 channels (RGBA), so convert to an array and drop the alpha channel:
+        img = np.frombuffer(buffer, dtype=np.uint8).reshape((height, width, 4))[:, :, :3]
+        # Convert from RGB to BGR (required by OpenCV)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
         # Write the frame to the video file
