@@ -196,52 +196,85 @@ def load_default_settings(app=None):
 
 def record_home_screen(app, duration=30, fps=15, output_file="home_screen_recording.mp4"):
     """
-    Record the area occupied by the app's window for a specified duration.
-    If a screen-capture error occurs, the function skips the frame and continues.
+    Records a 30-second video of the area of the screen occupied by the app's window.
+    Uses a full screen capture and then crops to the app's window region.
+
+    Parameters:
+      app: The main Tkinter application (an instance of CTk).
+      duration: Duration (in seconds) to record (default 30).
+      fps: Frames per second.
+      output_file: Output filename (MP4 video).
     """
-    # Ensure the X display is correctly set.
+    # Ensure the X display is set properly.
     os.environ["DISPLAY"] = ":0"
+    delay = 1.0 / fps
 
-    delay = 1.0 / fps  # Time between frames
-
-    # Get initial window coordinates and size
+    # Obtain initial window coordinates and dimensions.
     x = app.winfo_rootx()
     y = app.winfo_rooty()
     w = app.winfo_width()
     h = app.winfo_height()
     print(f"Initial window region: x={x}, y={y}, w={w}, h={h}")
 
-    # Set up the VideoWriter with the window's dimensions
+    # Prepare OpenCV VideoWriter using the window's width and height.
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_file, fourcc, fps, (w, h))
 
     start_time = time.time()
 
+    # Use mss to capture the full screen.
     with mss.mss(display=":0") as sct:
+        # sct.monitors[1] is usually the primary monitor.
+        monitor_full = sct.monitors[1]
+        full_left = monitor_full["left"]
+        full_top = monitor_full["top"]
+
         while (time.time() - start_time) < duration:
-            # Refresh the window's coordinates in case it moves or resizes
+            # Update the application's window region dynamically.
             x = app.winfo_rootx()
             y = app.winfo_rooty()
             w = app.winfo_width()
             h = app.winfo_height()
-            monitor = {"top": y, "left": x, "width": w, "height": h}
 
+            # Capture the full screen.
             try:
-                sct_img = sct.grab(monitor)
+                sct_img = sct.grab(monitor_full)
             except mss.exception.ScreenShotError as e:
-                print("Error capturing screen:", e)
+                print("Error capturing full screen:", e)
                 time.sleep(delay)
-                continue  # Skip this frame and continue the loop
+                continue
 
-            # Convert the captured image (BGRA) to BGR for OpenCV
+            # Convert the mss image (BGRA) to a NumPy array.
             frame = np.array(sct_img)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
-            out.write(frame)
+
+            # Calculate the cropping coordinates relative to the full-screen capture.
+            crop_x = x - full_left
+            crop_y = y - full_top
+
+            # Validate that the crop region is within the captured frame.
+            if crop_x < 0 or crop_y < 0 or crop_x + w > frame.shape[1] or crop_y + h > frame.shape[0]:
+                print("Calculated crop region is out of bounds; skipping frame.")
+                time.sleep(delay)
+                continue
+
+            # Crop the frame to the application window's region.
+            cropped_frame = frame[crop_y:crop_y + h, crop_x:crop_x + w]
+
+            # Convert from BGRA to BGR as OpenCV expects BGR.
+            try:
+                cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_BGRA2BGR)
+            except Exception as e:
+                print("Error converting frame color:", e)
+                time.sleep(delay)
+                continue
+
+            out.write(cropped_frame)
             time.sleep(delay)
 
     out.release()
     print(f"Recording finished. Video saved to {output_file}")
-    messagebox.showinfo("Recording Finished", f"Video saved to {output_file}")
+    # Schedule the message box to be shown from the main Tkinter thread.
+    app.after(0, lambda: messagebox.showinfo("Recording Finished", f"Video saved to {output_file}"))
 
 
 class App(ctk.CTk):
