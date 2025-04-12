@@ -1191,13 +1191,6 @@ class App(ctk.CTk):
         self.fig.patch.set_facecolor("none")
         self.canvas.draw()
 
-    def add_save_recording_button(self):
-        self.save_recording_button = ctk.CTkButton(
-            self.main_frame,
-            text="Save Recording",
-            command=self.save_recording  # Callback function
-        )
-        self.save_recording_button.pack(pady=(0, 10))
 
     def stop_protocol(self):
         self.stop_flag = "1"
@@ -1421,44 +1414,6 @@ class App(ctk.CTk):
                 popup.destroy()
             except ValueError:
                 error_label.config(text=f"Invalid input type. Expected {response_type}.")
-
-        def save_recording(self):
-            # Check if there is any recorded data available
-            if not self.graph_times:
-                self.show_overlay_notification("No data to save!")
-                return
-
-            # Compute the lower bound for the 30-second window.
-            current_time = self.graph_times[-1]
-            lower_bound = current_time - self.graph_time_range  # self.graph_time_range == 30
-
-            # Filter your data arrays (assuming they are parallel lists)
-            filtered_data = [
-                (t, ip, p1, p2)
-                for t, ip, p1, p2 in zip(self.graph_times, self.graph_input_pressures,
-                                         self.graph_pressure1s, self.graph_pressure2s)
-                if t >= lower_bound
-            ]
-
-            # Open a "Save As" file dialog (this call is non-blocking for the main event loop)
-            filename = filedialog.asksaveasfilename(
-                defaultextension=".csv",
-                filetypes=[("CSV Files", "*.csv")],
-                title="Save 30-second recording"
-            )
-            if not filename:
-                return  # User cancelled the dialog
-
-            try:
-                with open(filename, "w", newline="") as file:
-                    writer = csv.writer(file)
-                    # Write header row
-                    writer.writerow(["Time", "Input Pressure", "Pressure1", "Pressure2"])
-                    # Write the filtered data rows
-                    writer.writerows(filtered_data)
-                self.show_overlay_notification("Recording saved successfully!")
-            except Exception as e:
-                messagebox.showerror("Save Error", f"Failed to save recording: {e}")
 
         popup = ctk.CTk()
         popup.title(popup_name)
