@@ -6,6 +6,7 @@ from PIL import Image, ImageTk, ImageOps
 import webbrowser
 import subprocess
 import mss
+import matplotlib.animation as animation
 
 
 from tkinter import StringVar
@@ -194,87 +195,44 @@ def load_default_settings(app=None):
         print("Error copying default settings:", e)
 
 
-def record_home_screen(app, duration=30, fps=15, output_file="home_screen_recording.mp4"):
+def save_graph_animation(recorded_times, recorded_input_pressures, recorded_pressure1s, recorded_pressure2s,
+                         file_name="graph_recording.mp4"):
     """
-    Records a 30-second video of the area of the screen occupied by the app's window.
-    Uses a full screen capture and then crops to the app's window region.
-
-    Parameters:
-      app: The main Tkinter application (an instance of CTk).
-      duration: Duration (in seconds) to record (default 30).
-      fps: Frames per second.
-      output_file: Output filename (MP4 video).
+    Create and save a matplotlib animation from recorded graph data.
     """
-    # Ensure the X display is set properly.
-    os.environ["DISPLAY"] = ":0"
-    delay = 1.0 / fps
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("PSI")
 
-    # Obtain initial window coordinates and dimensions.
-    x = app.winfo_rootx()
-    y = app.winfo_rooty()
-    w = app.winfo_width()
-    h = app.winfo_height()
-    print(f"Initial window region: x={x}, y={y}, w={w}, h={h}")
+    # Initialize empty line objects
+    line_input, = ax.plot([], [], label="Input Pressure")
+    line_pressure1, = ax.plot([], [], label="Pressure 1")
+    line_pressure2, = ax.plot([], [], label="Pressure 2")
+    ax.legend()
 
-    # Prepare OpenCV VideoWriter using the window's width and height.
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter(output_file, fourcc, fps, (w, h))
+    # Set x- and y-limits (if data is available)
+    if recorded_times:
+        ax.set_xlim(min(recorded_times), max(recorded_times))
+        ymin = min(min(recorded_input_pressures), min(recorded_pressure1s), min(recorded_pressure2s))
+        ymax = max(max(recorded_input_pressures), max(recorded_pressure1s), max(recorded_pressure2s))
+        ax.set_ylim(ymin, ymax)
 
-    start_time = time.time()
+    def update(frame):
+        # frame is the current index (from 0 to len(recorded_times)-1)
+        t = recorded_times[:frame + 1]
+        ip = recorded_input_pressures[:frame + 1]
+        p1 = recorded_pressure1s[:frame + 1]
+        p2 = recorded_pressure2s[:frame + 1]
+        line_input.set_data(t, ip)
+        line_pressure1.set_data(t, p1)
+        line_pressure2.set_data(t, p2)
+        return line_input, line_pressure1, line_pressure2
 
-    # Use mss to capture the full screen.
-    with mss.mss(display=":0") as sct:
-        # sct.monitors[1] is usually the primary monitor.
-        monitor_full = sct.monitors[1]
-        full_left = monitor_full["left"]
-        full_top = monitor_full["top"]
-
-        while (time.time() - start_time) < duration:
-            # Update the application's window region dynamically.
-            x = app.winfo_rootx()
-            y = app.winfo_rooty()
-            w = app.winfo_width()
-            h = app.winfo_height()
-
-            # Capture the full screen.
-            try:
-                sct_img = sct.grab(monitor_full)
-            except mss.exception.ScreenShotError as e:
-                print("Error capturing full screen:", e)
-                time.sleep(delay)
-                continue
-
-            # Convert the mss image (BGRA) to a NumPy array.
-            frame = np.array(sct_img)
-
-            # Calculate the cropping coordinates relative to the full-screen capture.
-            crop_x = x - full_left
-            crop_y = y - full_top
-
-            # Validate that the crop region is within the captured frame.
-            if crop_x < 0 or crop_y < 0 or crop_x + w > frame.shape[1] or crop_y + h > frame.shape[0]:
-                print("Calculated crop region is out of bounds; skipping frame.")
-                time.sleep(delay)
-                continue
-
-            # Crop the frame to the application window's region.
-            cropped_frame = frame[crop_y:crop_y + h, crop_x:crop_x + w]
-
-            # Convert from BGRA to BGR as OpenCV expects BGR.
-            try:
-                cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_BGRA2BGR)
-            except Exception as e:
-                print("Error converting frame color:", e)
-                time.sleep(delay)
-                continue
-
-            out.write(cropped_frame)
-            time.sleep(delay)
-
-    out.release()
-    print(f"Recording finished. Video saved to {output_file}")
-    # Schedule the message box to be shown from the main Tkinter thread.
-    app.after(0, lambda: messagebox.showinfo("Recording Finished", f"Video saved to {output_file}"))
+    ani = animation.FuncAnimation(fig, update, frames=len(recorded_times), blit=True, interval=30)
+    writer = animation.writers['ffmpeg'](fps=30, metadata=dict(artist='YourName'), bitrate=1800)
+    ani.save(file_name, writer=writer)
+    plt.close(fig)
+    print(f"Animation saved as {file_name}")
 
 
 class App(ctk.CTk):
@@ -373,6 +331,12 @@ class App(ctk.CTk):
         # Right frame for nav buttons
         self.nav_right_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
         self.nav_right_frame.pack(side="right", padx=20)
+
+        self.data_recording = False
+        self.recorded_graph_times = []
+        self.recorded_input_pressures = []
+        self.recorded_pressure1s = []
+        self.recorded_pressure2s = []
 
         # --- Logo on Left Side ---
         # Create a white icon from the SVG file
@@ -696,24 +660,33 @@ class App(ctk.CTk):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
-    def start_recording_thread(self):
-        # Optionally, prompt the user for an output file name
-        filename = filedialog.asksaveasfilename(
-            defaultextension=".mp4",
-            filetypes=[("MP4 Video", "*.mp4")],
-            title="Save Home Screen Recording As"
-        )
-        if not filename:
-            return
+    def start_data_recording(self, duration=30):
+        """
+        Start recording the data for a 30-second session.
+        """
+        # Clear out any previously recorded data
+        self.recorded_graph_times = []
+        self.recorded_input_pressures = []
+        self.recorded_pressure1s = []
+        self.recorded_pressure2s = []
+        self.data_recording = True
+        self.show_overlay_notification("Data recording started")
 
-        # Start the recording in a separate thread to keep the UI responsive
-        recording_thread = threading.Thread(
-            target=record_home_screen,
-            args=(self, 30, 15, filename),
-            daemon=True
-        )
-        recording_thread.start()
-        self.show_overlay_notification("Recording started for 30 seconds")
+        # Schedule stop after 'duration' seconds
+        self.after(duration * 1000, self.stop_data_recording)
+
+    def stop_data_recording(self):
+        """
+        Stop the recording and trigger saving the animation on a background thread.
+        """
+        self.data_recording = False
+        self.show_overlay_notification("Data recording finished. Saving video...")
+
+        # Spawn a thread to avoid blocking the UI during animation rendering
+        threading.Thread(target=save_graph_animation,
+                         args=(self.recorded_graph_times, self.recorded_input_pressures,
+                               self.recorded_pressure1s, self.recorded_pressure2s, "graph_recording.mp4"),
+                         daemon=True).start()
 
     def open_twitter(self):
         """
@@ -948,12 +921,12 @@ class App(ctk.CTk):
         self.initialize_protocol_viewer()
         self.process_queue()
 
-        self.record_button = ctk.CTkButton(
-            self.content_frame,
-            text="Record 30-sec Video",
-            command=self.start_recording_thread
+        self.record_data_button = ctk.CTkButton(
+            self.sidebar_frame,
+            text="Record 30-sec Data",
+            command=lambda: self.start_data_recording(30)
         )
-        self.record_button.pack(pady=10)
+        self.record_data_button.pack(pady=10)
 
     def run_protocol(self):
         if self.protocol_running:
@@ -1293,6 +1266,13 @@ class App(ctk.CTk):
             safe_configure(self.lps_info_label, text=f"{lps_pressure:.3f} hPa | {lps_temp:.3f} °C")
         except Exception as e:
             print(f"Error updating lps_info_label: {e}")
+
+        if self.data_recording:
+            # Append a copy of the latest values
+            self.recorded_graph_times.append(self.graph_times[-1])
+            self.recorded_input_pressures.append(self.graph_input_pressures[-1])
+            self.recorded_pressure1s.append(self.graph_pressure1s[-1])
+            self.recorded_pressure2s.append(self.graph_pressure2s[-1])
 
     def clear_graph_data(self):
         # Reset the lists holding the graph data
