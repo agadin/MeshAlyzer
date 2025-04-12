@@ -55,12 +55,9 @@ class ValveControlDropdown(ctk.CTkFrame):
     def show_dropdown(self):
         """Show the dropdown and start the inactivity timer."""
         pressures = self.get_pressures()
-        if pressures.get("pressure0", 0) < 15:
-            # self.segmented_button.configure(state="disabled")
-            self.warning_label.configure(text="Minimum input pressure is 15psi")
-        else:
-            self.segmented_button.configure(state="normal")
-            self.warning_label.configure(text="")
+
+        self.segmented_button.configure(state="normal")
+        self.warning_label.configure(text="")
 
         self.dropdown_frame.pack(pady=5)
         self.dropdown_visible = True
@@ -102,15 +99,10 @@ class ValveControlDropdown(ctk.CTkFrame):
         pressures = self.get_pressures()
 
         if self.dropdown_visible:
-            # Check minimum pressure condition
-            if pressures.get("pressure0", 0) < 15:
-                self.segmented_button.configure(state="disabled")
-                self.warning_label.configure(text="Minimum input pressure is 15psi")
-            else:
-                self.segmented_button.configure(state="normal")
-                # Clear warning if no high-pressure condition exists
-                if pressures.get("pressure1", 0) < 80 and pressures.get("pressure2", 0) < 80:
-                    self.warning_label.configure(text="")
+            self.segmented_button.configure(state="normal")
+            # Clear warning if no high-pressure condition exists
+            if pressures.get("pressure1", 0) < 80 and pressures.get("pressure2", 0) < 80:
+                self.warning_label.configure(text="")
 
             # Check balloon pressure warnings
             p1 = pressures.get("pressure1", 0)
