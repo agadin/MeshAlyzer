@@ -189,52 +189,54 @@ def load_default_settings(app=None):
     except Exception as e:
         print("Error copying default settings:", e)
 
-def record_home_screen(app, duration=30, fps=15, output_file="home_screen_recording.mp4"):
-    """
-    Record the part of the screen occupied by the app window on a Raspberry Pi 5.
 
-    Parameters:
-        app: The Tkinter root or main application instance.
-        duration: Recording duration in seconds.
-        fps: Frames per second.
-        output_file: The filename for the output video.
-    """
-    # Calculate the time interval per frame
+def record_home_screen(app, duration=30, fps=15, output_file="home_screen_recording.mp4"):
+    # Ensure the correct display is used.
+    os.environ["DISPLAY"] = ":0"
+
     delay = 1.0 / fps
 
-    # Get initial window position and size
+    # Get initial window coordinates and dimensions
     x = app.winfo_rootx()
     y = app.winfo_rooty()
     w = app.winfo_width()
     h = app.winfo_height()
+    print(f"Initial window region: x={x}, y={y}, w={w}, h={h}")
 
-    # Set up the video writer using the size of the window
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_file, fourcc, fps, (w, h))
 
     start_time = time.time()
-    with mss.mss() as sct:
-        while (time.time() - start_time) < duration:
-            # Update window coordinates in case the user moves/resizes the window
-            x = app.winfo_rootx()
-            y = app.winfo_rooty()
-            w = app.winfo_width()
-            h = app.winfo_height()
-            monitor = {"top": y, "left": x, "width": w, "height": h}
+    try:
+        with mss.mss(display=":0") as sct:
+            while (time.time() - start_time) < duration:
+                # Update window region in case it has moved or resized
+                x = app.winfo_rootx()
+                y = app.winfo_rooty()
+                w = app.winfo_width()
+                h = app.winfo_height()
+                monitor = {"top": y, "left": x, "width": w, "height": h}
 
-            # Capture the screen region using mss
-            sct_img = sct.grab(monitor)
-            frame = np.array(sct_img)
+                # Debug: print region for each frame (optional)
+                # print("Capturing region:", monitor)
 
-            # mss returns BGRA; convert to BGR as OpenCV expects (drop alpha channel)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
-            out.write(frame)
+                try:
+                    sct_img = sct.grab(monitor)
+                except mss.exception.ScreenShotError as e:
+                    print("Error capturing screen:", e)
+                    break
 
-            time.sleep(delay)
-
-    out.release()
-    print(f"Recording finished. Video saved to {output_file}")
-    messagebox.showinfo("Recording Finished", f"Video saved to {output_file}")
+                frame = np.array(sct_img)
+                # Convert BGRA to BGR since OpenCV expects BGR
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                out.write(frame)
+                time.sleep(delay)
+    except Exception as e:
+        print("Error in recording thread:", e)
+    finally:
+        out.release()
+        print(f"Recording finished. Video saved to {output_file}")
+        messagebox.showinfo("Recording Finished", f"Video saved to {output_file}")
 
 
 class App(ctk.CTk):
