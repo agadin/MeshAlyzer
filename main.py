@@ -5,6 +5,7 @@ from tkinter import Canvas, Frame, Scrollbar, filedialog
 from PIL import Image, ImageTk, ImageOps
 import webbrowser
 import subprocess
+import mss
 
 
 from tkinter import StringVar
@@ -188,6 +189,53 @@ def load_default_settings(app=None):
     except Exception as e:
         print("Error copying default settings:", e)
 
+def record_home_screen(app, duration=30, fps=15, output_file="home_screen_recording.mp4"):
+    """
+    Record the part of the screen occupied by the app window on a Raspberry Pi 5.
+
+    Parameters:
+        app: The Tkinter root or main application instance.
+        duration: Recording duration in seconds.
+        fps: Frames per second.
+        output_file: The filename for the output video.
+    """
+    # Calculate the time interval per frame
+    delay = 1.0 / fps
+
+    # Get initial window position and size
+    x = app.winfo_rootx()
+    y = app.winfo_rooty()
+    w = app.winfo_width()
+    h = app.winfo_height()
+
+    # Set up the video writer using the size of the window
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(output_file, fourcc, fps, (w, h))
+
+    start_time = time.time()
+    with mss.mss() as sct:
+        while (time.time() - start_time) < duration:
+            # Update window coordinates in case the user moves/resizes the window
+            x = app.winfo_rootx()
+            y = app.winfo_rooty()
+            w = app.winfo_width()
+            h = app.winfo_height()
+            monitor = {"top": y, "left": x, "width": w, "height": h}
+
+            # Capture the screen region using mss
+            sct_img = sct.grab(monitor)
+            frame = np.array(sct_img)
+
+            # mss returns BGRA; convert to BGR as OpenCV expects (drop alpha channel)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+            out.write(frame)
+
+            time.sleep(delay)
+
+    out.release()
+    print(f"Recording finished. Video saved to {output_file}")
+    messagebox.showinfo("Recording Finished", f"Video saved to {output_file}")
+
 
 class App(ctk.CTk):
     def __init__(self):
@@ -197,6 +245,7 @@ class App(ctk.CTk):
         self.graph_y_range = None
         self.no_cap = None
         self.init = None
+        self.graph_frame = None
         self.graph_frame = None
         self.sampleID = None
         self.running = True  # Initialize the running attribute
@@ -607,6 +656,25 @@ class App(ctk.CTk):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
+    def start_recording_thread(self):
+        # Optionally, you could open a file dialog to select an output file
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".mp4",
+            filetypes=[("MP4 Video", "*.mp4")],
+            title="Save Home Screen Recording As"
+        )
+        if not filename:
+            return
+
+        # Run the recording function in a new thread to avoid blocking the UI
+        recording_thread = threading.Thread(
+             target=record_home_screen,
+            args=(self, 30, 15, filename),
+            daemon=True
+         )
+        recording_thread.start()
+        self.show_overlay_notification("Recording started for 30 seconds")
+
     def open_twitter(self):
         """
         Opens the MeshToTheMax Twitter page in Chromium.
@@ -839,6 +907,13 @@ class App(ctk.CTk):
         # Initialize ProtocolViewer and start queue processing
         self.initialize_protocol_viewer()
         self.process_queue()
+
+        self.record_button = ctk.CTkButton(
+            self.content_frame,
+            text="Record 30-sec Video",
+            command=self.start_recording_thread
+        )
+        self.record_button.pack(pady=10)
 
     def run_protocol(self):
         if self.protocol_running:
@@ -1561,24 +1636,19 @@ class App(ctk.CTk):
         # Create a notification frame that will overlay on top of all other widgets.
         notification = ctk.CTkFrame(self, fg_color="green", corner_radius=10)
         # Place it in the center of the window.
-        notification.place(relx=0.5, rely=0.5, anchor="s")
+        notification.place(relx=0.5, rely=0.5, anchor="center")
         # Bring the notification to the front.
         notification.tkraise()
 
         # Create a label with white text for the message.
-        label = ctk.CTkLabel(notification, text=message, text_color="white", bg_color="transparent", font=("Arial", 12))
+        label = ctk.CTkLabel(notification, text=message, text_color="white", font=("Arial", 12))
         label.pack(side="left", padx=(10, 5), pady=5)
 
         # Create a close button to allow manual dismissal.
-        close_button = ctk.CTkButton(
-            notification,
-            text="X",
-            width=20,
-            fg_color="transparent",
-            text_color="white",
-            font=("Arial", 12),
-            command=notification.destroy
-        )
+        close_button = ctk.CTkButton(notification, text="X", width=20,
+                                     fg_color="transparent",
+                                     text_color="white",
+                                     command=notification.destroy)
         close_button.pack(side="right", padx=(5, 10), pady=5)
 
         # Automatically dismiss the notification after auto_dismiss_ms milliseconds.
