@@ -59,6 +59,10 @@ from joblib import load
 from calibrating_pressure_transducers.getCalibrationData import PressureCalibrator
 from settings_page import SettingsPage
 
+import os
+os.environ["DISPLAY"] = ":0"
+
+
 class ProtocolViewer(ctk.CTkFrame):
     def __init__(self, master, protocol_folder, protocol_var, app, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
