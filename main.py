@@ -195,52 +195,53 @@ def load_default_settings(app=None):
 
 
 def record_home_screen(app, duration=30, fps=15, output_file="home_screen_recording.mp4"):
-    # Ensure the correct display is used.
+    """
+    Record the area occupied by the app's window for a specified duration.
+    If a screen-capture error occurs, the function skips the frame and continues.
+    """
+    # Ensure the X display is correctly set.
     os.environ["DISPLAY"] = ":0"
 
-    delay = 1.0 / fps
+    delay = 1.0 / fps  # Time between frames
 
-    # Get initial window coordinates and dimensions
+    # Get initial window coordinates and size
     x = app.winfo_rootx()
     y = app.winfo_rooty()
     w = app.winfo_width()
     h = app.winfo_height()
     print(f"Initial window region: x={x}, y={y}, w={w}, h={h}")
 
+    # Set up the VideoWriter with the window's dimensions
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_file, fourcc, fps, (w, h))
 
     start_time = time.time()
-    try:
-        with mss.mss(display=":0") as sct:
-            while (time.time() - start_time) < duration:
-                # Update window region in case it has moved or resized
-                x = app.winfo_rootx()
-                y = app.winfo_rooty()
-                w = app.winfo_width()
-                h = app.winfo_height()
-                monitor = {"top": y, "left": x, "width": w, "height": h}
 
-                # Debug: print region for each frame (optional)
-                # print("Capturing region:", monitor)
+    with mss.mss(display=":0") as sct:
+        while (time.time() - start_time) < duration:
+            # Refresh the window's coordinates in case it moves or resizes
+            x = app.winfo_rootx()
+            y = app.winfo_rooty()
+            w = app.winfo_width()
+            h = app.winfo_height()
+            monitor = {"top": y, "left": x, "width": w, "height": h}
 
-                try:
-                    sct_img = sct.grab(monitor)
-                except mss.exception.ScreenShotError as e:
-                    print("Error capturing screen:", e)
-                    break
-
-                frame = np.array(sct_img)
-                # Convert BGRA to BGR since OpenCV expects BGR
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
-                out.write(frame)
+            try:
+                sct_img = sct.grab(monitor)
+            except mss.exception.ScreenShotError as e:
+                print("Error capturing screen:", e)
                 time.sleep(delay)
-    except Exception as e:
-        print("Error in recording thread:", e)
-    finally:
-        out.release()
-        print(f"Recording finished. Video saved to {output_file}")
-        messagebox.showinfo("Recording Finished", f"Video saved to {output_file}")
+                continue  # Skip this frame and continue the loop
+
+            # Convert the captured image (BGRA) to BGR for OpenCV
+            frame = np.array(sct_img)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+            out.write(frame)
+            time.sleep(delay)
+
+    out.release()
+    print(f"Recording finished. Video saved to {output_file}")
+    messagebox.showinfo("Recording Finished", f"Video saved to {output_file}")
 
 
 class App(ctk.CTk):
@@ -663,7 +664,7 @@ class App(ctk.CTk):
             widget.destroy()
 
     def start_recording_thread(self):
-        # Optionally, you could open a file dialog to select an output file
+        # Optionally, prompt the user for an output file name
         filename = filedialog.asksaveasfilename(
             defaultextension=".mp4",
             filetypes=[("MP4 Video", "*.mp4")],
@@ -672,12 +673,12 @@ class App(ctk.CTk):
         if not filename:
             return
 
-        # Run the recording function in a new thread to avoid blocking the UI
+        # Start the recording in a separate thread to keep the UI responsive
         recording_thread = threading.Thread(
-             target=record_home_screen,
+            target=record_home_screen,
             args=(self, 30, 15, filename),
             daemon=True
-         )
+        )
         recording_thread.start()
         self.show_overlay_notification("Recording started for 30 seconds")
 
@@ -1632,32 +1633,19 @@ class App(ctk.CTk):
                 writer.writerow(row)
 
     def show_overlay_notification(self, message, auto_dismiss_ms=5000):
-        """
-        Displays a temporary overlay notification in the center of the window.
-
-        Args:
-            message (str): The message to display.
-            auto_dismiss_ms (int): Time in milliseconds after which the notification auto-dismisses.
-        """
-        # Create a notification frame that will overlay on top of all other widgets.
         notification = ctk.CTkFrame(self, fg_color="green", corner_radius=10)
-        # Place it in the center of the window.
         notification.place(relx=0.5, rely=0.5, anchor="center")
-        # Bring the notification to the front.
-        notification.tkraise()
-
-        # Create a label with white text for the message.
         label = ctk.CTkLabel(notification, text=message, text_color="white", font=("Arial", 12))
         label.pack(side="left", padx=(10, 5), pady=5)
-
-        # Create a close button to allow manual dismissal.
-        close_button = ctk.CTkButton(notification, text="X", width=20,
-                                     fg_color="transparent",
-                                     text_color="white",
-                                     command=notification.destroy)
+        close_button = ctk.CTkButton(
+            notification,
+            text="X",
+            width=20,
+            fg_color="transparent",
+            text_color="white",
+            command=notification.destroy
+        )
         close_button.pack(side="right", padx=(5, 10), pady=5)
-
-        # Automatically dismiss the notification after auto_dismiss_ms milliseconds.
         if auto_dismiss_ms is not None:
             notification.after(auto_dismiss_ms, notification.destroy)
 
