@@ -31,18 +31,12 @@ class InputMonitor:
         self.lock = threading.Lock()
 
     def monitor_inputs(self, callback):
-        """
-        Monitor the inputs in a thread and call the callback function on state change.
-        :param callback: Function to call when an input state changes.
-        """
         while self.running:
             with self.lock:
-                # Read current states
                 new_start_button_state = lgpio.gpio_read(self.chip, self.start_button_pin)
                 new_stop_flag_state = lgpio.gpio_read(self.chip, self.stop_flag_pin)
-                new_key_switch_state = not lgpio.gpio_read(self.chip, self.key_switch_pin)  # Reverse logic
+                new_key_switch_state = not lgpio.gpio_read(self.chip, self.key_switch_pin)
 
-                # Check for changes
                 if new_start_button_state != self.start_button_state:
                     self.start_button_state = new_start_button_state
                     callback("start_button", self.start_button_state)
@@ -51,12 +45,12 @@ class InputMonitor:
                     self.stop_flag_state = new_stop_flag_state
                     callback("stop_flag", self.stop_flag_state)
 
-                    # Debounce logic for key_switch
-                    current_time = time.time()
-                    if new_key_switch_state != self.key_switch_state and current_time - self.key_switch_last_update >= 1:
-                        self.key_switch_state = new_key_switch_state
-                        self.key_switch_last_update = current_time
-                        callback("key_switch", self.key_switch_state)
+                # Debounce logic for key_switch
+                current_time = time.time()
+                if new_key_switch_state != self.key_switch_state and current_time - self.key_switch_last_update >= 1:
+                    self.key_switch_state = new_key_switch_state
+                    self.key_switch_last_update = current_time
+                    callback("key_switch", self.key_switch_state)
 
             time.sleep(0.1)  # Polling interval
 
