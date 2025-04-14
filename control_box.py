@@ -26,6 +26,7 @@ class InputMonitor:
         self.stop_flag_state = lgpio.gpio_read(self.chip, self.stop_flag_pin)
         self.key_switch_state = not lgpio.gpio_read(self.chip, self.key_switch_pin)  # Reverse logic
 
+        self.key_switch_last_update = 0  # Timestamp for debounce
         self.running = True
         self.lock = threading.Lock()
 
@@ -50,9 +51,12 @@ class InputMonitor:
                     self.stop_flag_state = new_stop_flag_state
                     callback("stop_flag", self.stop_flag_state)
 
-                if new_key_switch_state != self.key_switch_state:
-                    self.key_switch_state = new_key_switch_state
-                    callback("key_switch", self.key_switch_state)
+                    # Debounce logic for key_switch
+                    current_time = time.time()
+                    if new_key_switch_state != self.key_switch_state and current_time - self.key_switch_last_update >= 1:
+                        self.key_switch_state = new_key_switch_state
+                        self.key_switch_last_update = current_time
+                        callback("key_switch", self.key_switch_state)
 
             time.sleep(0.1)  # Polling interval
 
@@ -78,6 +82,9 @@ class InputMonitor:
 
 # Example usage
 if __name__ == "__main__":
+    # start_button: Connect to GPIO pin 17.
+    # stop_flag: Connect to GPIO pin 27.
+    # key_switch: Connect to GPIO pin 22.
     def input_callback(input_name, state):
         print(f"{input_name} changed to {'HIGH' if state else 'LOW'}")
 
