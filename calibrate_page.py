@@ -6,6 +6,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import datetime
 import threading
 import os
+import csv
+
 
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
