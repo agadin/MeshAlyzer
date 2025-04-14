@@ -3,7 +3,7 @@ import lgpio
 import time
 
 class InputMonitor:
-    def __init__(self, start_button_pin=17, stop_flag_pin=27, key_switch_pin=22):
+    def __init__(self, start_button_pin=17, stop_flag_pin=23, key_switch_pin=22):
         """
         Initialize the InputMonitor with GPIO pins for the inputs.
         :param start_button_pin: GPIO pin for the start button.
