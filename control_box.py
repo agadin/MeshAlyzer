@@ -2,29 +2,35 @@ import threading
 import lgpio
 import time
 
+# Define a constant for enabling the internal pull-up resistor.
+# Adjust this constant to match the one in your lgpio documentation.
+# For example, it might be something like lgpio.LG_BIAS_PULL_UP.
+PULL_UP_FLAG = lgpio.LG_BIAS_PULL_UP if hasattr(lgpio, 'LG_BIAS_PULL_UP') else 0x01  # placeholder value
+
 class InputMonitor:
     def __init__(self, start_button_pin=17, stop_flag_pin=27, key_switch_pin=22):
         """
         Initialize the InputMonitor with GPIO pins for the inputs.
-        :param start_button_pin: GPIO pin for the start button.
-        :param stop_flag_pin: GPIO pin for the stop flag.
-        :param key_switch_pin: GPIO pin for the key switch.
+        Enables internal pull-ups so that when the pins are connected to ground,
+        they maintain a defined HIGH level when inactive.
         """
         self.start_button_pin = start_button_pin
         self.stop_flag_pin = stop_flag_pin
         self.key_switch_pin = key_switch_pin
 
-        self.chip = lgpio.gpiochip_open(0)  # Open the first GPIO chip
+        # Open the first GPIO chip
+        self.chip = lgpio.gpiochip_open(0)
 
-        # Claim the pins as inputs
-        lgpio.gpio_claim_input(self.chip, self.start_button_pin)
-        lgpio.gpio_claim_input(self.chip, self.stop_flag_pin)
-        lgpio.gpio_claim_input(self.chip, self.key_switch_pin)
+        # Claim the pins as inputs **with internal pull-ups enabled.**
+        lgpio.gpio_claim_input(self.chip, self.start_button_pin, flags=PULL_UP_FLAG)
+        lgpio.gpio_claim_input(self.chip, self.stop_flag_pin, flags=PULL_UP_FLAG)
+        lgpio.gpio_claim_input(self.chip, self.key_switch_pin, flags=PULL_UP_FLAG)
 
         # Initialize states
         self.start_button_state = lgpio.gpio_read(self.chip, self.start_button_pin)
         self.stop_flag_state = lgpio.gpio_read(self.chip, self.stop_flag_pin)
-        self.key_switch_state = not lgpio.gpio_read(self.chip, self.key_switch_pin)  # Reverse logic
+        # Reverse logic for the key switch if necessary
+        self.key_switch_state = not lgpio.gpio_read(self.chip, self.key_switch_pin)
 
         self.running = True
         self.lock = threading.Lock()
@@ -32,7 +38,6 @@ class InputMonitor:
     def monitor_inputs(self, callback):
         """
         Monitor the inputs in a thread and call the callback function on state change.
-        :param callback: Function to call when an input state changes.
         """
         while self.running:
             with self.lock:
@@ -41,7 +46,7 @@ class InputMonitor:
                 new_stop_flag_state = lgpio.gpio_read(self.chip, self.stop_flag_pin)
                 new_key_switch_state = not lgpio.gpio_read(self.chip, self.key_switch_pin)  # Reverse logic
 
-                # Check for changes
+                # Check for changes and call the callback as needed
                 if new_start_button_state != self.start_button_state:
                     self.start_button_state = new_start_button_state
                     callback("start_button", self.start_button_state)
@@ -54,13 +59,10 @@ class InputMonitor:
                     self.key_switch_state = new_key_switch_state
                     callback("key_switch", self.key_switch_state)
 
-            time.sleep(0.1)  # Polling interval
+            time.sleep(0.1)  # Adjust polling interval as needed
 
     def start_monitoring(self, callback):
-        """
-        Start the monitoring thread.
-        :param callback: Function to call when an input state changes.
-        """
+        """Start the monitoring thread."""
         self.thread = threading.Thread(target=self.monitor_inputs, args=(callback,))
         self.thread.daemon = True
         self.thread.start()
