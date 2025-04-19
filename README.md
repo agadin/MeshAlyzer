@@ -27,7 +27,9 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
 ---
 
 ## Installation
+The MeshAlyzer device requires a Raspberry Pi 5 or Raspberry Pi 3 for operation. Follow the instructions below to set up your device.
 
+### Raspberry Pi 5 Setup
 1. Clone the repository:
    ```bash
    git clone https://github.com/your-username/MeshAlyzer.git
@@ -37,14 +39,23 @@ The **MeshAlyzer** is an advanced testing device designed to simulate realistic 
 2. Install dependencies:
    ```bash
    sudo apt-get install python3-lgpio
-   pip install -r requirements.txt
+   ```
+3. Set up the virtual environment (optional but recommended):
+   ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+   ```
+4. Start the application:
+   ```bash
+   python main.py
    ```
 
-3. Connect hardware components:
+5. Connect hardware components:
    - Link pressure sensors to ADCs as shown in the wiring diagram.
    - Ensure relays and valves are connected to the Raspberry Pi GPIO pins as specified.
 
-4. Launch the application:
+6. Launch the application:
    ```bash
    python main.py
    ```
@@ -103,9 +114,10 @@ sudo systemctl start spidev-load.service
 
 ##
 ### ADC Setup
+The MeshAlyzer uses the ADS1256 ADC for pressure sensing. Follow these steps to set it up:
 
 1. wiring diagram
-Connect the ADS1256 to the Raspberry Pi:
+Connect the ADS1256 to the Raspberry Pi 3:
 VCC → 5V
 GND → GND
 DIN (MOSI) → GPIO 10 (SPI0 MOSI)
@@ -114,11 +126,11 @@ SCLK → GPIO 11 (SPI0 SCLK)
 CS (Chip Select) → GPIO 8 (SPI0 CE0)
 DRDY (Data Ready) → GPIO 7
 RESET → GPIO 22
+
 2. Install the required library:
 ```bash
 sudo apt-get install python3-lgpio
 ```
-
 
 
 ## Usage
@@ -173,13 +185,9 @@ For questions or feedback, please contact:
 
 ---
 
-## Acknowledgements
+## Acknowledgments
 
 We would like to thank:  
 - Dr. Spencer Lake for his guidance and support.  
 - The BME Department at Washington University in St. Louis for resources and assistance.  
 - The Chemistry Machine Shop for their technical expertise.  
-
---- 
-
-Let me know if you'd like further edits or additional sections!
