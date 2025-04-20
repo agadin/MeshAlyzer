@@ -24,7 +24,7 @@ for file in folder_path.glob("*.csv"):
             "initial_pressure": row["avg_pre"],
             "supply_pressure": row["avg_input"],
             "target_pressure": row["avg_post"],
-            "duration": row["actual_duration"]
+            "duration": row["inflate_s"]
         })
 
 # Build DataFrame
