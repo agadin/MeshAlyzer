@@ -1,3 +1,15 @@
-Inflate: time, 0.4, valve1
-wait: 5
-Deflate: time, 20, valve1
+Inflate: time, 0.5, both
+wait: 1
+Deflate: time, 2, both
+wait: 1
+Inflate: time, 0.5, both
+wait: 1
+Deflate: time, 2, both
+wait: 1
+Inflate: time, 0.5, both
+wait: 1
+Deflate: time, 2, both
+wait: 1
+Inflate: time, 0.5, both
+wait: 1
+Deflate: time, 2, both

@@ -17,7 +17,7 @@ for file in folder_path.glob("*.csv"):
 
     for _, row in df.iterrows():
         # Ensure actual_duration column exists
-        if "actual_duration" not in row:
+        if "inflate_s" not in row:
             continue  # skip if missing
 
         rows.append({
