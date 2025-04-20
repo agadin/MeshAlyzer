@@ -17,6 +17,7 @@ class CalibratePage(ctk.CTkFrame):
         """
         super().__init__(master, *args, **kwargs)
         self.app = app
+        self.trial_stop_event = None  # Event to signal thread termination
 
         # --- Header ---
         self.header_label = ctk.CTkLabel(self, text="Calibrate", font=("Arial", 20, "bold"))
@@ -450,22 +451,31 @@ class CalibratePage(ctk.CTkFrame):
         return result['value']
 
     def start_pressure_trials(self):
+        # Initialize stop event
+        self.trial_stop_event = threading.Event()
         threading.Thread(target=self._pressure_trials_thread, daemon=True).start()
-
 
     def _popup(self, title: str, message: str, entry: bool = False):
         out = {'val': None}
-        win = ctk.CTkToplevel(self); win.title(title)
+        win = ctk.CTkToplevel(self)
+        win.title(title)
         tk.Label(win, text=message, wraplength=300, justify="left").pack(padx=10, pady=5)
         if entry:
-            e = ctk.CTkEntry(win); e.pack(padx=10, pady=5)
+            e = ctk.CTkEntry(win)
+            e.pack(padx=10, pady=5)
         def close():
             if entry:
                 try:
                     out['val'] = float(e.get())
                 except ValueError:
-                    tk.Label(win, text="Enter a number", fg="red").pack(); return
+                    tk.Label(win, text="Enter a number", fg="red").pack()
+                    return
+            # Signal stop if this is part of trials thread
+            if self.trial_stop_event:
+                self.trial_stop_event.set()
             win.destroy()
+        # Bind close to OK and window close button
+        win.protocol("WM_DELETE_WINDOW", close)
         ctk.CTkButton(win, text="OK", command=close).pack(pady=10)
         win.wait_window()
         return out['val'] if entry else None
@@ -496,34 +506,39 @@ class CalibratePage(ctk.CTkFrame):
             writer = csv.DictWriter(f, fieldnames=["trial","inflate_s","vent_s","avg_input","avg_pre","avg_post"])
             writer.writeheader()
             for trial in range(1, 11):
+                if self.trial_stop_event.is_set():
+                    break
                 # Prompt to prepare trial
                 self._popup(f"Trial {trial}", "Adjust regulator for next input pressure, then click OK.")
-
+                if self.trial_stop_event.is_set():
+                    break
                 # Sample average input over 5s
-                avg_in = self._measure_pressure0_avg(5)
-
+                avg_in = self._avg_pressure0(5)
+                if avg_in is None:
+                    break
                 # Ask user for durations
                 inflate_s = self._popup("Inflation Duration", "Enter inflation time in seconds:", entry=True)
+                if inflate_s is None or self.trial_stop_event.is_set():
+                    break
                 vent_s = self._popup("Vent Duration", "Enter vent/deflate time in seconds:", entry=True)
-                if inflate_s is None or vent_s is None:
-                    return
-
+                if vent_s is None or self.trial_stop_event.is_set():
+                    break
                 # Pre-trial internal avg (5s)
-                avg_pre = self._measure_internal_avg(5)
-
+                avg_pre = self._avg_internal(5)
+                if avg_pre is None:
+                    break
                 # Inflate for user-specified duration
                 self.app.valve1.supply(); self.app.valve2.supply(); time.sleep(inflate_s)
                 self.app.valve1.neutral(); self.app.valve2.neutral()
                 time.sleep(1)  # equalize
-
                 # Post inflate internal avg (5s)
-                avg_post = self._measure_internal_avg(5)
-
+                avg_post = self._avg_internal(5)
+                if avg_post is None:
+                    break
                 # Vent loop until internal <0.5 psi
                 self._vent(vent_s)
-                while self._measure_internal_avg(5) >= 0.5:
+                while not self.trial_stop_event.is_set() and self._avg_internal(5) >= 0.5:
                     self._vent(vent_s)
-
                 # Record trial
                 writer.writerow({
                     "trial": trial,
@@ -533,7 +548,10 @@ class CalibratePage(ctk.CTkFrame):
                     "avg_pre": round(avg_pre, 3),
                     "avg_post": round(avg_post, 3)
                 })
-        self._popup("Trials Complete", f"Data saved to {csv_path}")
+        # Show complete popup if not cancelled
+        if not self.trial_stop_event.is_set():
+            self._popup("Trials Complete", f"Data saved to {csv_path}")
+        self.trial_stop_event = None
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
