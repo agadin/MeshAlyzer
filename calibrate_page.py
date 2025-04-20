@@ -514,9 +514,14 @@ class CalibratePage(ctk.CTkFrame):
                 avg_pre = self._measure_internal_avg(5)
 
                 # 1‑second pressure pulse
-                self.app.valve1.supply(); self.app.valve2.supply()
-                time.sleep(1.0)
-                self.app.valve1.neutral(); self.app.valve2.neutral()
+                t0 = time.perf_counter()
+                self.app.valve1.supply();
+                self.app.valve2.supply()
+                while time.perf_counter() - t0 < 1.000:
+                    pass  # busy‑wait for precise 1 s pulse
+                self.app.valve1.neutral();
+                self.app.valve2.neutral()
+                actual_pulse = time.perf_counter() - t0
 
                 # Wait 1 s; sample internal 5 s → avg_post
                 time.sleep(1)
