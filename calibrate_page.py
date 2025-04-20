@@ -552,7 +552,7 @@ class CalibratePage(ctk.CTkFrame):
                     if vent_s is None or self.trial_stop_event.is_set():
                         break
 
-                avg_pre = self._measure_internal_avg(1)
+                avg_pre = self._measure_internal_avg(0.1)
                 if avg_pre is None:
                     break
 
