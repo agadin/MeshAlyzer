@@ -535,7 +535,7 @@ class CalibratePage(ctk.CTkFrame):
                     lowest_internal = min(lowest_internal, current_internal)
                     if current_internal < 0.5 or lowest_internal == 0:
                         break
-                    self._vent_cycle(2)
+                    self._vent_cycle(4)
 
                 writer.writerow({
                     "trial": trial,
