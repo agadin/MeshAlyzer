@@ -502,66 +502,93 @@ class CalibratePage(ctk.CTkFrame):
         self.app.valve1.neutral(); self.app.valve2.neutral()
 
     def _pressure_trials_thread(self):
-        # Select mode popup
-        mode=None
+        # Select mode
+        mode = None
         def choose(m):
-            nonlocal mode; mode=m; sel.destroy()
-        sel=ctk.CTkToplevel(self); sel.title("Trial Mode")
-        tk.Label(sel,text="Select trial mode:").pack(padx=10,pady=5)
-        ctk.CTkButton(sel,text="Uniform durations",command=lambda:choose('uniform')).pack(fill='x',padx=20,pady=5)
-        ctk.CTkButton(sel,text="Variable durations",command=lambda:choose('variable')).pack(fill='x',padx=20,pady=5)
-        sel.protocol("WM_DELETE_WINDOW",lambda:choose(None))
-        sel.wait_window()
-        if mode is None or self.trial_stop_event.is_set(): return
+            nonlocal mode
+            mode = m
+            mode_win.destroy()
+        mode_win = ctk.CTkToplevel(self)
+        mode_win.title('Trial Mode')
+        tk.Label(mode_win, text='Select trial mode:').pack(padx=10, pady=5)
+        ctk.CTkButton(mode_win, text='Uniform durations', command=lambda: choose('uniform')).pack(fill='x', padx=20, pady=5)
+        ctk.CTkButton(mode_win, text='Variable durations', command=lambda: choose('variable')).pack(fill='x', padx=20, pady=5)
+        mode_win.protocol('WM_DELETE_WINDOW', lambda: choose(None))
+        mode_win.wait_window()
+        if mode is None or self.trial_stop_event.is_set():
+            return
 
-        # If uniform, ask once
-        if mode=='uniform':
-            inflate_s=self._popup("Inflation Duration","Enter inflation time (s):",entry=True)
-            if inflate_s is None: return
-            vent_s=self._popup("Vent Duration","Enter vent time (s):",entry=True)
-            if vent_s is None: return
+        # Prompt durations once for uniform
+        if mode == 'uniform':
+            inflate_s = self._popup('Inflation Duration', 'Enter inflation time (s):', entry=True)
+            if inflate_s is None:
+                return
+            vent_s = self._popup('Vent Duration', 'Enter vent time (s):', entry=True)
+            if vent_s is None:
+                return
 
         # Prepare CSV
-        folder="getting_Q"; os.makedirs(folder,exist_ok=True)
-        path=os.path.join(folder,f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
-        with open(path,'w',newline='') as f:
-            writer=csv.DictWriter(f,fieldnames=["trial","inflate_s","vent_s","avg_in","avg_pre","avg_post"])
+        folder = 'getting_Q'
+        os.makedirs(folder, exist_ok=True)
+        csv_path = os.path.join(folder, f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=['trial', 'inflate_s', 'vent_s', 'avg_in', 'avg_pre', 'avg_post'])
             writer.writeheader()
 
-            for trial in range(1,11):
-                if self.trial_stop_event.is_set(): break
-                # prompt adjust
-                self._popup(f"Trial {trial}","Adjust regulator, then OK.")
-                if self.trial_stop_event.is_set(): break
-                avg_in=self._measure_pressure0_avg(5)
-                if avg_in is None: break
-                # durations
-                if mode=='variable':
-                    inflate_s=self._popup("Inflation Duration","Enter inflation time (s):",entry=True)
-                    if inflate_s is None: break
-                    vent_s=self._popup("Vent Duration","Enter vent time (s):",entry=True)
-                    if vent_s is None: break
-                # pre-sample
-                avg_pre=self._measure_internal_avg(5)
-                if avg_pre is None: break
-                # inflate
-                self.app.valve1.supply();self.app.valve2.supply();time.sleep(inflate_s)
-                self.app.valve1.neutral();self.app.valve2.neutral();time.sleep(1)
-                # post-sample
-                avg_post=self._measure_internal_avg(5)
-                if avg_post is None: break
-                # vent until <0.5
-                while not self.trial_stop_event.is_set() and avg_post>=0.5:
-                    self.app.valve1.vent();self.app.valve2.vent();time.sleep(vent_s)
-                    self.app.valve1.neutral();self.app.valve2.neutral()
-                    avg_post=self._measure_internal_avg(5)
+            for trial in range(1, 11):
+                if self.trial_stop_event.is_set():
+                    break
+
+                avg_in = self._measure_pressure0_avg(3)
+                if avg_in is None:
+                    break
+
+                # For variable mode, prompt durations each trial
+                if mode == 'variable':
+                    inflate_s = self._popup('Inflation Duration', 'Enter inflation time (s):', entry=True)
+                    if inflate_s is None or self.trial_stop_event.is_set():
+                        break
+                    vent_s = self._popup('Vent Duration', 'Enter vent time (s):', entry=True)
+                    if vent_s is None or self.trial_stop_event.is_set():
+                        break
+
+                avg_pre = self._measure_internal_avg(3)
+                if avg_pre is None:
+                    break
+
+                # Inflate
+                self.app.valve1.supply()
+                self.app.valve2.supply()
+                time.sleep(inflate_s)
+                self.app.valve1.neutral()
+                self.app.valve2.neutral()
+                time.sleep(1)
+
+                avg_post = self._measure_internal_avg(3)
+                if avg_post is None:
+                    break
+
+                # Vent until below threshold
+                while not self.trial_stop_event.is_set() and avg_post >= 0.5:
+                    self.app.valve1.vent()
+                    self.app.valve2.vent()
+                    time.sleep(vent_s)
+                    self.app.valve1.neutral()
+                    self.app.valve2.neutral()
+                    avg_post = self._measure_internal_avg(3)
+
                 writer.writerow({
-                    "trial":trial,"inflate_s":inflate_s,"vent_s":vent_s,
-                    "avg_in":round(avg_in,3),"avg_pre":round(avg_pre,3),"avg_post":round(avg_post,3)
+                    'trial': trial,
+                    'inflate_s': inflate_s,
+                    'vent_s': vent_s,
+                    'avg_in': round(avg_in, 3),
+                    'avg_pre': round(avg_pre, 3),
+                    'avg_post': round(avg_post, 3)
                 })
+
         if not self.trial_stop_event.is_set():
-            self._popup("Complete",f"Saved to {path}")
-        self.trial_stop_event=None
+            self._popup('Trials Complete', f'Data saved to {csv_path}')
+        self.trial_stop_event = None
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
