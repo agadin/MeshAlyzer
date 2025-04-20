@@ -25,25 +25,26 @@ class CalibratePage(ctk.CTkFrame):
         # --- Top frame for calibration buttons ---
         self.top_frame = ctk.CTkFrame(self, height=60)
         self.top_frame.pack(fill="x", padx=10, pady=5)
-        self.top_frame.columnconfigure((0, 1), weight=1)
+        self.top_frame.columnconfigure((0, 1, 2), weight=1)
 
         self.check_calib_button = ctk.CTkButton(
-            self.top_frame,
-            text="Check Calibration",
-            command=self.start_check_calibration,
-            width=150, height=40,
-            font=("Arial", 14)
+            self.top_frame, text="Check Calibration", command=self.start_check_calibration,
+            width=150, height=40, font=("Arial", 14)
         )
         self.check_calib_button.grid(row=0, column=0, padx=10, pady=5)
 
         self.sensor_calib_button = ctk.CTkButton(
-            self.top_frame,
-            text="Calibrate Pressure Sensors",
-            command=self.start_sensor_calibration,
-            width=200, height=40,
-            font=("Arial", 14)
+            self.top_frame, text="Calibrate Pressure Sensors", command=self.start_sensor_calibration,
+            width=200, height=40, font=("Arial", 14)
         )
         self.sensor_calib_button.grid(row=0, column=1, padx=10, pady=5)
+
+        # Button for running 10 pressure trials
+        self.trial_button = ctk.CTkButton(
+            self.top_frame, text="Record Pressure Trials", command=self.start_pressure_trials,
+            width=220, height=40, font=("Arial", 14)
+        )
+        self.trial_button.grid(row=0, column=2, padx=10, pady=5)
 
         # --- Sensor Values Display (only sensors 0-2) ---
         self.sensor_values_frame = ctk.CTkFrame(self, height=50)
@@ -422,6 +423,111 @@ class CalibratePage(ctk.CTkFrame):
         complete_popup.title("Calibration Complete")
         tk.Label(complete_popup, text="Sensor calibration is complete and all data has been saved.").pack(padx=10, pady=10)
         ctk.CTkButton(complete_popup, text="OK", command=complete_popup.destroy).pack(pady=5)
+
+    def prompt_target_input(self, trial_num, last_input):
+        popup = ctk.CTkToplevel(self)
+        popup.title(f"Trial {trial_num}: Target Input Pressure")
+        tk.Label(popup, text=f"Enter target input pressure (psi) for trial {trial_num}:").pack(padx=10, pady=5)
+        entry = ctk.CTkEntry(popup)
+        entry.pack(padx=10, pady=5)
+        result = {'value': None}
+
+        def on_submit():
+            try:
+                val = float(entry.get())
+            except ValueError:
+                # error popup
+                err = ctk.CTkToplevel(self)
+                err.title("Invalid Entry")
+                tk.Label(err, text="Please enter a numeric value.").pack(padx=10, pady=10)
+                ctk.CTkButton(err, text="OK", command=err.destroy).pack(pady=5)
+                return
+            popup.destroy()
+            result['value'] = val
+
+        ctk.CTkButton(popup, text="OK", command=on_submit).pack(pady=10)
+        popup.wait_window()
+        return result['value']
+
+    def start_pressure_trials(self):
+        threading.Thread(target=self.perform_pressure_trials, daemon=True).start()
+
+    def perform_pressure_trials(self):
+        # Prepare output directory and CSV
+        folder = "getting_Q"
+        os.makedirs(folder, exist_ok=True)
+        date_str = datetime.date.today().strftime('%Y%m%d')
+        filename = os.path.join(folder, f"pressure_trial_{date_str}.csv")
+        with open(filename, 'w', newline='') as csvfile:
+            fieldnames = ['trial', 'target_input', 'avg_input', 'avg_pre', 'avg_post']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            last_input = None
+            for trial in range(1, 11):
+                # Prompt user for target input, ensure difference ≥ 5 psi
+                while True:
+                    target = self.prompt_target_input(trial, last_input)
+                    if target is None:
+                        return
+                    if last_input is None or abs(target - last_input) >= 5:
+                        break
+                    # warning popup
+                    warn = ctk.CTkToplevel(self)
+                    warn.title("Adjustment Needed")
+                    tk.Label(warn, text="Input pressure must differ by at least 5 psi from the last trial.").pack(padx=10, pady=10)
+                    ctk.CTkButton(warn, text="OK", command=warn.destroy).pack(pady=5)
+                last_input = target
+
+                # SAMPLE AVERAGE INPUT OVER 5s
+                samples_in = []
+                t0 = time.time()
+                while time.time() - t0 < 5:
+                    samples_in.append(self.app.pressure0_convert)
+                    time.sleep(0.05)
+                avg_input = sum(samples_in) / len(samples_in)
+
+                # SEND PRESSURE FOR 0.5s
+                self.app.valve1.supply(); self.app.valve2.supply()
+                time.sleep(0.5)
+                self.app.valve1.neutral(); self.app.valve2.neutral()
+
+                # VENT AND CHECK INTERNAL PRESSURE
+                def sample_internal(duration):
+                    vals = []
+                    t_start = time.time()
+                    while time.time() - t_start < duration:
+                        p1 = getattr(self.app, 'pressure1_convert', 0)
+                        p3 = getattr(self.app, 'pressure3', 0)
+                        vals.append((p1 + p3) / 2)
+                        time.sleep(0.05)
+                    return sum(vals) / len(vals) if vals else 0
+
+                avg_pre = sample_internal(5)
+                while avg_pre >= 0.5:
+                    self.app.valve1.neutral(); self.app.valve2.neutral()
+                    time.sleep(2)
+                    avg_pre = sample_internal(5)
+
+                # POST-EQUALIZATION SAMPLE (1s)
+                time.sleep(1)
+                avg_post = sample_internal(1)
+
+                # Record to CSV
+                writer.writerow({
+                    'trial': trial,
+                    'target_input': target,
+                    'avg_input': round(avg_input, 3),
+                    'avg_pre': round(avg_pre, 3),
+                    'avg_post': round(avg_post, 3)
+                })
+
+        # completion popup
+        complete = ctk.CTkToplevel(self)
+        complete.title("Trials Complete")
+        tk.Label(complete, text=f"All trials recorded to {filename}").pack(padx=10, pady=10)
+        ctk.CTkButton(complete, text="OK", command=complete.destroy).pack(pady=5)
+
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
