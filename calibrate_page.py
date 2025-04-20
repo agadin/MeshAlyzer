@@ -463,20 +463,22 @@ class CalibratePage(ctk.CTkFrame):
         if entry:
             e = ctk.CTkEntry(win)
             e.pack(padx=10, pady=5)
-        def close():
+        # OK handler: only close without stopping thread
+        def on_ok():
             if entry:
                 try:
                     out['val'] = float(e.get())
                 except ValueError:
                     tk.Label(win, text="Enter a number", fg="red").pack()
                     return
-            # Signal stop if this is part of trials thread
+            win.destroy()
+        # Cancel handler: stop thread and close
+        def on_cancel():
             if self.trial_stop_event:
                 self.trial_stop_event.set()
             win.destroy()
-        # Bind close to OK and window close button
-        win.protocol("WM_DELETE_WINDOW", close)
-        ctk.CTkButton(win, text="OK", command=close).pack(pady=10)
+        win.protocol("WM_DELETE_WINDOW", on_cancel)
+        ctk.CTkButton(win, text="OK", command=on_ok).pack(pady=10)
         win.wait_window()
         return out['val'] if entry else None
 
