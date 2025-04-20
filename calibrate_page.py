@@ -454,15 +454,18 @@ class CalibratePage(ctk.CTkFrame):
         self.perform_pressure_trials()
 
     def _popup(self, title: str, message: str) -> bool:
-        """Show modal CTk popup; return True if OK clicked, False if window closed."""
         acknowledged = tk.BooleanVar(value=False)
 
         pop = ctk.CTkToplevel(self)
         pop.title(title)
-        tk.Label(pop, text=message).pack(padx=10, pady=10)
-        ctk.CTkButton(pop, text="OK", command=lambda: (acknowledged.set(True), pop.destroy())).pack(pady=5)
+        pop.transient(self)  # keep on top of main window
+        pop.grab_set()  # make truly modal ✨
 
-        # Handle user clicking the window close button
+        tk.Label(pop, text=message).pack(padx=10, pady=10)
+        ctk.CTkButton(pop, text="OK",
+                      command=lambda: (acknowledged.set(True), pop.destroy())
+                      ).pack(pady=5)
+
         pop.protocol("WM_DELETE_WINDOW", pop.destroy)
         pop.wait_window()
         return acknowledged.get()
@@ -479,10 +482,7 @@ class CalibratePage(ctk.CTkFrame):
         while time.time() - t0 < seconds:
             p1 = getattr(self.app, 'pressure1_convert', 0)
             p2 = getattr(self.app, 'pressure2_convert', 0)
-            vals.append((p1 + p2) / 2)
-            if vals < [0]:
-                vals = [0]
-            time.sleep(0.05)
+            vals.append(max((p1 + p2) / 2, 0))  # clamp to 0 if sensors under‑flow
         return sum(vals)/len(vals) if vals else 0
 
     def _vent_cycle(self, seconds=2):
@@ -501,7 +501,7 @@ class CalibratePage(ctk.CTkFrame):
             last_input = None
             for trial in range(1, 11):
                 msg = "" if last_input is None else f"(Last input: {last_input:.2f} psi)\n"
-                if not self._popup(f"Trial {trial} – Adjust Input", msg + "Adjust regulator ≥5 psi difference then click OK."):
+                if not self._popup(f"Trial {trial} – Adjust Input", msg + "Adjust regulator ≥5 psi difference then click OK."):
                     break  # user closed popup – abort
 
                 # Measure input until ≥5 psi different
@@ -509,7 +509,7 @@ class CalibratePage(ctk.CTkFrame):
                     avg_input = self._measure_pressure0_avg(5)
                     if last_input is None or abs(avg_input - last_input) >= 5:
                         break
-                    if not self._popup("Adjustment Needed", "Difference <5 PSI. Adjust and press OK."):
+                    if not self._popup("Adjustment Needed", "Difference <5 psi. Adjust and press OK."):
                         return
                 last_input = avg_input
 
