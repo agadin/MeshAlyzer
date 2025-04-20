@@ -539,7 +539,7 @@ class CalibratePage(ctk.CTkFrame):
                     break
                 # Vent loop until internal <0.1 psi
                 self._vent(vent_s)
-                while not self.trial_stop_event.is_set() and self._measure_internal_avg(5) >= 0.1:
+                while not self.trial_stop_event.is_set() and self._measure_internal_avg(5) >= 0.15:
                     self._vent(vent_s)
                 # Record trial
                 writer.writerow({
