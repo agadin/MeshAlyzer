@@ -542,7 +542,7 @@ class CalibratePage(ctk.CTkFrame):
                     "avg_post": round(avg_post, 3)
                 })
 
-        self._popup("Trials Complete", f"All trials recorded to {fname}")
+        self.after(0, lambda: self._popup("Trials Complete", f"All trials recorded to {fname}"))
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
