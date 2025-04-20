@@ -563,7 +563,6 @@ class CalibratePage(ctk.CTkFrame):
             self._popup("Complete",f"Saved to {path}")
         self.trial_stop_event=None
 
-
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
         self.sensor1_button.configure(fg_color=color_map[success_list[0]])
