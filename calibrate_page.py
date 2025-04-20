@@ -500,7 +500,7 @@ class CalibratePage(ctk.CTkFrame):
                 self._popup(f"Trial {trial}", "Adjust regulator for next input pressure, then click OK.")
 
                 # Sample average input over 5s
-                avg_in = self._avg_pressure0(5)
+                avg_in = self._measure_pressure0_avg(5)
 
                 # Ask user for durations
                 inflate_s = self._popup("Inflation Duration", "Enter inflation time in seconds:", entry=True)
@@ -509,7 +509,7 @@ class CalibratePage(ctk.CTkFrame):
                     return
 
                 # Pre-trial internal avg (5s)
-                avg_pre = self._avg_internal(5)
+                avg_pre = self._measure_internal_avg(5)
 
                 # Inflate for user-specified duration
                 self.app.valve1.supply(); self.app.valve2.supply(); time.sleep(inflate_s)
@@ -517,11 +517,11 @@ class CalibratePage(ctk.CTkFrame):
                 time.sleep(1)  # equalize
 
                 # Post inflate internal avg (5s)
-                avg_post = self._avg_internal(5)
+                avg_post = self._measure_internal_avg(5)
 
                 # Vent loop until internal <0.5 psi
                 self._vent(vent_s)
-                while self._avg_internal(5) >= 0.5:
+                while self._measure_internal_avg(5) >= 0.5:
                     self._vent(vent_s)
 
                 # Record trial
