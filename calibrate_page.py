@@ -452,32 +452,37 @@ class CalibratePage(ctk.CTkFrame):
     def start_pressure_trials(self):
         threading.Thread(target=self.perform_pressure_trials, daemon=True).start()
 
-    def _popup(self, title: str, message: str):
+    def _popup(self, title, message):
         pop = ctk.CTkToplevel(self)
         pop.title(title)
         tk.Label(pop, text=message).pack(padx=10, pady=10)
         ctk.CTkButton(pop, text="OK", command=pop.destroy).pack(pady=5)
         pop.wait_window()
 
-    def _measure_pressure0_avg(self, seconds: float = 5.0):
+    def _measure_pressure0_avg(self, seconds=5):
         vals, t0 = [], time.time()
         while time.time() - t0 < seconds:
             vals.append(self.app.pressure0_convert)
             time.sleep(0.05)
-        return sum(vals) / len(vals) if vals else 0
+        return sum(vals)/len(vals) if vals else 0
 
-    def _measure_internal_avg(self, seconds: float = 5.0):
+    def _measure_internal_avg(self, seconds=5):
         vals, t0 = [], time.time()
         while time.time() - t0 < seconds:
             p1 = getattr(self.app, 'pressure1_convert', 0)
             p2 = getattr(self.app, 'pressure2_convert', 0)
             vals.append((p1 + p2) / 2)
             time.sleep(0.05)
-        return sum(vals) / len(vals) if vals else 0
+        return sum(vals)/len(vals) if vals else 0
+
+    def _vent_cycle(self, seconds=2):
+        """Vent for <seconds>, then set neutral."""
+        self.app.valve1.vent(); self.app.valve2.vent()
+        time.sleep(seconds)
+        self.app.valve1.neutral(); self.app.valve2.neutral()
 
     def perform_pressure_trials(self):
-        folder = "getting_Q"
-        os.makedirs(folder, exist_ok=True)
+        folder = "getting_Q"; os.makedirs(folder, exist_ok=True)
         fname = os.path.join(folder, f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
         with open(fname, "w", newline="") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=["trial", "avg_input", "avg_pre", "avg_post"])
@@ -485,42 +490,41 @@ class CalibratePage(ctk.CTkFrame):
 
             last_input = None
             for trial in range(1, 11):
-                # Prompt user to adjust regulator if necessary
-                prompt_msg = "" if last_input is None else f"(Last input: {last_input:.2f} psi)\n"
-                self._popup(
-                    f"Trial {trial} – Adjust Input",
-                    prompt_msg + "Adjust the input pressure so it differs by ≥5 psi from the previous trial, then click OK to measure."
-                )
+                msg = "" if last_input is None else f"(Last input: {last_input:.2f} psi)\n"
+                self._popup(f"Trial {trial} – Adjust Input", msg + "Adjust regulator ≥5 psi difference then click OK.")
 
-                # Measure input until criterion satisfied
+                # Measure input until ≥5 psi different
                 while True:
                     avg_input = self._measure_pressure0_avg(5)
                     if last_input is None or abs(avg_input - last_input) >= 5:
                         break
-                    self._popup("Adjustment Needed", "Input change < 5 psi. Adjust and press OK to re‑measure.")
+                    self._popup("Adjustment Needed", "Difference <5 psi. Adjust and press OK.")
                 last_input = avg_input
 
-                # Measure internal pressure BEFORE pulse (avg_pre)
+                # Pre‑pulse internal pressure
                 avg_pre = self._measure_internal_avg(5)
 
-                # Apply 0.5 s pressure pulse
+                # 1‑second pressure pulse
                 self.app.valve1.supply(); self.app.valve2.supply()
-                time.sleep(1)
+                time.sleep(1.0)
                 self.app.valve1.neutral(); self.app.valve2.neutral()
 
-                # Wait 1 s then measure internal over 5 s → avg_post
+                # Wait 1 s; sample internal 5 s → avg_post
                 time.sleep(1)
                 avg_post = self._measure_internal_avg(5)
 
-                # Vent loop – ensure internal < 0.5 psi before next trial
-                while True:
-                    time.sleep(1)
-                    vent_avg = self._measure_internal_avg(5)
-                    if vent_avg < 0.5:
-                        break
-                    time.sleep(2)  # extra vent time
+                # Initial vent (2 s)
+                self._vent_cycle(2)
 
-                # Record trial row
+                # Loop until internal <0.5 psi
+                time.sleep(1)  # settle
+                while True:
+                    current_internal = self._measure_internal_avg(5)
+                    if current_internal < 0.5:
+                        break
+                    self._vent_cycle(2)
+                    time.sleep(1)
+
                 writer.writerow({
                     "trial": trial,
                     "avg_input": round(avg_input, 3),
