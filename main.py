@@ -1365,7 +1365,6 @@ class App(ctk.CTk):
     def calculate_metric(self, metric, protocol_step):
         with open('data.csv', 'r') as file:
             reader = csv.reader(file)
-            header = next(reader)
             data = [row for row in reader if int(row[6]) == protocol_step]
 
         if not data:
