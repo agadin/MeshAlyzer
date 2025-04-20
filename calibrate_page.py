@@ -450,7 +450,8 @@ class CalibratePage(ctk.CTkFrame):
         return result['value']
 
     def start_pressure_trials(self):
-        threading.Thread(target=self.perform_pressure_trials, daemon=True).start()
+        """Run trials in the UI thread so Tkinter pop‑ups remain responsive."""
+        self.perform_pressure_trials()
 
     def _popup(self, title: str, message: str) -> bool:
         """Show modal CTk popup; return True if OK clicked, False if window closed."""
@@ -508,7 +509,7 @@ class CalibratePage(ctk.CTkFrame):
                     avg_input = self._measure_pressure0_avg(5)
                     if last_input is None or abs(avg_input - last_input) >= 5:
                         break
-                    if not self._popup("Adjustment Needed", "Difference <5 psi. Adjust and press OK."):
+                    if not self._popup("Adjustment Needed", "Difference <5 PSI. Adjust and press OK."):
                         return
                 last_input = avg_input
 
