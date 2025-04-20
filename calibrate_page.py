@@ -479,6 +479,8 @@ class CalibratePage(ctk.CTkFrame):
             p1 = getattr(self.app, 'pressure1_convert', 0)
             p2 = getattr(self.app, 'pressure2_convert', 0)
             vals.append((p1 + p2) / 2)
+            if vals < [0]:
+                vals = [0]
             time.sleep(0.05)
         return sum(vals)/len(vals) if vals else 0
 
