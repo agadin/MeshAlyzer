@@ -505,7 +505,7 @@ class CalibratePage(ctk.CTkFrame):
 
                 # Apply 0.5 s pressure pulse
                 self.app.valve1.supply(); self.app.valve2.supply()
-                time.sleep(0.5)
+                time.sleep(1)
                 self.app.valve1.neutral(); self.app.valve2.neutral()
 
                 # Wait 1 s then measure internal over 5 s → avg_post
