@@ -454,18 +454,15 @@ class CalibratePage(ctk.CTkFrame):
         self.perform_pressure_trials()
 
     def _popup(self, title: str, message: str) -> bool:
+        """Show modal CTk popup; return True if OK clicked, False if window closed."""
         acknowledged = tk.BooleanVar(value=False)
 
         pop = ctk.CTkToplevel(self)
         pop.title(title)
-        pop.transient(self)  # keep on top of main window
-        pop.grab_set()  # make truly modal ✨
-
         tk.Label(pop, text=message).pack(padx=10, pady=10)
-        ctk.CTkButton(pop, text="OK",
-                      command=lambda: (acknowledged.set(True), pop.destroy())
-                      ).pack(pady=5)
+        ctk.CTkButton(pop, text="OK", command=lambda: (acknowledged.set(True), pop.destroy())).pack(pady=5)
 
+        # Handle user clicking the window close button
         pop.protocol("WM_DELETE_WINDOW", pop.destroy)
         pop.wait_window()
         return acknowledged.get()
