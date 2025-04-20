@@ -482,14 +482,14 @@ class CalibratePage(ctk.CTkFrame):
         win.wait_window()
         return out['val'] if entry else None
 
-    def _measure_pressure0_avg(self, seconds=5):
+    def _measure_pressure0_avg(self, seconds):
         vals, t0 = [], time.time()
         while time.time() - t0 < seconds:
             vals.append(self.app.pressure0_convert)
             time.sleep(0.05)
         return sum(vals)/len(vals) if vals else 0
 
-    def _measure_internal_avg(self, seconds=5):
+    def _measure_internal_avg(self, seconds):
         vals, t0 = [], time.time()
         while time.time() - t0 < seconds:
             p1 = getattr(self.app, 'pressure1_convert', 0)
@@ -568,14 +568,14 @@ class CalibratePage(ctk.CTkFrame):
                 if avg_post is None:
                     break
 
-                # Vent until below threshold
-                while not self.trial_stop_event.is_set() and avg_post >= 0.5:
+                # Vent until below threshold, sample internal pressure over 3s
+                while not self.trial_stop_event.is_set() and avg_post >= 0.15:
                     self.app.valve1.vent()
                     self.app.valve2.vent()
                     time.sleep(vent_s)
                     self.app.valve1.neutral()
                     self.app.valve2.neutral()
-                    avg_post = self._measure_internal_avg(3)
+                    avg_post = self._measure_internal_avg(1)
 
                 writer.writerow({
                     'trial': trial,
@@ -589,6 +589,7 @@ class CalibratePage(ctk.CTkFrame):
         if not self.trial_stop_event.is_set():
             self._popup('Trials Complete', f'Data saved to {csv_path}')
         self.trial_stop_event = None
+
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
