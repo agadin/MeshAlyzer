@@ -575,7 +575,7 @@ class CalibratePage(ctk.CTkFrame):
                     time.sleep(vent_s)
                     self.app.valve1.neutral()
                     self.app.valve2.neutral()
-                    avg_post = self._measure_internal_avg(10)
+                    avg_post = self._measure_internal_avg(3)
 
                 writer.writerow({
                     'trial': trial,
