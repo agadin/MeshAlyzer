@@ -1,3 +1,4 @@
+wait: 4
 Inflate: time, 0.5, both
 wait: 1
 Deflate: time, 2, both

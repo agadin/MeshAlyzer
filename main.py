@@ -1362,7 +1362,7 @@ class App(ctk.CTk):
             except ValueError:
                 raise ValueError(f"Value for '{string_input}' in Redis is not a valid number.")
 
-    def calculate_metric(metric, protocol_step):
+    def calculate_metric(self, metric, protocol_step):
         with open('data.csv', 'r') as file:
             reader = csv.reader(file)
             header = next(reader)
