@@ -544,7 +544,8 @@ class CalibratePage(ctk.CTkFrame):
                     "trial": trial,
                     "avg_input": round(avg_input, 3),
                     "avg_pre": round(avg_pre, 3),
-                    "avg_post": round(avg_post, 3)
+                    "avg_post": round(avg_post, 3),
+                    "actual_duration": round(actual_pulse, 3)
                 })
 
         self.after(0, lambda: self._popup("Trials Complete", f"All trials recorded to {fname}"))
