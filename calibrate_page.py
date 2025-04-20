@@ -515,7 +515,7 @@ class CalibratePage(ctk.CTkFrame):
                 if self.trial_stop_event.is_set():
                     break
                 # Sample average input over 5s
-                avg_in = self._avg_pressure0(5)
+                avg_in = self._measure_pressure0_avg(5)
                 if avg_in is None:
                     break
                 # Ask user for durations
@@ -526,7 +526,7 @@ class CalibratePage(ctk.CTkFrame):
                 if vent_s is None or self.trial_stop_event.is_set():
                     break
                 # Pre-trial internal avg (5s)
-                avg_pre = self._avg_internal(5)
+                avg_pre = self._measure_internal_avg(5)
                 if avg_pre is None:
                     break
                 # Inflate for user-specified duration
@@ -534,12 +534,12 @@ class CalibratePage(ctk.CTkFrame):
                 self.app.valve1.neutral(); self.app.valve2.neutral()
                 time.sleep(1)  # equalize
                 # Post inflate internal avg (5s)
-                avg_post = self._avg_internal(5)
+                avg_post = self._measure_internal_avg(5)
                 if avg_post is None:
                     break
                 # Vent loop until internal <0.5 psi
                 self._vent(vent_s)
-                while not self.trial_stop_event.is_set() and self._avg_internal(5) >= 0.5:
+                while not self.trial_stop_event.is_set() and self._measure_internal_avg(5) >= 0.5:
                     self._vent(vent_s)
                 # Record trial
                 writer.writerow({
