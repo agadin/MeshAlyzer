@@ -450,22 +450,25 @@ class CalibratePage(ctk.CTkFrame):
         return result['value']
 
     def start_pressure_trials(self):
-        """Run trials in the UI thread so Tkinter pop‑ups remain responsive."""
-        self.perform_pressure_trials()
+        threading.Thread(target=self._pressure_trials_thread, daemon=True).start()
 
-    def _popup(self, title: str, message: str) -> bool:
-        """Show modal CTk popup; return True if OK clicked, False if window closed."""
-        acknowledged = tk.BooleanVar(value=False)
 
-        pop = ctk.CTkToplevel(self)
-        pop.title(title)
-        tk.Label(pop, text=message).pack(padx=10, pady=10)
-        ctk.CTkButton(pop, text="OK", command=lambda: (acknowledged.set(True), pop.destroy())).pack(pady=5)
-
-        # Handle user clicking the window close button
-        pop.protocol("WM_DELETE_WINDOW", pop.destroy)
-        pop.wait_window()
-        return acknowledged.get()
+    def _popup(self, title: str, message: str, entry: bool = False):
+        out = {'val': None}
+        win = ctk.CTkToplevel(self); win.title(title)
+        tk.Label(win, text=message, wraplength=300, justify="left").pack(padx=10, pady=5)
+        if entry:
+            e = ctk.CTkEntry(win); e.pack(padx=10, pady=5)
+        def close():
+            if entry:
+                try:
+                    out['val'] = float(e.get())
+                except ValueError:
+                    tk.Label(win, text="Enter a number", fg="red").pack(); return
+            win.destroy()
+        ctk.CTkButton(win, text="OK", command=close).pack(pady=10)
+        win.wait_window()
+        return out['val'] if entry else None
 
     def _measure_pressure0_avg(self, seconds=5):
         vals, t0 = [], time.time()
@@ -482,73 +485,55 @@ class CalibratePage(ctk.CTkFrame):
             vals.append(max((p1 + p2) / 2, 0))  # clamp to 0 if sensors under‑flow
         return sum(vals)/len(vals) if vals else 0
 
-    def _vent_cycle(self, seconds=2):
-        """Vent for <seconds>, then set neutral."""
-        self.app.valve1.vent(); self.app.valve2.vent()
-        time.sleep(seconds)
+    def _vent(self, sec):
+        self.app.valve1.vent(); self.app.valve2.vent(); time.sleep(sec)
         self.app.valve1.neutral(); self.app.valve2.neutral()
 
-    def perform_pressure_trials(self):
+    def _pressure_trials_thread(self):
         folder = "getting_Q"; os.makedirs(folder, exist_ok=True)
-        fname = os.path.join(folder, f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
-        with open(fname, "w", newline="") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=["trial", "avg_input", "avg_pre", "avg_post"])
+        csv_path = os.path.join(folder, f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=["trial","inflate_s","vent_s","avg_input","avg_pre","avg_post"])
             writer.writeheader()
-
-            last_input = None
             for trial in range(1, 11):
-                msg = "" if last_input is None else f"(Last input: {last_input:.2f} psi)\n"
-                if not self._popup(f"Trial {trial} – Adjust Input", msg + "Adjust regulator ≥5 psi difference then click OK."):
-                    break  # user closed popup – abort
+                # Prompt to prepare trial
+                self._popup(f"Trial {trial}", "Adjust regulator for next input pressure, then click OK.")
 
-                # Measure input until ≥5 psi different
-                while True:
-                    avg_input = self._measure_pressure0_avg(5)
-                    if last_input is None or abs(avg_input - last_input) >= 5:
-                        break
-                    if not self._popup("Adjustment Needed", "Difference <5 psi. Adjust and press OK."):
-                        return
-                last_input = avg_input
+                # Sample average input over 5s
+                avg_in = self._avg_pressure0(5)
 
-                # Pre‑pulse internal pressure
-                avg_pre = self._measure_internal_avg(5)
+                # Ask user for durations
+                inflate_s = self._popup("Inflation Duration", "Enter inflation time in seconds:", entry=True)
+                vent_s = self._popup("Vent Duration", "Enter vent/deflate time in seconds:", entry=True)
+                if inflate_s is None or vent_s is None:
+                    return
 
-                # 1‑second pressure pulse
-                t0 = time.perf_counter()
-                self.app.valve1.supply();
-                self.app.valve2.supply()
-                while time.perf_counter() - t0 < 1.000:
-                    pass  # busy‑wait for precise 1 s pulse
-                self.app.valve1.neutral();
-                self.app.valve2.neutral()
-                actual_pulse = time.perf_counter() - t0
+                # Pre-trial internal avg (5s)
+                avg_pre = self._avg_internal(5)
 
-                # Wait 1 s; sample internal 5 s → avg_post
-                time.sleep(1)
-                avg_post = self._measure_internal_avg(5)
+                # Inflate for user-specified duration
+                self.app.valve1.supply(); self.app.valve2.supply(); time.sleep(inflate_s)
+                self.app.valve1.neutral(); self.app.valve2.neutral()
+                time.sleep(1)  # equalize
 
-                # Initial 2‑second vent
-                self._vent_cycle(2)
+                # Post inflate internal avg (5s)
+                avg_post = self._avg_internal(5)
 
-                # Vent loop until internal <0.5 psi or hits absolute zero
-                lowest_internal = float('inf')
-                while True:
-                    time.sleep(1)
-                    current_internal = self._measure_internal_avg(5)
-                    lowest_internal = min(lowest_internal, current_internal)
-                    if current_internal < 0.5 or lowest_internal == 0:
-                        break
-                    self._vent_cycle(4)
+                # Vent loop until internal <0.5 psi
+                self._vent(vent_s)
+                while self._avg_internal(5) >= 0.5:
+                    self._vent(vent_s)
 
+                # Record trial
                 writer.writerow({
                     "trial": trial,
-                    "avg_input": round(avg_input, 3),
+                    "inflate_s": inflate_s,
+                    "vent_s": vent_s,
+                    "avg_input": round(avg_in, 3),
                     "avg_pre": round(avg_pre, 3),
-                    "avg_post": round(avg_post, 3),
-                    "actual_duration": round(actual_pulse, 3)
+                    "avg_post": round(avg_post, 3)
                 })
-
-        self.after(0, lambda: self._popup("Trials Complete", f"All trials recorded to {fname}"))
+        self._popup("Trials Complete", f"Data saved to {csv_path}")
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}

@@ -137,7 +137,7 @@ class PressureCalibrator:
         for sensor, val in zip(['pressure0','pressure1','pressure2'], [p0,p1,p2]):
             pred = self.models[sensor].predict([[val]])[0]
             # predictions are already >=0 thanks to log‐transform inverse
-            conv.append(round(pred, 1))
+            conv.append(round(max(pred, 0), 1))
         return tuple(conv)
 
 if __name__ == "__main__":
