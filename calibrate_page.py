@@ -539,7 +539,7 @@ class CalibratePage(ctk.CTkFrame):
                 if self.trial_stop_event.is_set():
                     break
 
-                avg_in = self._measure_pressure0_avg(2)
+                avg_in = self._measure_pressure0_avg(1)
                 if avg_in is None:
                     break
 
@@ -552,7 +552,7 @@ class CalibratePage(ctk.CTkFrame):
                     if vent_s is None or self.trial_stop_event.is_set():
                         break
 
-                avg_pre = self._measure_internal_avg(2)
+                avg_pre = self._measure_internal_avg(1)
                 if avg_pre is None:
                     break
 
@@ -562,20 +562,20 @@ class CalibratePage(ctk.CTkFrame):
                 time.sleep(inflate_s)
                 self.app.valve1.neutral()
                 self.app.valve2.neutral()
-                time.sleep(1)
+                # time.sleep(1)
 
-                avg_post = self._measure_internal_avg(2)
+                avg_post = self._measure_internal_avg(0.1)
                 if avg_post is None:
                     break
 
                 # Vent until below threshold, sample internal pressure over 3s
-                while not self.trial_stop_event.is_set() and avg_post >= 0.15:
+                while not self.trial_stop_event.is_set() and avg_post >= 0.5:
                     self.app.valve1.vent()
                     self.app.valve2.vent()
                     time.sleep(vent_s)
                     self.app.valve1.neutral()
                     self.app.valve2.neutral()
-                    avg_post = self._measure_internal_avg(3)
+                    avg_post = self._measure_internal_avg(0.1)
 
                 writer.writerow({
                     'trial': trial,
