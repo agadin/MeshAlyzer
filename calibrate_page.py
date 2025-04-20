@@ -452,82 +452,83 @@ class CalibratePage(ctk.CTkFrame):
     def start_pressure_trials(self):
         threading.Thread(target=self.perform_pressure_trials, daemon=True).start()
 
+    def _popup(self, title: str, message: str):
+        pop = ctk.CTkToplevel(self)
+        pop.title(title)
+        tk.Label(pop, text=message).pack(padx=10, pady=10)
+        ctk.CTkButton(pop, text="OK", command=pop.destroy).pack(pady=5)
+        pop.wait_window()
+
+    def _measure_pressure0_avg(self, seconds: float = 5.0):
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            vals.append(self.app.pressure0_convert)
+            time.sleep(0.05)
+        return sum(vals) / len(vals) if vals else 0
+
+    def _measure_internal_avg(self, seconds: float = 5.0):
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            p1 = getattr(self.app, 'pressure1_convert', 0)
+            p2 = getattr(self.app, 'pressure2_convert', 0)
+            vals.append((p1 + p2) / 2)
+            time.sleep(0.05)
+        return sum(vals) / len(vals) if vals else 0
+
     def perform_pressure_trials(self):
-        # Prepare output directory and CSV
         folder = "getting_Q"
         os.makedirs(folder, exist_ok=True)
-        date_str = datetime.date.today().strftime('%Y%m%d')
-        filename = os.path.join(folder, f"pressure_trial_{date_str}.csv")
-        with open(filename, 'w', newline='') as csvfile:
-            fieldnames = ['trial', 'target_input', 'avg_input', 'avg_pre', 'avg_post']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        fname = os.path.join(folder, f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
+        with open(fname, "w", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=["trial", "avg_input", "avg_pre", "avg_post"])
             writer.writeheader()
 
             last_input = None
             for trial in range(1, 11):
-                # Prompt user for target input, ensure difference ≥ 5 psi
+                # Prompt user to adjust regulator if necessary
+                prompt_msg = "" if last_input is None else f"(Last input: {last_input:.2f} psi)\n"
+                self._popup(
+                    f"Trial {trial} – Adjust Input",
+                    prompt_msg + "Adjust the input pressure so it differs by ≥5 psi from the previous trial, then click OK to measure."
+                )
+
+                # Measure input until criterion satisfied
                 while True:
-                    target = self.prompt_target_input(trial, last_input)
-                    if target is None:
-                        return
-                    if last_input is None or abs(target - last_input) >= 5:
+                    avg_input = self._measure_pressure0_avg(5)
+                    if last_input is None or abs(avg_input - last_input) >= 5:
                         break
-                    # warning popup
-                    warn = ctk.CTkToplevel(self)
-                    warn.title("Adjustment Needed")
-                    tk.Label(warn, text="Input pressure must differ by at least 5 psi from the last trial.").pack(padx=10, pady=10)
-                    ctk.CTkButton(warn, text="OK", command=warn.destroy).pack(pady=5)
-                last_input = target
+                    self._popup("Adjustment Needed", "Input change < 5 psi. Adjust and press OK to re‑measure.")
+                last_input = avg_input
 
-                # SAMPLE AVERAGE INPUT OVER 5s
-                samples_in = []
-                t0 = time.time()
-                while time.time() - t0 < 5:
-                    samples_in.append(self.app.pressure0_convert)
-                    time.sleep(0.05)
-                avg_input = sum(samples_in) / len(samples_in)
+                # Measure internal pressure BEFORE pulse (avg_pre)
+                avg_pre = self._measure_internal_avg(5)
 
-                # SEND PRESSURE FOR 0.5s
+                # Apply 0.5 s pressure pulse
                 self.app.valve1.supply(); self.app.valve2.supply()
                 time.sleep(0.5)
                 self.app.valve1.neutral(); self.app.valve2.neutral()
 
-                # VENT AND CHECK INTERNAL PRESSURE
-                def sample_internal(duration):
-                    vals = []
-                    t_start = time.time()
-                    while time.time() - t_start < duration:
-                        p1 = getattr(self.app, 'pressure1_convert', 0)
-                        p3 = getattr(self.app, 'pressure3', 0)
-                        vals.append((p1 + p3) / 2)
-                        time.sleep(0.05)
-                    return sum(vals) / len(vals) if vals else 0
-
-                avg_pre = sample_internal(5)
-                while avg_pre >= 0.5:
-                    self.app.valve1.neutral(); self.app.valve2.neutral()
-                    time.sleep(2)
-                    avg_pre = sample_internal(5)
-
-                # POST-EQUALIZATION SAMPLE (1s)
+                # Wait 1 s then measure internal over 5 s → avg_post
                 time.sleep(1)
-                avg_post = sample_internal(1)
+                avg_post = self._measure_internal_avg(5)
 
-                # Record to CSV
+                # Vent loop – ensure internal < 0.5 psi before next trial
+                while True:
+                    time.sleep(1)
+                    vent_avg = self._measure_internal_avg(5)
+                    if vent_avg < 0.5:
+                        break
+                    time.sleep(2)  # extra vent time
+
+                # Record trial row
                 writer.writerow({
-                    'trial': trial,
-                    'target_input': target,
-                    'avg_input': round(avg_input, 3),
-                    'avg_pre': round(avg_pre, 3),
-                    'avg_post': round(avg_post, 3)
+                    "trial": trial,
+                    "avg_input": round(avg_input, 3),
+                    "avg_pre": round(avg_pre, 3),
+                    "avg_post": round(avg_post, 3)
                 })
 
-        # completion popup
-        complete = ctk.CTkToplevel(self)
-        complete.title("Trials Complete")
-        tk.Label(complete, text=f"All trials recorded to {filename}").pack(padx=10, pady=10)
-        ctk.CTkButton(complete, text="OK", command=complete.destroy).pack(pady=5)
-
+        self._popup("Trials Complete", f"All trials recorded to {fname}")
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
