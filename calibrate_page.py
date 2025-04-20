@@ -452,12 +452,19 @@ class CalibratePage(ctk.CTkFrame):
     def start_pressure_trials(self):
         threading.Thread(target=self.perform_pressure_trials, daemon=True).start()
 
-    def _popup(self, title, message):
+    def _popup(self, title: str, message: str) -> bool:
+        """Show modal CTk popup; return True if OK clicked, False if window closed."""
+        acknowledged = tk.BooleanVar(value=False)
+
         pop = ctk.CTkToplevel(self)
         pop.title(title)
         tk.Label(pop, text=message).pack(padx=10, pady=10)
-        ctk.CTkButton(pop, text="OK", command=pop.destroy).pack(pady=5)
+        ctk.CTkButton(pop, text="OK", command=lambda: (acknowledged.set(True), pop.destroy())).pack(pady=5)
+
+        # Handle user clicking the window close button
+        pop.protocol("WM_DELETE_WINDOW", pop.destroy)
         pop.wait_window()
+        return acknowledged.get()
 
     def _measure_pressure0_avg(self, seconds=5):
         vals, t0 = [], time.time()
@@ -491,14 +498,16 @@ class CalibratePage(ctk.CTkFrame):
             last_input = None
             for trial in range(1, 11):
                 msg = "" if last_input is None else f"(Last input: {last_input:.2f} psi)\n"
-                self._popup(f"Trial {trial} – Adjust Input", msg + "Adjust regulator ≥5 psi difference then click OK.")
+                if not self._popup(f"Trial {trial} – Adjust Input", msg + "Adjust regulator ≥5 psi difference then click OK."):
+                    break  # user closed popup – abort
 
                 # Measure input until ≥5 psi different
                 while True:
                     avg_input = self._measure_pressure0_avg(5)
                     if last_input is None or abs(avg_input - last_input) >= 5:
                         break
-                    self._popup("Adjustment Needed", "Difference <5 psi. Adjust and press OK.")
+                    if not self._popup("Adjustment Needed", "Difference <5 psi. Adjust and press OK."):
+                        return
                 last_input = avg_input
 
                 # Pre‑pulse internal pressure
@@ -513,17 +522,18 @@ class CalibratePage(ctk.CTkFrame):
                 time.sleep(1)
                 avg_post = self._measure_internal_avg(5)
 
-                # Initial vent (2 s)
+                # Initial 2‑second vent
                 self._vent_cycle(2)
 
-                # Loop until internal <0.5 psi
-                time.sleep(1)  # settle
+                # Vent loop until internal <0.5 psi or hits absolute zero
+                lowest_internal = float('inf')
                 while True:
+                    time.sleep(1)
                     current_internal = self._measure_internal_avg(5)
-                    if current_internal < 0.5:
+                    lowest_internal = min(lowest_internal, current_internal)
+                    if current_internal < 0.5 or lowest_internal == 0:
                         break
                     self._vent_cycle(2)
-                    time.sleep(1)
 
                 writer.writerow({
                     "trial": trial,
