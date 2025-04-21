@@ -8,7 +8,6 @@ import threading
 import os
 import csv
 
-
 class CalibratePage(ctk.CTkFrame):
     def __init__(self, master, app, *args, **kwargs):
         """
@@ -502,82 +501,112 @@ class CalibratePage(ctk.CTkFrame):
         self.app.valve1.neutral(); self.app.valve2.neutral()
 
     def _pressure_trials_thread(self):
-        # Select mode
+        # — select mode as before —
         mode = None
+
         def choose(m):
             nonlocal mode
             mode = m
             mode_win.destroy()
+
         mode_win = ctk.CTkToplevel(self)
         mode_win.title('Trial Mode')
         tk.Label(mode_win, text='Select trial mode:').pack(padx=10, pady=5)
-        ctk.CTkButton(mode_win, text='Uniform durations', command=lambda: choose('uniform')).pack(fill='x', padx=20, pady=5)
-        ctk.CTkButton(mode_win, text='Variable durations', command=lambda: choose('variable')).pack(fill='x', padx=20, pady=5)
+        ctk.CTkButton(mode_win, text='Uniform durations', command=lambda: choose('uniform')).pack(fill='x', padx=20,
+                                                                                                  pady=5)
+        ctk.CTkButton(mode_win, text='Variable durations', command=lambda: choose('variable')).pack(fill='x', padx=20,
+                                                                                                    pady=5)
         mode_win.protocol('WM_DELETE_WINDOW', lambda: choose(None))
         mode_win.wait_window()
         if mode is None or self.trial_stop_event.is_set():
             return
 
-        # Prompt durations once for uniform
+        # — if uniform, prompt once —
         if mode == 'uniform':
             inflate_s = self._popup('Inflation Duration', 'Enter inflation time (s):', entry=True)
-            if inflate_s is None:
-                return
+            if inflate_s is None: return
             vent_s = self._popup('Vent Duration', 'Enter vent time (s):', entry=True)
-            if vent_s is None:
-                return
+            if vent_s is None: return
 
-        # Prepare CSV
+        # — prepare folders & file‑paths —
         folder = 'getting_Q'
         os.makedirs(folder, exist_ok=True)
-        csv_path = os.path.join(folder, f"pressure_trial_{datetime.date.today():%Y%m%d}.csv")
-        with open(csv_path, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=['trial', 'inflate_s', 'vent_s', 'avg_in', 'avg_pre', 'avg_post'])
-            writer.writeheader()
+        date_tag = datetime.date.today().strftime("%Y%m%d")
+        raw_csv = os.path.join(folder, f"pressure_trials_raw_{date_tag}.csv")
+        summary_csv = os.path.join(folder, f"pressure_trials_summary_{date_tag}.csv")
 
+        # — open both CSVs —
+        with open(raw_csv, 'w', newline='') as rf, \
+                open(summary_csv, 'w', newline='') as sf:
+
+            raw_writer = csv.DictWriter(rf, fieldnames=['timestamp', 'trial', 'pressure0', 'pressure1', 'pressure2'])
+            summary_writer = csv.DictWriter(sf, fieldnames=['trial', 'inflate_s', 'vent_s', 'avg_in', 'avg_pre',
+                                                            'avg_post'])
+            raw_writer.writeheader()
+            summary_writer.writeheader()
+
+            # — start a background thread to continuously log raw sensor values —
+            raw_stop = threading.Event()
+
+            def raw_logger():
+                start_t = time.time()
+                while not raw_stop.is_set():
+                    raw_writer.writerow({
+                        'timestamp': round(time.time() - start_t, 3),
+                        'trial': trial,  # will reflect the current trial number
+                        'pressure0': self.app.pressure0_convert,
+                        'pressure1': self.app.pressure1_convert,
+                        'pressure2': self.app.pressure2_convert
+                    })
+                    time.sleep(0.05)
+
+            raw_thread = threading.Thread(target=raw_logger, daemon=True)
+            raw_thread.start()
+
+            # — your existing trial loop, unchanged except summary_writer at the end —
             for trial in range(1, 11):
                 if self.trial_stop_event.is_set():
                     break
 
+                # measure avg_in
                 avg_in = self._measure_pressure0_avg(10)
-                if avg_in is None:
-                    break
+                if avg_in is None: break
 
-                # For variable mode, prompt durations each trial
+                # for variable mode, prompt durations
                 if mode == 'variable':
                     inflate_s = self._popup('Inflation Duration', 'Enter inflation time (s):', entry=True)
-                    if inflate_s is None or self.trial_stop_event.is_set():
-                        break
+                    if inflate_s is None or self.trial_stop_event.is_set(): break
                     vent_s = self._popup('Vent Duration', 'Enter vent time (s):', entry=True)
-                    if vent_s is None or self.trial_stop_event.is_set():
-                        break
+                    if vent_s is None or self.trial_stop_event.is_set(): break
 
+                # measure avg_pre
                 avg_pre = self._measure_internal_avg(10)
-                if avg_pre is None:
-                    break
+                if avg_pre is None: break
 
-                # Inflate
-                self.app.valve1.supply()
+                # inflate
+                self.app.valve1.supply();
                 self.app.valve2.supply()
                 time.sleep(inflate_s)
-                self.app.valve1.neutral()
+                self.app.valve1.neutral();
                 self.app.valve2.neutral()
-                # time.sleep(1)
 
+                # measure avg_post
                 avg_post = self._measure_internal_avg(10)
-                if avg_post is None:
-                    break
+                if avg_post is None: break
 
-                # Vent until below threshold, sample internal pressure over 3s
-                while not self.trial_stop_event.is_set() and avg_post >= 0.2:
-                    self.app.valve1.vent()
+                avg_after = avg_post
+
+                # vent until below threshold
+                while not self.trial_stop_event.is_set() and avg_after >= 0.2:
+                    self.app.valve1.vent();
                     self.app.valve2.vent()
                     time.sleep(vent_s)
-                    self.app.valve1.neutral()
+                    self.app.valve1.neutral();
                     self.app.valve2.neutral()
-                    avg_post = self._measure_internal_avg(10)
+                    avg_after = self._measure_internal_avg(10)
 
-                writer.writerow({
+                # write summary row
+                summary_writer.writerow({
                     'trial': trial,
                     'inflate_s': inflate_s,
                     'vent_s': vent_s,
@@ -586,10 +615,16 @@ class CalibratePage(ctk.CTkFrame):
                     'avg_post': round(avg_post, 3)
                 })
 
-        if not self.trial_stop_event.is_set():
-            self._popup('Trials Complete', f'Data saved to {csv_path}')
-        self.trial_stop_event = None
+            # — stop raw logger and wait for it —
+            raw_stop.set()
+            raw_thread.join()
 
+        # — notify when done —
+        if not self.trial_stop_event.is_set():
+            self._popup('Trials Complete',
+                        f'Raw data → {raw_csv}\nSummary   → {summary_csv}')
+
+        self.trial_stop_event = None
 
     def update_sensor_buttons(self, success_list):
         color_map = {True: "green", False: "red"}
