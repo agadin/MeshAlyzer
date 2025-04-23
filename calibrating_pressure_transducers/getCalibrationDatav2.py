@@ -7,6 +7,28 @@ from joblib import dump
 import matplotlib.pyplot as plt
 import warnings
 
+plt.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 12,
+    'axes.labelsize': 12,
+    'axes.titlesize': 14,
+    'axes.linewidth': 1.2,
+    'xtick.direction': 'in',
+    'ytick.direction': 'in',
+    'xtick.major.size': 5,
+    'ytick.major.size': 5,
+    'xtick.minor.visible': True,
+    'xtick.minor.size': 3,
+    'ytick.minor.visible': True,
+    'ytick.minor.size': 3,
+    'grid.linestyle': '--',
+    'grid.alpha': 0.3,
+    'savefig.dpi': 300,
+    'figure.dpi': 300
+})
+
+
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, FunctionTransformer
 from sklearn.neural_network import MLPRegressor
@@ -36,7 +58,7 @@ class PressureCalibrator:
                 continue
             path = os.path.join(self.data_folder, fname)
             df = pd.read_csv(path)
-            required = ['Measured_pressure', 'LPS_pressure', 'LPS_temperature']
+            required = ['Measured_pressure']
             if df[required].isnull().any().any():
                 df = df.dropna(subset=required).reset_index(drop=True)
             df['Measured_pressure'] = df['Measured_pressure'].round(1)
@@ -94,9 +116,24 @@ class PressureCalibrator:
             # Eval helper
             def eval_set(X_, y_, name):
                 pred = model.predict(X_)
-                mse = mean_squared_error(y_, pred)
-                print(f"{sensor} {name}: RMSE={np.sqrt(mse):.3f}, R²={r2_score(y_, pred):.3f}, MAE={mean_absolute_error(y_, pred):.3f}")
-                self._plot_evaluation(y_, pred, sensor, name)
+                rmse = mean_squared_error(y_, pred)
+                r2 = r2_score(y_, pred)
+                mae = mean_absolute_error(y_, pred)
+                print(f"{sensor} {name}: RMSE={np.sqrt(rmse):.3f}, "
+                      f"R²={r2_score(y_, pred):.3f}, "
+                      f"MAE={mean_absolute_error(y_, pred):.3f}")
+                # if this is the Test set, save the raw data to CSV
+                if name == 'Test':
+                    results_df = pd.DataFrame({
+                        'Measured_pressure': y_.values,
+                        'Predicted_pressure': pred,
+                        'Residual': (y_.values - pred)
+                    })
+                    out_path = Path(self.data_folder) / f"{sensor}_test_results.csv"
+                    results_df.to_csv(out_path, index=False)
+                    print(f"Saved test results for {sensor} → {out_path}")
+
+                self._plot_evaluation(y_, pred, sensor, name, rmse, r2, mae)
 
             eval_set(X_val, y_val, 'Validation')
             eval_set(X_test, y_test, 'Test')
@@ -106,28 +143,38 @@ class PressureCalibrator:
         dump(self.models, 'trained_pressure_calibrator_multioutput.joblib')
         print("All models saved to trained_pressure_calibrator_multioutput.joblib")
 
-    def _plot_evaluation(self, y_true, y_pred, sensor, dataset):
-        # Pred vs Actual
-        plt.figure(figsize=(6,5))
-        plt.scatter(y_true, y_pred, alpha=0.6)
-        plt.plot([0, max(y_true.max(), y_pred.max())],
-                 [0, max(y_true.max(), y_pred.max())],
-                 'r--')
-        plt.title(f"{sensor} {dataset} – Predicted vs Actual")
-        plt.xlabel("Measured Pressure")
-        plt.ylabel("Predicted Pressure")
-        plt.tight_layout()
-        plt.show()
+    def _plot_evaluation(self, y_true, y_pred, sensor, dataset, rmse, r2, mae):
+        # Combined figure with Observed vs Predicted and Residuals
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=False)
+
+        # Observed vs Predicted
+        ax = axes[0]
+        ax.scatter(y_true, y_pred, s=30, edgecolor='black', facecolor='none', alpha=0.7)
+        max_val = max(y_true.max(), y_pred.max())
+        ax.plot([0, max_val], [0, max_val], linestyle='--', linewidth=1, color='red')
+        ax.set_title(f"{sensor} {dataset}\nObserved vs Predicted")
+        ax.set_xlabel("Measured Pressure (PSI)")
+        ax.set_ylabel("Predicted Pressure (PSI)")
+        ax.set_aspect('equal', 'box')
+        ax.grid(True)
+        ax.text(0.05, 0.95, f"$R^2$={r2:.2f}\nRMSE={rmse:.2f}\nMAE={mae:.2f}",
+                transform=ax.transAxes, verticalalignment='top',
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5))
 
         # Residuals
-        res = y_true - y_pred
-        plt.figure(figsize=(6,5))
-        plt.scatter(y_true, res, alpha=0.6)
-        plt.axhline(0, color='r', linestyle='--')
-        plt.title(f"{sensor} {dataset} – Residuals")
-        plt.xlabel("Measured Pressure")
-        plt.ylabel("Residual")
+        ax = axes[1]
+        residuals = y_true - y_pred
+        ax.scatter(y_true, residuals, s=30, edgecolor='black', facecolor='none', alpha=0.7)
+        ax.axhline(0, linestyle='--', linewidth=1, color='red')
+        ax.set_title(f"{sensor} {dataset}\nResiduals")
+        ax.set_xlabel("Measured Pressure (PSI)")
+        ax.set_ylabel("Residual (PSI)")
+        ax.grid(True)
+
         plt.tight_layout()
+        # Save as high-resolution vector
+        save_path = Path(self.data_folder) / f"{sensor}_{dataset}_evaluation.pdf"
+        fig.savefig(save_path, bbox_inches='tight')
         plt.show()
 
     def pressure_sensor_converter_main(self, p0, p1, p2, *args, **kwargs):
@@ -136,7 +183,6 @@ class PressureCalibrator:
         conv = []
         for sensor, val in zip(['pressure0','pressure1','pressure2'], [p0,p1,p2]):
             pred = self.models[sensor].predict([[val]])[0]
-            # predictions are already >=0 thanks to log‐transform inverse
             conv.append(round(max(pred, 0), 1))
         return tuple(conv)
 
