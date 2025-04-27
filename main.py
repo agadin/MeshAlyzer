@@ -1450,13 +1450,13 @@ class App(ctk.CTk):
                         metric = parts[i].strip()
                         variable_name = parts[i + 1].strip() if i + 1 < len(parts) else metric
                         try:
-                            value = self.calculate_metric(metric, self.protocol_step)
+                            metric_value = self.calculate_metric(metric, self.protocol_step)
                         except ValueError:
                             print(f"⚠️ No data for step {self.protocol_step}, metric '{metric}' skipped")
                             continue
-                        metric_value = self.calculate_metric(metric, self.protocol_step)
-                        self.variable_saver(variable_name, value)
-                        self.save_to_dict('set_vars', variable_name, value)
+                        # use the successfully retrieved metric_value
+                        self.variable_saver(variable_name, metric_value)
+                        self.save_to_dict('set_vars', variable_name, metric_value)
             elif command.startswith("Deflate"):
                 parts = command.split(":")[1].split(",")
 
