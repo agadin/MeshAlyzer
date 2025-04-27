@@ -1483,9 +1483,9 @@ class App(ctk.CTk):
                             continue
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
-            elif command.startswith("Wait"):
-                parts = command.split(":")[1].split(",")
-                wait_time = float(parts[0].strip())
+            cmd, args = command.split(":", 1)
+            if cmd.strip().lower() == "wait":
+                wait_time = float(args.strip())
                 wait_time = self.string_to_value_checker(wait_time, type_s='float')
                 print(f"Waiting for {wait_time} seconds")
                 time.sleep(wait_time)
