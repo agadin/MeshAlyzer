@@ -919,6 +919,7 @@ class App(ctk.CTk):
 
         # Initialize ProtocolViewer and start queue processing
         self.initialize_protocol_viewer()
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
         self.process_queue()
 
         self.record_data_button = ctk.CTkButton(
@@ -933,6 +934,7 @@ class App(ctk.CTk):
             print("Protocol is already running.")
             return
         protocol_name = self.protocol_var.get()
+        self.stop_flag = False  # reset stop-flag
         self.protocol_name_label.configure(text=f"Current Protocol: {protocol_name}")
         print(f"Running Protocol: {protocol_name}")
 
@@ -941,6 +943,12 @@ class App(ctk.CTk):
         self.protocol_thread = threading.Thread(target=self.process_protocol, args=(protocol_name,))
         self.protocol_thread.start()
         self.protocol_running = True
+        self.protocol_name_current = self.protocol_var.get()
+        threading.Thread(
+            target=self.process_protocol,
+            args=(self.protocol_name_current,),
+            daemon=True
+        ).start()
         self.show_overlay_notification("Protocol started")
         print(f"Running Protocol: {protocol_name}")
 
@@ -956,6 +964,7 @@ class App(ctk.CTk):
             app=self
         )
         self.protocol_viewer.pack(fill="both", expand=True, pady=10)
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
 
         # Trace for protocol_var to update ProtocolViewer when protocol changes
         self.protocol_var.trace("w", self.update_protocol_viewer)
@@ -965,6 +974,7 @@ class App(ctk.CTk):
         protocol_name = self.protocol_var.get()
         print(f"Updating ProtocolViewer with: {protocol_name}")  # Debug print
         self.protocol_viewer.load_protocol(protocol_name)
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
 
     def show_protocol_builder(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -1392,6 +1402,10 @@ class App(ctk.CTk):
             raise ValueError(f"Unknown metric: {metric}")
 
     def process_protocol(self, protocol_path):
+        self.protocol_step = None
+        self.graph_times.clear()
+        self.graph_input_pressures.clear()
+
         protocol_filename = os.path.basename(protocol_path)
         # turn protocol_path to the full path including file name
         protocol_path = os.path.join(self.protocol_folder, protocol_path)
@@ -1400,6 +1414,7 @@ class App(ctk.CTk):
             step_number = 0
             data_saved = False
             folder_name = None
+        self.total_steps = len(commands)
 
         # calculate total number of commands
         self.total_commands = len(commands)
@@ -1415,8 +1430,8 @@ class App(ctk.CTk):
             self.protocol_command = command
             self.protocol_step = step_number
             stop_flag = self.stop_flag
-            if stop_flag == "1":
-                print("Protocol stopped.")
+            if self.stop_flag:
+                print("Protocol stopped by user.")
                 break
 
             if command.startswith("Inflate"):
