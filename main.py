@@ -1568,8 +1568,23 @@ class App(ctk.CTk):
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
 
     def deflate(self, time_or_pressure, value, valve):
-        # Placeholder for the actual inflation logic
-        print(f"Inflating {valve} for {time_or_pressure} with value {value}")
+        # Open vent
+        if valve in ("valve1", "both"):
+            self.valve1.vent()
+        if valve in ("valve2", "both"):
+            self.valve2.vent()
+
+        if time_or_pressure.lower() == "time":
+            time.sleep(value)
+        elif time_or_pressure.lower() == "pressure":
+            # wait until pressure drops below target
+            while self.lps.pressure > value:
+                time.sleep(0.01)
+
+        # Close vents (neutral)
+        self.valve1.neutral()
+        self.valve2.neutral()
+        print(f"Deflating {valve} for {time_or_pressure} with value {value}")
 
     def wait(self, wait_time):
         print(f"Waiting for {wait_time} seconds")
