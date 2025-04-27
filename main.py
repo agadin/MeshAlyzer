@@ -512,11 +512,11 @@ class App(ctk.CTk):
 
         # Initialize the home display
         self.show_home()
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
+
 
     def show_boot_animation(self):
         # Remove title bar for splash screen effect
-        video_thread = threading.Thread(target=self.play_video_thread, daemon=True)
-        video_thread.start()
 
         self.overrideredirect(True)
 
@@ -935,20 +935,14 @@ class App(ctk.CTk):
             return
         protocol_name = self.protocol_var.get()
         self.stop_flag = False  # reset stop-flag
-        self.protocol_name_label.configure(text=f"Current Protocol: {protocol_name}")
-        print(f"Running Protocol: {protocol_name}")
+        self.protocol_running = True
 
         self.protocol_name_current = protocol_name
         # Start the protocol in a separate thread
-        self.protocol_thread = threading.Thread(target=self.process_protocol, args=(protocol_name,))
-        self.protocol_thread.start()
-        self.protocol_running = True
         self.protocol_name_current = self.protocol_var.get()
-        threading.Thread(
-            target=self.process_protocol,
-            args=(self.protocol_name_current,),
-            daemon=True
-        ).start()
+        threading.Thread(target=self.process_protocol,
+                         args=(self.protocol_var.get(),),
+                         daemon=True).start()
         self.show_overlay_notification("Protocol started")
         print(f"Running Protocol: {protocol_name}")
 
@@ -972,8 +966,11 @@ class App(ctk.CTk):
     def update_protocol_viewer(self, *args):
         # Update the protocol viewer synchronously when protocol_var changes
         protocol_name = self.protocol_var.get()
-        print(f"Updating ProtocolViewer with: {protocol_name}")  # Debug print
+        protocol_path = os.path.join(self.protocol_folder, protocol_name)
+        if not protocol_name or not os.path.isfile(protocol_path):
+            return  # ignore blanks or directories
         self.protocol_viewer.load_protocol(protocol_name)
+        print(f"Updating ProtocolViewer with: {protocol_name}")  # Debug print
         self.protocol_viewer.load_protocol(self.protocol_var.get())
 
     def show_protocol_builder(self):
@@ -1298,7 +1295,7 @@ class App(ctk.CTk):
 
 
     def stop_protocol(self):
-        self.stop_flag = "1"
+        self.stop_flag = True
         print("Stop flag set. Protocol will be halted.")
 
     def variable_saver(self, variable_name, user_input):
@@ -1450,11 +1447,16 @@ class App(ctk.CTk):
                 self.inflate(time_or_pressure, value, valve)
                 if len(parts) > 3:
                     for i in range(1, len(parts), 2):
-                        metric = str(parts[i].strip())
-                        variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
+                        metric = parts[i].strip()
+                        variable_name = parts[i + 1].strip() if i + 1 < len(parts) else metric
+                        try:
+                            value = self.calculate_metric(metric, self.protocol_step)
+                        except ValueError:
+                            print(f"⚠️ No data for step {self.protocol_step}, metric '{metric}' skipped")
+                            continue
                         metric_value = self.calculate_metric(metric, self.protocol_step)
-                        self.variable_saver(variable_name, metric_value)
-                        self.save_to_dict('set_vars', variable_name, metric_value)
+                        self.variable_saver(variable_name, value)
+                        self.save_to_dict('set_vars', variable_name, value)
             elif command.startswith("Deflate"):
                 parts = command.split(":")[1].split(",")
 
