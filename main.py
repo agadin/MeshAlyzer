@@ -1471,11 +1471,16 @@ class App(ctk.CTk):
                 # Example usage of the parsed inputs
                 print(f"Time/Pressure: {time_or_pressure}, Value: {value}, Valve: {valve}")
                 self.deflate(time_or_pressure, value, valve)
-                if len(parts) > 1:
-                    for i in range(1, len(parts), 2):
-                        metric = str(parts[i].strip())
-                        variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
-                        metric_value = self.calculate_metric(metric, self.protocol_step)
+                if len(parts) > 3:
+                    # metrics start at parts[3], so step by 2 entries (name, varname)
+                    for i in range(3, len(parts), 2):
+                        metric = parts[i].strip()
+                        variable_name = parts[i + 1].strip() if i + 1 < len(parts) else metric
+                        try:
+                            metric_value = self.calculate_metric(metric, self.protocol_step)
+                        except ValueError:
+                            print(f"⚠️ No data for step {self.protocol_step}, metric '{metric}' skipped")
+                            continue
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
             elif command.startswith("Wait"):
