@@ -1247,11 +1247,23 @@ class App(ctk.CTk):
                                     self.ax.plot(times, pressure2s, label="Pressure 2")
                                 # If target_pressure is a list parallel to graph_times, filter it similarly:
                                 if self.target_pressure is not None:
-                                    filtered_target = [
-                                        tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
-                                    ]
-                                    self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
-                                                 color=text_bg_color)
+                                    # if it's a single number, draw a horizontal line
+                                    if isinstance(self.target_pressure, (int, float)):
+                                        self.ax.axhline(
+                                            y=self.target_pressure,
+                                            label="Target Pressure",
+                                            linestyle="--",
+                                            linewidth=1,
+                                            color=text_bg_color
+                                        )
+                                    else:
+                                        # your old code for the list‐of‐targets case
+                                        filtered_target = [
+                                            tp for t, tp in zip(self.graph_times, self.target_pressure)
+                                            if t >= lower_bound
+                                        ]
+                                        self.ax.plot(times, filtered_target, label="Target Pressure",
+                                                     color=text_bg_color)
                                 if self.graph_y_range is not None:
                                     # extract numbers from the graph_y_range tuple
                                     low_y = self.graph_y_range[0]
@@ -1534,27 +1546,34 @@ class App(ctk.CTk):
                     # fallback to plain “inflate until pressure”
                     self.inflate("pressure", target_pressure, valve)
 
-            elif command.startswith("SmartDeflateML"):
-                # e.g. "SmartDeflateML: both"
-                _, args = command.split(":", 1)
-                valve = args.strip().lower()
 
-                # measure 5 s averages & peak
+            elif command.startswith("SmartDeflateML"):
+                # format: SmartDeflateML: <target_pressure>, <valve>
+                _, args = command.split(":", 1)
+                tgt_str, valve = [s.strip() for s in args.split(",", 1)]
+                target_pressure = float(tgt_str)
+                valve = valve.lower()
+
+                # 1) measure your 5 s averages and peak
                 avg_in = self._measure_pressure0_avg(5.0)
                 avg_iap = self._measure_internal_avg(5.0)
                 peak = self._measure_internal_max(5.0)
-                self.save_to_dict("set_vars", "peak_pressure", peak)
+
+                # 2) save for later & for graphing
                 self.save_to_dict("set_vars", "avg_IAP", avg_iap)
+                self.save_to_dict("set_vars", "peak_pressure", peak)
+                self.target_pressure = target_pressure
 
+                # 3) either ML‐predict how long to vent, or just vent to target_pressure
                 if self.deflation_model:
-                    dur = float(self.deflation_model.predict([[peak, avg_iap, avg_in]])[0])
-                    print(f"[ML-deflate] {dur:.2f}s")
-
-                    self.deflate("time", dur, valve)
-                    self.target_pressure = self.avg_IAP
-                    self.target_time = dur
+                    pred_t = float(self.deflation_model.predict([[peak, avg_iap, avg_in]])[0])
+                    print(f"[ML‐deflate] predict t={pred_t:.2f}s → deflate time")
+                    self.deflate("time", pred_t, valve)
                 else:
-                    self.deflate("pressure", self.avg_IAP, valve)
+                    print(f"[ML‐deflate] no model, deflating to {target_pressure} PSI")
+                    self.deflate("pressure", target_pressure, valve)
+                continue
+
 
             elif command.startswith("Deflate"):
                 parts = command.split(":")[1].split(",")
