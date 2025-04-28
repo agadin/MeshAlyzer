@@ -621,8 +621,9 @@ class CalibratePage(ctk.CTkFrame):
                     time.sleep(vent_s)
                     self.app.valve1.neutral()
                     self.app.valve2.neutral()
-                    total_vent_duration += time.time() - vent_start
+                    total_vent_duration = time.time() - vent_start
                     avg_after = self._measure_internal_avg(5)
+
 
                 # write summary row
                 summary_writer.writerow({
@@ -634,6 +635,8 @@ class CalibratePage(ctk.CTkFrame):
                     'avg_pre': round(avg_pre, 3),
                     'avg_post': round(avg_post, 3)
                 })
+
+                total_vent_duration = 0
 
             # — stop raw logger and wait for it —
             raw_stop.set()

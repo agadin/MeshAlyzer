@@ -22,7 +22,7 @@ for file in folder_path.glob("*.csv"):
 
         rows.append({
             "initial_pressure": row["avg_pre"],
-            "supply_pressure": row["avg_input"],
+            "supply_pressure": row["avg_in"],
             "target_pressure": row["avg_post"],
             "duration": row["inflate_s"]
         })
@@ -61,6 +61,6 @@ print(f"Mean Squared Error: {mse:.5f}")
 print(f"R² Score: {r2:.5f}")
 
 # Save trained model
-model_path = folder_path / "inflation_time_model.pkl"
+model_path = "inflation_time_model.pkl"
 joblib.dump(model, model_path)
 print(f"Model saved to {model_path}")
