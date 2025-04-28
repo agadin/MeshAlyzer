@@ -518,15 +518,15 @@ class App(ctk.CTk):
         base = pathlib.Path(__file__).parent
         try:
             self.inflation_model = joblib.load(base / "inflation_time_model.pkl")
-            print("✅ Loaded inflation_time_model.pkl")
+            print("Loaded inflation_time_model.pkl")
         except Exception as e:
-            print("⚠️ inflation model load failed:", e)
+            print("inflation model load failed:", e)
             self.inflation_model = None
         try:
             self.deflation_model = joblib.load(base / "deflation_time_model.pkl")
-            print("✅ Loaded deflation_time_model.pkl")
+            print("Loaded deflation_time_model.pkl")
         except Exception as e:
-            print("⚠️ deflation model load failed:", e)
+            print("deflation model load failed:", e)
             self.deflation_model = None
 
         self.peak_pressure: float = 1.4  # psi
@@ -1500,7 +1500,7 @@ class App(ctk.CTk):
                         try:
                             metric_value = self.calculate_metric(metric, self.protocol_step)
                         except ValueError:
-                            print(f"⚠️ No data for step {self.protocol_step}, metric '{metric}' skipped")
+                            print(f"No data for step {self.protocol_step}, metric '{metric}' skipped")
                             continue
                         # use the successfully retrieved metric_value
                         self.variable_saver(variable_name, metric_value)
@@ -1578,7 +1578,7 @@ class App(ctk.CTk):
                         try:
                             metric_value = self.calculate_metric(metric, self.protocol_step)
                         except ValueError:
-                            print(f"⚠️ No data for step {self.protocol_step}, metric '{metric}' skipped")
+                            print(f"No data for step {self.protocol_step}, metric '{metric}' skipped")
                             continue
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
