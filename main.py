@@ -1288,7 +1288,7 @@ class App(ctk.CTk):
         try:
             calibration_level = 0  # Adjust this logic as needed.
             if calibration_level == 0:
-                safe_configure(self.calibrate_button, fg_color="red")
+                safe_configure(self.calibrate_button, fg_color="green")
             elif calibration_level == 1:
                 safe_configure(self.calibrate_button, fg_color="yellow")
             elif calibration_level == 2:
