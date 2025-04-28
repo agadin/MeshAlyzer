@@ -542,10 +542,14 @@ class CalibratePage(ctk.CTkFrame):
                 open(summary_csv, 'w', newline='') as sf:
 
             raw_writer = csv.DictWriter(rf, fieldnames=['timestamp', 'trial', 'pressure0', 'pressure1', 'pressure2'])
-            summary_writer = csv.DictWriter(sf, fieldnames=['trial', 'inflate_s', 'vent_s', 'avg_in', 'avg_pre',
-                                                            'avg_post'])
+            summary_writer = csv.DictWriter(sf, fieldnames=[
+                'trial', 'inflate_s', 'vent_s', 'vent_duration', 'avg_in', 'avg_pre', 'avg_post'
+            ])
+
             raw_writer.writeheader()
             summary_writer.writeheader()
+
+            total_vent_duration = 0.0
 
             # — a mutable container for the current trial index —
             current = {'trial': 0}
@@ -576,7 +580,7 @@ class CalibratePage(ctk.CTkFrame):
                 current['trial'] = t
 
                 # measure avg_in
-                avg_in = self._measure_pressure0_avg(10)
+                avg_in = self._measure_pressure0_avg(5)
                 if avg_in is None:
                     break
 
@@ -590,7 +594,7 @@ class CalibratePage(ctk.CTkFrame):
                         break
 
                 # measure avg_pre
-                avg_pre = self._measure_internal_avg(10)
+                avg_pre = self._measure_internal_avg(5)
                 if avg_pre is None:
                     break
 
@@ -602,7 +606,7 @@ class CalibratePage(ctk.CTkFrame):
                 self.app.valve2.neutral()
 
                 # measure avg_post
-                avg_post = self._measure_internal_avg(10)
+                avg_post = self._measure_internal_avg(5)
                 if avg_post is None:
                     break
 
@@ -610,18 +614,22 @@ class CalibratePage(ctk.CTkFrame):
 
                 # vent until below threshold
                 while not self.trial_stop_event.is_set() and avg_after >= 0.2:
+                    # start timing this vent burst
+                    vent_start = time.time()
                     self.app.valve1.vent()
                     self.app.valve2.vent()
                     time.sleep(vent_s)
                     self.app.valve1.neutral()
                     self.app.valve2.neutral()
-                    avg_after = self._measure_internal_avg(10)
+                    total_vent_duration += time.time() - vent_start
+                    avg_after = self._measure_internal_avg(5)
 
                 # write summary row
                 summary_writer.writerow({
                     'trial': t,
                     'inflate_s': inflate_s,
                     'vent_s': vent_s,
+                    'vent_duration': round(total_vent_duration, 3),
                     'avg_in': round(avg_in, 3),
                     'avg_pre': round(avg_pre, 3),
                     'avg_post': round(avg_post, 3)
