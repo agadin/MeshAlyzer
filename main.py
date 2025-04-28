@@ -1524,7 +1524,7 @@ class App(ctk.CTk):
                 # 3) predict duration
                 if self.inflation_model:
                     dur = float(self.inflation_model.predict([[avg_iap, avg_in, target_pressure]])[0])
-                    print(f"[ML-inflate] → {dur:.2f}s")
+                    print(f"[ML-inflate]  {dur:.2f}s")
                     self.inflate("time", dur, valve)
 
                     # 4) update targets for graph & CSV
@@ -1548,7 +1548,7 @@ class App(ctk.CTk):
 
                 if self.deflation_model:
                     dur = float(self.deflation_model.predict([[peak, avg_iap, avg_in]])[0])
-                    print(f"[ML-deflate] → {dur:.2f}s")
+                    print(f"[ML-deflate] {dur:.2f}s")
 
                     self.deflate("time", dur, valve)
                     self.target_pressure = self.avg_IAP
@@ -1668,29 +1668,30 @@ class App(ctk.CTk):
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
 
     def smart_inflate(self, valve: str = "both", avg_secs: float = 5.0):
-        """
-        Use the ML model to predict how many seconds of ‘time’ inflation
-        you need to reach `target_pressure` (PSI), then call inflate(...)
-        """
-        if self.inflation_model is None:
-            print("No ML model loaded, falling back to sensor‐driven inflate.")
-            return self.inflate("pressure", target_pressure, valve)
-
+        # 1) measure current balloon pressure over 5 s
         pre = self._measure_internal_avg(avg_secs)
+        # 2) ask model how long to inflate
+        dur = float(self.inflation_model.predict([[pre,
+                                                   self.pressure0_convert,
+                                                   self.peak_pressure]])[0])
+        # 3) call your existing inflate by time
+        self.inflate("time", dur, valve)
+        # 4) remember targets for display/recording
+        self.target_pressure = self.peak_pressure
+        self.target_time = dur
 
-
-        # get your current calibrated pressures
-        initial_int = (self.pressure1_convert + self.pressure2_convert) / 2
-        supply_p  = self.pressure0_convert
-
-        # predict a duration (seconds)
-        X = [[initial_int, supply_p, target_pressure]]
-        duration = float(self.inflation_model.predict(X)[0])
-        print(f"ML → predicted inflate time {duration:.2f}s (init {initial_int:.1f}, "
-              f"supply {supply_p:.1f}, target {target_pressure})")
-
-        # now run exactly that long
-        return self.inflate("time", duration, valve)
+    def smart_deflate(self, valve: str = "both", avg_secs: float = 5.0):
+        # 1) measure current balloon pressure over 5 s
+        post = self._measure_internal_avg(avg_secs)
+        # 2) ask model how long to vent back to avg_IAP
+        dur = float(self.deflation_model.predict([[post,
+                                                   self.avg_IAP,
+                                                   self.pressure0_convert]])[0])
+        # 3) call existing deflate by time
+        self.deflate("time", dur, valve)
+        # 4) remember targets
+        self.target_pressure = self.avg_IAP
+        self.target_time = dur
 
     def deflate(self, time_or_pressure, value, valve):
         # Open vent
