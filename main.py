@@ -7,6 +7,9 @@ import webbrowser
 import subprocess
 import mss
 import matplotlib.animation as animation
+from pathlib import Path
+import joblib
+
 
 
 from tkinter import StringVar
@@ -509,6 +512,25 @@ class App(ctk.CTk):
         self.motor_forward_active = False
         self.motor_reverse_pressed = False
         self.motor_reverse_active = False
+
+        import joblib, pathlib
+
+        base = pathlib.Path(__file__).parent
+        try:
+            self.inflation_model = joblib.load(base / "inflation_time_model.pkl")
+            print("✅ Loaded inflation_time_model.pkl")
+        except Exception as e:
+            print("⚠️ inflation model load failed:", e)
+            self.inflation_model = None
+        try:
+            self.deflation_model = joblib.load(base / "deflation_time_model.pkl")
+            print("✅ Loaded deflation_time_model.pkl")
+        except Exception as e:
+            print("⚠️ deflation model load failed:", e)
+            self.deflation_model = None
+
+        self.peak_pressure: float = 1.4  # psi
+        self.avg_IAP: float = 0.12  # psi
 
         # Initialize the home display
         self.show_home()
@@ -1369,6 +1391,31 @@ class App(ctk.CTk):
             except ValueError:
                 raise ValueError(f"Value for '{string_input}' in Redis is not a valid number.")
 
+    def _measure_pressure0_avg(self, seconds: float) -> float:
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            vals.append(self.pressure0_convert)
+            time.sleep(0.05)
+        return sum(vals) / len(vals) if vals else 0.0
+
+    def _measure_internal_avg(self, seconds: float) -> float:
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            p1 = getattr(self, "pressure1_convert", 0.0)
+            p2 = getattr(self, "pressure2_convert", 0.0)
+            vals.append((p1 + p2) / 2)
+            time.sleep(0.05)
+        return sum(vals) / len(vals) if vals else 0.0
+
+    def _measure_internal_max(self, seconds: float) -> float:
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            p1 = getattr(self, "pressure1_convert", 0.0)
+            p2 = getattr(self, "pressure2_convert", 0.0)
+            vals.append((p1 + p2) / 2)
+            time.sleep(0.05)
+        return max(vals) if vals else 0.0
+
     def calculate_metric(self, metric, protocol_step):
         with open('data.csv', 'r') as file:
             reader = csv.reader(file)
@@ -1397,6 +1444,7 @@ class App(ctk.CTk):
             return float(data[-1][0]) - float(data[0][0])
         else:
             raise ValueError(f"Unknown metric: {metric}")
+
 
     def process_protocol(self, protocol_path):
         self.protocol_step = None
@@ -1457,6 +1505,57 @@ class App(ctk.CTk):
                         # use the successfully retrieved metric_value
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
+
+            elif command.startswith("SmartInflateML"):
+                # e.g. "SmartInflateML: 1.4, both"
+                _, args = command.split(":", 1)
+                tgt, valve = [p.strip() for p in args.split(",")]
+                target_pressure = float(tgt)
+                valve = valve.lower()
+
+                # 1) measure 5 s averages
+                avg_in = self._measure_pressure0_avg(5.0)
+                avg_iap = self._measure_internal_avg(5.0)
+
+                # 2) save them for later
+                self.save_to_dict("set_vars", "peak_pressure", target_pressure)
+                self.save_to_dict("set_vars", "avg_IAP", avg_iap)
+
+                # 3) predict duration
+                if self.inflation_model:
+                    dur = float(self.inflation_model.predict([[avg_iap, avg_in, target_pressure]])[0])
+                    print(f"[ML-inflate] → {dur:.2f}s")
+                    self.inflate("time", dur, valve)
+
+                    # 4) update targets for graph & CSV
+                    self.target_pressure = target_pressure
+                    self.target_time = dur
+                else:
+                    # fallback to plain “inflate until pressure”
+                    self.inflate("pressure", target_pressure, valve)
+
+            elif command.startswith("SmartDeflateML"):
+                # e.g. "SmartDeflateML: both"
+                _, args = command.split(":", 1)
+                valve = args.strip().lower()
+
+                # measure 5 s averages & peak
+                avg_in = self._measure_pressure0_avg(5.0)
+                avg_iap = self._measure_internal_avg(5.0)
+                peak = self._measure_internal_max(5.0)
+                self.save_to_dict("set_vars", "peak_pressure", peak)
+                self.save_to_dict("set_vars", "avg_IAP", avg_iap)
+
+                if self.deflation_model:
+                    dur = float(self.deflation_model.predict([[peak, avg_iap, avg_in]])[0])
+                    print(f"[ML-deflate] → {dur:.2f}s")
+
+                    self.deflate("time", dur, valve)
+                    self.target_pressure = self.avg_IAP
+                    self.target_time = dur
+                else:
+                    self.deflate("pressure", self.avg_IAP, valve)
+
             elif command.startswith("Deflate"):
                 parts = command.split(":")[1].split(",")
 
@@ -1491,6 +1590,7 @@ class App(ctk.CTk):
                 time.sleep(wait_time)
             elif command.startswith("Wait_for_user_input"):
                 self.wait_for_user_input(command)
+
             elif command.startswith("no_save"):
                 data_saved = True
             elif command.startswith("End"):
@@ -1566,6 +1666,31 @@ class App(ctk.CTk):
         self.valve1.neutral()
         self.valve2.neutral()
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
+
+    def smart_inflate(self, valve: str = "both", avg_secs: float = 5.0):
+        """
+        Use the ML model to predict how many seconds of ‘time’ inflation
+        you need to reach `target_pressure` (PSI), then call inflate(...)
+        """
+        if self.inflation_model is None:
+            print("No ML model loaded, falling back to sensor‐driven inflate.")
+            return self.inflate("pressure", target_pressure, valve)
+
+        pre = self._measure_internal_avg(avg_secs)
+
+
+        # get your current calibrated pressures
+        initial_int = (self.pressure1_convert + self.pressure2_convert) / 2
+        supply_p  = self.pressure0_convert
+
+        # predict a duration (seconds)
+        X = [[initial_int, supply_p, target_pressure]]
+        duration = float(self.inflation_model.predict(X)[0])
+        print(f"ML → predicted inflate time {duration:.2f}s (init {initial_int:.1f}, "
+              f"supply {supply_p:.1f}, target {target_pressure})")
+
+        # now run exactly that long
+        return self.inflate("time", duration, valve)
 
     def deflate(self, time_or_pressure, value, valve):
         # Open vent
