@@ -116,15 +116,15 @@ class ProtocolViewer(ctk.CTkFrame):
 
     def create_step_widget(self, step_num, step_name, details):
         """Create a rounded box for a protocol step."""
-        frame = ctk.CTkFrame(self.scrollable_frame, corner_radius=10)
+        frame = ctk.CTkFrame(self.scrollable_frame, corner_radius=10, fg_color="transparent")
         frame.pack(fill="x", padx=5, pady=5)
 
         # Step number
-        step_num_label = ctk.CTkLabel(frame, text=f"Step {step_num}", width=10)
+        step_num_label = ctk.CTkLabel(frame, text=f"Step {step_num}", width=10, text_color=("black", "white"))
         step_num_label.grid(row=0, column=0, padx=5, pady=5)
 
         # Step name and details
-        step_name_label = ctk.CTkLabel(frame, text=f"{step_name}: {details}", anchor="w")
+        step_name_label = ctk.CTkLabel(frame, text=f"{step_name}: {details}", anchor="w", text_color=("black", "white"))
         step_name_label.grid(row=0, column=1, sticky="w", padx=5, pady=5)
 
         # Checkbox
