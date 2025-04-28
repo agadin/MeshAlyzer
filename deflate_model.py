@@ -100,7 +100,7 @@ def main():
     print("Loading summary data (vent_duration)...")
     df = load_summary_data(folder)
     if df.empty:
-        print("⚠️ No summary CSVs with 'vent_duration' found in:", folder)
+        print("No summary CSVs with 'vent_duration' found in:", folder)
         return
 
     # 3. Train model & evaluate
@@ -114,7 +114,7 @@ def main():
     # 5. Save model
     out_path = "deflation_time_model.pkl"
     joblib.dump(model, out_path)
-    print(f"✅ Model saved to {out_path}")
+    print(f"Model saved to {out_path}")
 
 
 if __name__ == "__main__":
