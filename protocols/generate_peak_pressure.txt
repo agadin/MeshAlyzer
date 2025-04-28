@@ -1,48 +1,56 @@
 wait: 4
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
 wait: 0.1
-Inflate: time, 0.5, both
+Inflate: time, 0.45, both
 wait: 0.1
-Deflate: time, 2.4, both
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
