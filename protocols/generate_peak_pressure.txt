@@ -1,16 +1,48 @@
 wait: 4
 Inflate: time, 0.5, both
-wait: 1
-Deflate: time, 2, both
-wait: 1
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
 Inflate: time, 0.5, both
-wait: 1
-Deflate: time, 2, both
-wait: 1
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
 Inflate: time, 0.5, both
-wait: 1
-Deflate: time, 2, both
-wait: 1
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
 Inflate: time, 0.5, both
-wait: 1
-Deflate: time, 2, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
+wait: 0.1
+Inflate: time, 0.5, both
+wait: 0.1
+Deflate: time, 2.4, both
