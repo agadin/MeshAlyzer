@@ -1,9 +1,9 @@
 
 # MeshAlyzer Device
 <div align="center">
-  <img src="https://raw.githubusercontent.com/agadin/MeshAlyzer/refs/heads/main/img/teampicmesh.jpg" alt="MeshAlyzer Team Picture" />
+  <img src="https://raw.githubusercontent.com/agadin/MeshAlyzer/refs/heads/main/img/teampicmesh.jpg" alt="MeshAlyzer Team Picture" width="450"/>
   <br>
-  <img src="https://raw.githubusercontent.com/agadin/MeshAlyzer/refs/heads/main/img/UIoverview.png" alt="MeshAlyzer UI Overview" />
+  <img src="https://raw.githubusercontent.com/agadin/MeshAlyzer/refs/heads/main/img/UIoverview.png" alt="MeshAlyzer UI Overview" width="450"/>
 </div>
 
 ## Table of Contents
