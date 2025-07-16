@@ -1,6 +1,11 @@
 
 # MeshAlyzer Device
-<a href="https://github.com/VishwaGauravIn/github-twitter-card-embed"><img src="https://gtce.itsvg.in/api?username=MeshToTheMax&theme=dracula&response=true&border=true&time=true&icon=default"/></a>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/agadin/MeshAlyzer/refs/heads/main/img/teampicmesh.jpg" alt="MeshAlyzer Team Picture" />
+  <br>
+  <img src="https://raw.githubusercontent.com/agadin/MeshAlyzer/refs/heads/main/img/UIoverview.png" alt="MeshAlyzer UI Overview" />
+</div>
+
 ## Table of Contents
 
 * [Introduction](#introduction)  
