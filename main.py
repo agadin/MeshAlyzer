@@ -7,6 +7,9 @@ import webbrowser
 import subprocess
 import mss
 import matplotlib.animation as animation
+from pathlib import Path
+import joblib
+
 
 
 from tkinter import StringVar
@@ -113,15 +116,15 @@ class ProtocolViewer(ctk.CTkFrame):
 
     def create_step_widget(self, step_num, step_name, details):
         """Create a rounded box for a protocol step."""
-        frame = ctk.CTkFrame(self.scrollable_frame, corner_radius=10)
+        frame = ctk.CTkFrame(self.scrollable_frame, corner_radius=10, fg_color="transparent")
         frame.pack(fill="x", padx=5, pady=5)
 
         # Step number
-        step_num_label = ctk.CTkLabel(frame, text=f"Step {step_num}", width=10)
+        step_num_label = ctk.CTkLabel(frame, text=f"Step {step_num}", width=10, text_color=("black", "white"))
         step_num_label.grid(row=0, column=0, padx=5, pady=5)
 
         # Step name and details
-        step_name_label = ctk.CTkLabel(frame, text=f"{step_name}: {details}", anchor="w")
+        step_name_label = ctk.CTkLabel(frame, text=f"{step_name}: {details}", anchor="w", text_color=("black", "white"))
         step_name_label.grid(row=0, column=1, sticky="w", padx=5, pady=5)
 
         # Checkbox
@@ -510,13 +513,32 @@ class App(ctk.CTk):
         self.motor_reverse_pressed = False
         self.motor_reverse_active = False
 
+        import joblib, pathlib
+
+        base = pathlib.Path(__file__).parent
+        try:
+            self.inflation_model = joblib.load(base / "inflation_time_model.pkl")
+            print("Loaded inflation_time_model.pkl")
+        except Exception as e:
+            print("inflation model load failed:", e)
+            self.inflation_model = None
+        try:
+            self.deflation_model = joblib.load(base / "deflation_time_model.pkl")
+            print("Loaded deflation_time_model.pkl")
+        except Exception as e:
+            print("deflation model load failed:", e)
+            self.deflation_model = None
+
+        self.peak_pressure: float = 1.4  # psi
+        self.avg_IAP: float = 0.12  # psi
+
         # Initialize the home display
         self.show_home()
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
+
 
     def show_boot_animation(self):
         # Remove title bar for splash screen effect
-        video_thread = threading.Thread(target=self.play_video_thread, daemon=True)
-        video_thread.start()
 
         self.overrideredirect(True)
 
@@ -919,6 +941,7 @@ class App(ctk.CTk):
 
         # Initialize ProtocolViewer and start queue processing
         self.initialize_protocol_viewer()
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
         self.process_queue()
 
         self.record_data_button = ctk.CTkButton(
@@ -933,14 +956,15 @@ class App(ctk.CTk):
             print("Protocol is already running.")
             return
         protocol_name = self.protocol_var.get()
-        self.protocol_name_label.configure(text=f"Current Protocol: {protocol_name}")
-        print(f"Running Protocol: {protocol_name}")
+        self.stop_flag = False  # reset stop-flag
+        self.protocol_running = True
 
         self.protocol_name_current = protocol_name
         # Start the protocol in a separate thread
-        self.protocol_thread = threading.Thread(target=self.process_protocol, args=(protocol_name,))
-        self.protocol_thread.start()
-        self.protocol_running = True
+        self.protocol_name_current = self.protocol_var.get()
+        threading.Thread(target=self.process_protocol,
+                         args=(self.protocol_var.get(),),
+                         daemon=True).start()
         self.show_overlay_notification("Protocol started")
         print(f"Running Protocol: {protocol_name}")
 
@@ -956,6 +980,7 @@ class App(ctk.CTk):
             app=self
         )
         self.protocol_viewer.pack(fill="both", expand=True, pady=10)
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
 
         # Trace for protocol_var to update ProtocolViewer when protocol changes
         self.protocol_var.trace("w", self.update_protocol_viewer)
@@ -963,8 +988,12 @@ class App(ctk.CTk):
     def update_protocol_viewer(self, *args):
         # Update the protocol viewer synchronously when protocol_var changes
         protocol_name = self.protocol_var.get()
-        print(f"Updating ProtocolViewer with: {protocol_name}")  # Debug print
+        protocol_path = os.path.join(self.protocol_folder, protocol_name)
+        if not protocol_name or not os.path.isfile(protocol_path):
+            return  # ignore blanks or directories
         self.protocol_viewer.load_protocol(protocol_name)
+        print(f"Updating ProtocolViewer with: {protocol_name}")  # Debug print
+        self.protocol_viewer.load_protocol(self.protocol_var.get())
 
     def show_protocol_builder(self):
         self.home_displayed = False  # Set to False to indicate home is not displayed
@@ -1218,11 +1247,23 @@ class App(ctk.CTk):
                                     self.ax.plot(times, pressure2s, label="Pressure 2")
                                 # If target_pressure is a list parallel to graph_times, filter it similarly:
                                 if self.target_pressure is not None:
-                                    filtered_target = [
-                                        tp for t, tp in zip(self.graph_times, self.target_pressure) if t >= lower_bound
-                                    ]
-                                    self.ax.plot(self.graph_times, self.target_pressure, label="Target Pressure",
-                                                 color=text_bg_color)
+                                    # if it's a single number, draw a horizontal line
+                                    if isinstance(self.target_pressure, (int, float)):
+                                        self.ax.axhline(
+                                            y=self.target_pressure,
+                                            label="Target Pressure",
+                                            linestyle="--",
+                                            linewidth=1,
+                                            color=text_bg_color
+                                        )
+                                    else:
+                                        # your old code for the list‐of‐targets case
+                                        filtered_target = [
+                                            tp for t, tp in zip(self.graph_times, self.target_pressure)
+                                            if t >= lower_bound
+                                        ]
+                                        self.ax.plot(times, filtered_target, label="Target Pressure",
+                                                     color=text_bg_color)
                                 if self.graph_y_range is not None:
                                     # extract numbers from the graph_y_range tuple
                                     low_y = self.graph_y_range[0]
@@ -1247,7 +1288,7 @@ class App(ctk.CTk):
         try:
             calibration_level = 0  # Adjust this logic as needed.
             if calibration_level == 0:
-                safe_configure(self.calibrate_button, fg_color="red")
+                safe_configure(self.calibrate_button, fg_color="green")
             elif calibration_level == 1:
                 safe_configure(self.calibrate_button, fg_color="yellow")
             elif calibration_level == 2:
@@ -1288,7 +1329,7 @@ class App(ctk.CTk):
 
 
     def stop_protocol(self):
-        self.stop_flag = "1"
+        self.stop_flag = True
         print("Stop flag set. Protocol will be halted.")
 
     def variable_saver(self, variable_name, user_input):
@@ -1362,10 +1403,34 @@ class App(ctk.CTk):
             except ValueError:
                 raise ValueError(f"Value for '{string_input}' in Redis is not a valid number.")
 
-    def calculate_metric(metric, protocol_step):
+    def _measure_pressure0_avg(self, seconds: float) -> float:
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            vals.append(self.pressure0_convert)
+            time.sleep(0.05)
+        return sum(vals) / len(vals) if vals else 0.0
+
+    def _measure_internal_avg(self, seconds: float) -> float:
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            p1 = getattr(self, "pressure1_convert", 0.0)
+            p2 = getattr(self, "pressure2_convert", 0.0)
+            vals.append((p1 + p2) / 2)
+            time.sleep(0.05)
+        return sum(vals) / len(vals) if vals else 0.0
+
+    def _measure_internal_max(self, seconds: float) -> float:
+        vals, t0 = [], time.time()
+        while time.time() - t0 < seconds:
+            p1 = getattr(self, "pressure1_convert", 0.0)
+            p2 = getattr(self, "pressure2_convert", 0.0)
+            vals.append((p1 + p2) / 2)
+            time.sleep(0.05)
+        return max(vals) if vals else 0.0
+
+    def calculate_metric(self, metric, protocol_step):
         with open('data.csv', 'r') as file:
             reader = csv.reader(file)
-            header = next(reader)
             data = [row for row in reader if int(row[6]) == protocol_step]
 
         if not data:
@@ -1392,7 +1457,12 @@ class App(ctk.CTk):
         else:
             raise ValueError(f"Unknown metric: {metric}")
 
+
     def process_protocol(self, protocol_path):
+        self.protocol_step = None
+        self.graph_times.clear()
+        self.graph_input_pressures.clear()
+
         protocol_filename = os.path.basename(protocol_path)
         # turn protocol_path to the full path including file name
         protocol_path = os.path.join(self.protocol_folder, protocol_path)
@@ -1401,6 +1471,7 @@ class App(ctk.CTk):
             step_number = 0
             data_saved = False
             folder_name = None
+        self.total_steps = len(commands)
 
         # calculate total number of commands
         self.total_commands = len(commands)
@@ -1416,8 +1487,8 @@ class App(ctk.CTk):
             self.protocol_command = command
             self.protocol_step = step_number
             stop_flag = self.stop_flag
-            if stop_flag == "1":
-                print("Protocol stopped.")
+            if self.stop_flag:
+                print("Protocol stopped by user.")
                 break
 
             if command.startswith("Inflate"):
@@ -1436,11 +1507,74 @@ class App(ctk.CTk):
                 self.inflate(time_or_pressure, value, valve)
                 if len(parts) > 3:
                     for i in range(1, len(parts), 2):
-                        metric = str(parts[i].strip())
-                        variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
-                        metric_value = self.calculate_metric(metric, self.protocol_step)
+                        metric = parts[i].strip()
+                        variable_name = parts[i + 1].strip() if i + 1 < len(parts) else metric
+                        try:
+                            metric_value = self.calculate_metric(metric, self.protocol_step)
+                        except ValueError:
+                            print(f"No data for step {self.protocol_step}, metric '{metric}' skipped")
+                            continue
+                        # use the successfully retrieved metric_value
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
+
+            elif command.startswith("SmartInflateML"):
+                # e.g. "SmartInflateML: 1.4, both"
+                _, args = command.split(":", 1)
+                tgt, valve = [p.strip() for p in args.split(",")]
+                target_pressure = float(tgt)
+                valve = valve.lower()
+
+                # 1) measure 5 s averages
+                avg_in = self._measure_pressure0_avg(5.0)
+                avg_iap = self._measure_internal_avg(5.0)
+
+                # 2) save them for later
+                self.save_to_dict("set_vars", "peak_pressure", target_pressure)
+                self.save_to_dict("set_vars", "avg_IAP", avg_iap)
+
+                # 3) predict duration
+                if self.inflation_model:
+                    dur = float(self.inflation_model.predict([[avg_iap, avg_in, target_pressure]])[0])
+                    print(f"[ML-inflate]  {dur:.2f}s")
+                    self.inflate("time", dur, valve)
+
+                    # 4) update targets for graph & CSV
+                    self.target_pressure = target_pressure
+                    self.target_time = dur
+                else:
+                    # fallback to plain “inflate until pressure”
+                    self.inflate("pressure", target_pressure, valve)
+
+
+            elif command.startswith("SmartDeflateML"):
+                # format: SmartDeflateML: <target_pressure>, <valve>
+                _, args = command.split(":", 1)
+                tgt_str, valve = [s.strip() for s in args.split(",", 1)]
+                target_pressure = float(tgt_str)
+                valve = valve.lower()
+
+                # 1) measure your 5 s averages and peak
+                avg_in = self._measure_pressure0_avg(5.0)
+                avg_iap = self._measure_internal_avg(5.0)
+                peak = self._measure_internal_max(5.0)
+
+                # 2) save for later & for graphing
+                self.save_to_dict("set_vars", "avg_IAP", avg_iap)
+                self.save_to_dict("set_vars", "peak_pressure", peak)
+                self.target_pressure = target_pressure
+
+                # 3) either ML‐predict how long to vent, or just vent to target_pressure
+                if self.deflation_model:
+                    pred_t = float(self.deflation_model.predict([[peak, avg_iap, avg_in]])[0])
+                    print(f"[ML‐deflate] predict t={pred_t:.2f}s → deflate time")
+                    self.deflate("time", pred_t, valve)
+                else:
+                    print(f"[ML‐deflate] no model, deflating to {target_pressure} PSI")
+                    self.deflate("pressure", target_pressure, valve)
+                continue
+
+
             elif command.startswith("Deflate"):
                 parts = command.split(":")[1].split(",")
 
@@ -1455,21 +1589,27 @@ class App(ctk.CTk):
                 # Example usage of the parsed inputs
                 print(f"Time/Pressure: {time_or_pressure}, Value: {value}, Valve: {valve}")
                 self.deflate(time_or_pressure, value, valve)
-                if len(parts) > 1:
-                    for i in range(1, len(parts), 2):
-                        metric = str(parts[i].strip())
-                        variable_name = str(parts[i + 1].strip()) if i + 1 < len(parts) else metric
-                        metric_value = self.calculate_metric(metric, self.protocol_step)
+                if len(parts) > 3:
+                    # metrics start at parts[3], so step by 2 entries (name, varname)
+                    for i in range(3, len(parts), 2):
+                        metric = parts[i].strip()
+                        variable_name = parts[i + 1].strip() if i + 1 < len(parts) else metric
+                        try:
+                            metric_value = self.calculate_metric(metric, self.protocol_step)
+                        except ValueError:
+                            print(f"No data for step {self.protocol_step}, metric '{metric}' skipped")
+                            continue
                         self.variable_saver(variable_name, metric_value)
                         self.save_to_dict('set_vars', variable_name, metric_value)
-            elif command.startswith("Wait"):
-                parts = command.split(":")[1].split(",")
-                wait_time = float(parts[0].strip())
+            cmd, args = command.split(":", 1)
+            if cmd.strip().lower() == "wait":
+                wait_time = float(args.strip())
                 wait_time = self.string_to_value_checker(wait_time, type_s='float')
                 print(f"Waiting for {wait_time} seconds")
                 time.sleep(wait_time)
             elif command.startswith("Wait_for_user_input"):
                 self.wait_for_user_input(command)
+
             elif command.startswith("no_save"):
                 data_saved = True
             elif command.startswith("End"):
@@ -1546,9 +1686,50 @@ class App(ctk.CTk):
         self.valve2.neutral()
         print(f"Inflating {valve} for {time_or_pressure} with value {value}")
 
+    def smart_inflate(self, valve: str = "both", avg_secs: float = 5.0):
+        # 1) measure current balloon pressure over 5 s
+        pre = self._measure_internal_avg(avg_secs)
+        # 2) ask model how long to inflate
+        dur = float(self.inflation_model.predict([[pre,
+                                                   self.pressure0_convert,
+                                                   self.peak_pressure]])[0])
+        # 3) call your existing inflate by time
+        self.inflate("time", dur, valve)
+        # 4) remember targets for display/recording
+        self.target_pressure = self.peak_pressure
+        self.target_time = dur
+
+    def smart_deflate(self, valve: str = "both", avg_secs: float = 5.0):
+        # 1) measure current balloon pressure over 5 s
+        post = self._measure_internal_avg(avg_secs)
+        # 2) ask model how long to vent back to avg_IAP
+        dur = float(self.deflation_model.predict([[post,
+                                                   self.avg_IAP,
+                                                   self.pressure0_convert]])[0])
+        # 3) call existing deflate by time
+        self.deflate("time", dur, valve)
+        # 4) remember targets
+        self.target_pressure = self.avg_IAP
+        self.target_time = dur
+
     def deflate(self, time_or_pressure, value, valve):
-        # Placeholder for the actual inflation logic
-        print(f"Inflating {valve} for {time_or_pressure} with value {value}")
+        # Open vent
+        if valve in ("valve1", "both"):
+            self.valve1.vent()
+        if valve in ("valve2", "both"):
+            self.valve2.vent()
+
+        if time_or_pressure.lower() == "time":
+            time.sleep(value)
+        elif time_or_pressure.lower() == "pressure":
+            # wait until pressure drops below target
+            while self.lps.pressure > value:
+                time.sleep(0.01)
+
+        # Close vents (neutral)
+        self.valve1.neutral()
+        self.valve2.neutral()
+        print(f"Deflating {valve} for {time_or_pressure} with value {value}")
 
     def wait(self, wait_time):
         print(f"Waiting for {wait_time} seconds")

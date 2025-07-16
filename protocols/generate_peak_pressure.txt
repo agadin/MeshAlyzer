@@ -1,0 +1,56 @@
+wait: 4
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
+wait: 0.1
+Inflate: time, 0.45, both
+wait: 0.1
+Deflate: time, 2.7, both
